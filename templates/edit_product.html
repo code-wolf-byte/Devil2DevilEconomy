@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Product - Discord Store{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">Edit Product</h1>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <form method="POST" action="{{ url_for('edit_product', product_id=product.id) }}">
+            <div class="mb-4">
+                <label for="name" class="block text-sm font-medium text-gray-700">Product Name</label>
+                <input type="text" 
+                       name="name" 
+                       id="name" 
+                       value="{{ product.name }}"
+                       required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+
+            <div class="mb-4">
+                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                <textarea name="description" 
+                          id="description" 
+                          rows="4" 
+                          required
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ product.description }}</textarea>
+            </div>
+
+            <div class="mb-4">
+                <label for="price" class="block text-sm font-medium text-gray-700">Price (points)</label>
+                <input type="number" 
+                       name="price" 
+                       id="price" 
+                       value="{{ product.price }}"
+                       min="0" 
+                       required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+
+            <div class="mb-4">
+                <label for="stock" class="block text-sm font-medium text-gray-700">Stock</label>
+                <input type="number" 
+                       name="stock" 
+                       id="stock" 
+                       value="{{ product.stock }}"
+                       min="0" 
+                       required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+
+            <div class="mb-4">
+                <label for="image_url" class="block text-sm font-medium text-gray-700">Image URL</label>
+                <input type="url" 
+                       name="image_url" 
+                       id="image_url"
+                       value="{{ product.image_url }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <a href="{{ url_for('admin') }}" 
+                   class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                    Update Product
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 
