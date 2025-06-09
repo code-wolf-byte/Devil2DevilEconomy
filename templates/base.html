@@ -3,33 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Discord Store{% endblock %}</title>
+    <title>{% block title %}Devil2Devil Store{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --asu-maroon: #8C1D40;
+            --asu-gold: #FFC627;
+            --dark-bg: #1a1a1a;
+            --dark-card: #2d2d2d;
+            --dark-border: #404040;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .asu-maroon { background-color: var(--asu-maroon); }
+        .asu-gold { color: var(--asu-gold); }
+        .asu-gold-bg { background-color: var(--asu-gold); color: #000; }
+        
+        .card {
+            background-color: var(--dark-card);
+            border: 1px solid var(--dark-border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            border-color: var(--asu-gold);
+            box-shadow: 0 8px 25px rgba(255, 198, 39, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--asu-maroon), #a52757);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #a52757, var(--asu-maroon));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(140, 29, 64, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--asu-gold);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: #e6b122;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 198, 39, 0.3);
+        }
+
+        .nav-gradient {
+            background: linear-gradient(135deg, var(--asu-maroon), #a52757);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .points-badge {
+            background: var(--asu-gold);
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .text-muted {
+            color: var(--text-secondary);
+        }
+
+        .disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(45, 45, 45, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .border-3 {
+            border-width: 3px;
+        }
+
+        .avatar-glow {
+            box-shadow: 0 0 20px rgba(255, 198, 39, 0.3);
+        }
+
+        .avatar-glow:hover {
+            box-shadow: 0 0 25px rgba(255, 198, 39, 0.5);
+        }
+
+        /* Custom Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes bounceSubtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulseSubtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        .animate-fade-in-delay {
+            animation: fadeIn 0.8s ease-out 0.2s forwards;
+            opacity: 0;
+        }
+
+        .animate-fade-in-1 {
+            animation: fadeIn 0.6s ease-out 0.1s forwards;
+            opacity: 0;
+        }
+
+        .animate-fade-in-2 {
+            animation: fadeIn 0.6s ease-out 0.2s forwards;
+            opacity: 0;
+        }
+
+        .animate-fade-in-3 {
+            animation: fadeIn 0.6s ease-out 0.3s forwards;
+            opacity: 0;
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.8s ease-out forwards;
+        }
+
+        .animate-slide-up-delay {
+            animation: slideUp 0.8s ease-out 0.3s forwards;
+            opacity: 0;
+        }
+
+        .animate-slide-up-delay-2 {
+            animation: slideUp 0.8s ease-out 0.6s forwards;
+            opacity: 0;
+        }
+
+        .animate-scale-in {
+            animation: scaleIn 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .animate-bounce-subtle {
+            animation: bounceSubtle 2s ease-in-out infinite;
+        }
+
+        .animate-spin-slow {
+            animation: spinSlow 3s linear infinite;
+        }
+
+        .animate-pulse-subtle {
+            animation: pulseSubtle 2s ease-in-out infinite;
+        }
+
+        /* Mobile-first responsive improvements */
+        @media (max-width: 640px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .card {
+                margin-left: -0.5rem;
+                margin-right: -0.5rem;
+                border-radius: 0.75rem;
+            }
+            
+            .grid {
+                gap: 1rem;
+            }
+        }
+
+        /* Hover effects for mobile */
+        @media (hover: hover) {
+            .card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(255, 198, 39, 0.15);
+            }
+        }
+
+        /* Touch-friendly improvements */
+        .btn-primary, .btn-secondary {
+            min-height: 44px; /* Touch-friendly minimum size */
+            touch-action: manipulation;
+        }
+
+        /* Improved focus states for accessibility */
+        .btn-primary:focus, .btn-secondary:focus {
+            outline: 2px solid var(--asu-gold);
+            outline-offset: 2px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <nav class="bg-indigo-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="{{ url_for('index') }}" class="text-2xl font-bold">Discord Store</a>
-            <div class="space-x-4">
+<body>
+    <nav class="nav-gradient text-white py-4 sticky top-0 z-50">
+        <div class="container mx-auto px-6 flex justify-between items-center">
+            <a href="{{ url_for('index') }}" class="text-2xl font-bold flex items-center space-x-3">
+                <i class="fas fa-store"></i>
+                <span>Devil2Devil Store</span>
+            </a>
+            <div class="flex items-center space-x-6">
                 {% if current_user.is_authenticated %}
-                    <span>Points: {{ current_user.points }}</span>
+                    <div class="points-badge">
+                        <i class="fas fa-coins"></i>
+                        {{ current_user.points }} Points
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <!-- Discord Profile Picture -->
+                        {% if current_user.avatar_url %}
+                            <img src="{{ current_user.avatar_url }}" 
+                                 alt="{{ current_user.username }}'s avatar" 
+                                 class="w-8 h-8 rounded-full border-2 border-yellow-400 hover:border-yellow-300 transition-colors avatar-glow">
+                        {% else %}
+                            <div class="w-8 h-8 rounded-full bg-gray-600 border-2 border-yellow-400 flex items-center justify-center avatar-glow">
+                                <i class="fas fa-user text-yellow-400 text-sm"></i>
+                            </div>
+                        {% endif %}
+                        <span class="text-sm">
+                            Welcome, <span class="asu-gold font-semibold">{{ current_user.username }}</span>
+                            {% if current_user.is_admin %}<span class="text-xs bg-yellow-500 text-black px-2 py-1 rounded ml-2">Admin</span>{% endif %}
+                        </span>
+                    </div>
                     {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin') }}" class="hover:text-indigo-200">Admin</a>
+                        <a href="{{ url_for('admin_panel') }}" class="hover:text-yellow-300 transition-colors">
+                            <i class="fas fa-cog mr-1"></i>Admin Panel
+                        </a>
                     {% endif %}
-                    <a href="{{ url_for('logout') }}" class="hover:text-indigo-200">Logout</a>
+                    <a href="{{ url_for('logout') }}" class="hover:text-yellow-300 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                    </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="hover:text-indigo-200">Login</a>
+                    <div class="text-sm text-gray-300">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Login to purchase items
+                    </div>
+                    <a href="{{ url_for('login') }}" class="btn-secondary">
+                        <i class="fab fa-discord mr-2"></i>Login with Discord
+                    </a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto mt-8 px-4">
+    <div class="container mx-auto mt-8 px-6 pb-12">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                        <span class="block sm:inline">{{ message }}</span>
+                    <div class="alert-success px-6 py-4 rounded-lg mb-6 flex items-center">
+                        <i class="fas fa-check-circle mr-3 text-lg"></i>
+                        <span>{{ message }}</span>
                     </div>
                 {% endfor %}
             {% endif %}

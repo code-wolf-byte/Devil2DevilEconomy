@@ -1,191 +1,217 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Economy Bot</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .admin-actions {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .products-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .products-table th,
-        .products-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        .products-table th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-        .products-table tr:hover {
-            background-color: #f5f5f5;
-        }
-        .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 5px;
-            font-size: 14px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .btn-success {
-            background-color: #28a745;
-        }
-        .btn-success:hover {
-            background-color: #218838;
-        }
-        .btn-warning {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .btn-warning:hover {
-            background-color: #e0a800;
-        }
-        .btn-danger {
-            background-color: #dc3545;
-        }
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-        }
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-        .flash-messages {
-            margin-bottom: 20px;
-        }
-        .flash-message {
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-        .flash-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .flash-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .product-image {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🛠️ Admin Panel</h1>
-            <p>Manage your economy bot shop</p>
-        </div>
+{% extends "base.html" %}
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="flash-message flash-success">{{ message }}</div>
-                    {% endfor %}
+{% block title %}Admin Panel - Devil2Devil Store{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Admin Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-tools text-yellow-400 mr-3"></i>
+            Admin Panel
+        </h1>
+        <p class="text-xl text-muted">Manage your Devil2Devil store</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-bolt text-yellow-400 mr-3"></i>
+            Quick Actions
+        </h2>
+        <div class="flex flex-wrap gap-4">
+            <a href="{{ url_for('new_product') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Add New Product
+            </a>
+            <a href="{{ url_for('admin_purchases') }}" class="btn-secondary">
+                <i class="fas fa-shopping-bag mr-2"></i>View Purchase History
+            </a>
+            <a href="{{ url_for('index') }}" class="btn-secondary">
+                <i class="fas fa-home mr-2"></i>Back to Shop
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Dashboard -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-yellow-400 mr-3"></i>
+            Store Statistics
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold asu-gold">{{ products|length }}</div>
+                <div class="text-sm text-muted">Total Products</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-green-400">
+                    {{ products|selectattr('stock', 'greaterthan', 0)|list|length }}
                 </div>
-            {% endif %}
-        {% endwith %}
+                <div class="text-sm text-muted">In Stock</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-red-400">
+                    {{ products|selectattr('stock', 'equalto', 0)|list|length }}
+                </div>
+                <div class="text-sm text-muted">Out of Stock</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-blue-400">
+                    {{ products|sum(attribute='stock') if products else 0 }}
+                </div>
+                <div class="text-sm text-muted">Total Stock</div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Admin Actions -->
-        <div class="admin-actions">
-            <h3>Quick Actions</h3>
-            <a href="{{ url_for('new_product') }}" class="btn btn-success">➕ Add New Product</a>
-            <a href="{{ url_for('index') }}" class="btn btn-secondary">🏠 Back to Shop</a>
+    <!-- Products Management -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <i class="fas fa-box text-yellow-400 mr-3"></i>
+                Products Management
+            </h2>
+            <div class="text-muted">
+                {{ products|length }} product{{ 's' if products|length != 1 else '' }} total
+            </div>
         </div>
 
-        <!-- Products Management -->
-        <h2>Products Management</h2>
         {% if products %}
-            <table class="products-table">
-                <thead>
-                    <tr>
-                        <th>Image</th>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for product in products %}
-                        <tr>
-                            <td>
-                                {% if product.image_url %}
-                                    <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" alt="{{ product.name }}" class="product-image">
-                                {% else %}
-                                    <div style="width: 50px; height: 50px; background-color: #eee; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666;">No Image</div>
-                                {% endif %}
-                            </td>
-                            <td><strong>{{ product.name }}</strong></td>
-                            <td>{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</td>
-                            <td>{{ product.price }} points</td>
-                            <td>{{ product.stock }}</td>
-                            <td>{{ product.created_at.strftime('%Y-%m-%d') if product.created_at else 'N/A' }}</td>
-                            <td>
-                                <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-warning">✏️ Edit</a>
-                                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
-                                      style="display: inline;" 
-                                      onsubmit="return confirm('Are you sure you want to delete {{ product.name }}?')">
-                                    <button type="submit" class="btn btn-danger">🗑️ Delete</button>
-                                </form>
-                            </td>
+            <!-- Desktop Table View -->
+            <div class="hidden lg:block overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-600">
+                            <th class="text-left py-4 px-2 text-yellow-400">Image</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Product</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Price</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Stock</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Created</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Actions</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                                <td class="py-4 px-2">
+                                    {% if product.image_url %}
+                                        <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                                             alt="{{ product.name }}" 
+                                             class="w-16 h-16 object-cover rounded-lg">
+                                    {% else %}
+                                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-image text-gray-500"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 px-2">
+                                    <div class="font-semibold">{{ product.name }}</div>
+                                    <div class="text-sm text-muted">{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</div>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <span class="font-bold asu-gold">
+                                        <i class="fas fa-coins mr-1"></i>{{ product.price }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-2">
+                                    {% if product.stock > 0 %}
+                                        <span class="bg-green-600 text-white px-2 py-1 rounded-full text-xs">
+                                            {{ product.stock }} available
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                            Out of stock
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 px-2 text-muted">
+                                    {{ product.created_at.strftime('%m/%d/%Y') if product.created_at else 'N/A' }}
+                                </td>
+                                <td class="py-4 px-2">
+                                    <div class="flex space-x-2">
+                                        <a href="{{ url_for('edit_product', product_id=product.id) }}" 
+                                           class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                            <i class="fas fa-edit mr-1"></i>Edit
+                                        </a>
+                                        <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('Are you sure you want to delete {{ product.name }}?')">
+                                            <button type="submit" 
+                                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-4">
+                {% for product in products %}
+                    <div class="card p-4">
+                        <div class="flex items-start space-x-4">
+                            {% if product.image_url %}
+                                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                                     alt="{{ product.name }}" 
+                                     class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
+                            {% else %}
+                                <div class="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-image text-gray-500"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-lg">{{ product.name }}</h3>
+                                <p class="text-sm text-muted mb-2">{{ product.description }}</p>
+                                
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="font-bold asu-gold">
+                                        <i class="fas fa-coins mr-1"></i>{{ product.price }}
+                                    </span>
+                                    {% if product.stock > 0 %}
+                                        <span class="bg-green-600 text-white px-2 py-1 rounded-full text-xs">
+                                            {{ product.stock }} available
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                            Out of stock
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="flex space-x-2">
+                                    <a href="{{ url_for('edit_product', product_id=product.id) }}" 
+                                       class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                        <i class="fas fa-edit mr-1"></i>Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Are you sure you want to delete {{ product.name }}?')">
+                                        <button type="submit" 
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                            <i class="fas fa-trash mr-1"></i>Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         {% else %}
-            <div style="text-align: center; padding: 40px; color: #666;">
-                <h3>No products found</h3>
-                <p>Start by adding your first product to the shop!</p>
-                <a href="{{ url_for('new_product') }}" class="btn btn-success">➕ Add New Product</a>
+            <div class="text-center py-12">
+                <i class="fas fa-box-open text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">No products found</h3>
+                <p class="text-muted mb-6">Start by adding your first product to the shop!</p>
+                <a href="{{ url_for('new_product') }}" class="btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Add New Product
+                </a>
             </div>
         {% endif %}
     </div>
-</body>
-</html> 
+</div>
+{% endblock %} 

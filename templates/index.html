@@ -1,160 +1,331 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Economy Bot - Shop</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .user-info {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .products {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .product {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #fff;
-        }
-        .product h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        .product .price {
-            font-weight: bold;
-            color: #007bff;
-            font-size: 1.2em;
-        }
-        .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .btn-danger {
-            background-color: #dc3545;
-        }
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-        .flash-messages {
-            margin-bottom: 20px;
-        }
-        .flash-message {
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-        .flash-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .flash-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏪 Economy Bot Shop</h1>
+{% extends "base.html" %}
+
+{% block title %}Shop - Devil2Devil Store{% endblock %}
+
+
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Hero Section -->
+    <div class="text-center py-8 px-4 sm:py-12">
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 animate-fade-in">
+            <i class="fas fa-store text-yellow-400 mr-3"></i>
+            Devil2Devil Store
+        </h1>
+        <p class="text-lg sm:text-xl text-muted max-w-2xl mx-auto animate-fade-in-delay">
+            Discover amazing products and spend your hard-earned points from the Discord server
+        </p>
+    </div>
+
+    {% if current_user.is_authenticated %}
+        <!-- User Dashboard -->
+        <div class="card p-4 sm:p-6 lg:p-8 animate-slide-up">
+            <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0">
+                <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <!-- Discord Profile Picture -->
+                    {% if current_user.avatar_url %}
+                        <img src="{{ current_user.avatar_url }}" 
+                             alt="{{ current_user.username }}'s avatar" 
+                             class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-3 border-yellow-400 avatar-glow animate-bounce-subtle">
+                    {% else %}
+                        <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-600 border-3 border-yellow-400 flex items-center justify-center avatar-glow animate-bounce-subtle">
+                            <i class="fas fa-user text-yellow-400 text-xl sm:text-2xl"></i>
+                        </div>
+                    {% endif %}
+                    <div class="text-center sm:text-left">
+                        <h2 class="text-xl sm:text-2xl font-semibold flex items-center justify-center sm:justify-start">
+                            <i class="fas fa-user-circle text-yellow-400 mr-3"></i>
+                            Dashboard
+                        </h2>
+                        <p class="text-muted mt-2">Track your economy progress</p>
+                    </div>
+                </div>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_panel') }}" class="btn-primary animate-pulse-subtle">
+                        <i class="fas fa-cog mr-2"></i>Manage Shop
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-6">
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-300 animate-fade-in-1">
+                    <div class="text-2xl sm:text-3xl font-bold asu-gold mb-2">{{ current_user.balance }}</div>
+                    <div class="text-muted text-sm sm:text-base">Available Balance</div>
+                </div>
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-green-400 transition-all duration-300 animate-fade-in-2">
+                    <div class="text-2xl sm:text-3xl font-bold text-green-400 mb-2">{{ current_user.points }}</div>
+                    <div class="text-muted text-sm sm:text-base">Total Points Earned</div>
+                </div>
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-300 animate-fade-in-3 sm:col-span-2 lg:col-span-1">
+                    <div class="text-2xl sm:text-3xl font-bold text-blue-400 mb-2">{{ purchases|length if purchases else 0 }}</div>
+                    <div class="text-muted text-sm sm:text-base">Items Purchased</div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <!-- Guest Welcome -->
+        <div class="card p-6 sm:p-8 text-center animate-slide-up">
+            <i class="fas fa-shopping-cart text-4xl sm:text-6xl asu-gold mb-4 animate-bounce-subtle"></i>
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4">Welcome to Devil2Devil Store</h2>
+            <p class="text-muted mb-6 max-w-md mx-auto text-sm sm:text-base">
+                Join our Discord server and start earning points to purchase these amazing items!
+            </p>
+            <a href="{{ url_for('login') }}" class="btn-secondary inline-flex items-center animate-pulse-subtle">
+                <i class="fab fa-discord mr-2"></i>
+                Connect with Discord
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Products Section -->
+    <div class="animate-slide-up-delay">
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-2 sm:space-y-0">
+            <h2 class="text-2xl sm:text-3xl font-bold flex items-center">
+                <i class="fas fa-box-open text-yellow-400 mr-3"></i>
+                Available Products
+            </h2>
+            <div class="text-muted text-sm sm:text-base">
+                {{ products|length }} item{{ 's' if products|length != 1 else '' }} available
+            </div>
         </div>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="flash-message flash-success">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <!-- User Info -->
-        {% if current_user.is_authenticated %}
-            <div class="user-info">
-                <h3>Welcome, {{ current_user.username }}{% if current_user.is_admin %} (Admin){% endif %}!</h3>
-                <p><strong>Balance:</strong> {{ current_user.balance }} points</p>
-                <p><strong>Total Points Earned:</strong> {{ current_user.points }} points</p>
-                <div style="margin-top: 15px;">
-                    {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin_panel') }}" class="btn" style="margin-right: 10px;">🛠️ Manage Shop</a>
-                    {% endif %}
-                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-                </div>
-            </div>
-        {% else %}
-            <div class="user-info">
-                <h3>Please log in to access the shop</h3>
-                <a href="{{ url_for('login') }}" class="btn">Login with Discord</a>
-            </div>
-        {% endif %}
-
-        <!-- Products -->
-        {% if current_user.is_authenticated %}
-            <h2>Available Products</h2>
-            {% if products %}
-                <div class="products">
-                    {% for product in products %}
-                        <div class="product">
-                            {% if product.image_url %}
-                                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" alt="{{ product.name }}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px;">
-                            {% endif %}
-                            <h3>{{ product.name }}</h3>
-                            <p>{{ product.description }}</p>
-                            <p class="price">{{ product.price }} points</p>
-                            <p><strong>Stock:</strong> {{ product.stock }}</p>
+        {% if products %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {% for product in products %}
+                    <div class="card overflow-hidden group animate-scale-in" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+                        {% if product.image_url %}
+                            <div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
+                                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                                     alt="{{ product.name }}" 
+                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                <div class="absolute top-2 right-2 sm:top-4 sm:right-4">
+                                    {% if product.stock == 0 %}
+                                        <span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold animate-pulse-subtle">
+                                            Unlimited
+                                        </span>
+                                    {% elif product.stock > 0 %}
+                                        <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                            {{ product.stock }} in stock
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold animate-pulse">
+                                            Out of stock
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            </div>
+                        {% else %}
+                            <div class="h-40 sm:h-48 bg-gray-700 flex items-center justify-center group-hover:bg-gray-600 transition-colors duration-300">
+                                <i class="fas fa-image text-3xl sm:text-4xl text-gray-500"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="p-4 sm:p-6">
+                            <h3 class="text-lg sm:text-xl font-semibold mb-2 group-hover:text-yellow-400 transition-colors duration-300">
+                                {{ product.name }}
+                            </h3>
+                            <p class="text-muted mb-4 text-sm leading-relaxed">{{ product.description }}</p>
                             
-                            {% if product.stock > 0 and current_user.balance >= product.price %}
-                                <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}" style="display: inline;">
-                                    <button type="submit" class="btn">Purchase</button>
-                                </form>
-                            {% elif product.stock <= 0 %}
-                                <button class="btn" disabled>Out of Stock</button>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+                                <div class="text-xl sm:text-2xl font-bold asu-gold flex items-center">
+                                    <i class="fas fa-coins mr-1"></i>
+                                    {{ product.price }}
+                                </div>
+                                <div class="text-xs sm:text-sm text-muted">
+                                    Stock: {% if product.stock == 0 %}Unlimited{% else %}{{ product.stock }}{% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if current_user.is_authenticated %}
+                                {% if (product.stock == 0 or product.stock > 0) and current_user.balance >= product.price %}
+                                    <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}">
+                                        <button type="submit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
+                                            <i class="fas fa-shopping-cart mr-2"></i>
+                                            Purchase Now
+                                        </button>
+                                    </form>
+                                {% elif product.stock < 0 %}
+                                    <button class="btn-primary w-full disabled" disabled>
+                                        <i class="fas fa-times mr-2"></i>
+                                        Out of Stock
+                                    </button>
+                                {% else %}
+                                    <button class="btn-primary w-full disabled" disabled>
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        Insufficient Balance
+                                    </button>
+                                {% endif %}
                             {% else %}
-                                <button class="btn" disabled>Insufficient Balance</button>
+                                <button class="btn-primary w-full disabled" disabled>
+                                    <i class="fas fa-lock mr-2"></i>
+                                    Login Required
+                                </button>
                             {% endif %}
                         </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p>No products available at the moment.</p>
-            {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card p-6 sm:p-8 text-center animate-fade-in">
+                <i class="fas fa-box-open text-4xl sm:text-6xl text-gray-600 mb-4 animate-bounce-subtle"></i>
+                <h3 class="text-lg sm:text-xl font-semibold mb-2">No Products Available</h3>
+                <p class="text-muted">Check back later for new items!</p>
+            </div>
         {% endif %}
     </div>
-</body>
-</html> 
+
+    <!-- Additional Info Section -->
+    {% if not current_user.is_authenticated %}
+        <div class="card p-4 sm:p-6 animate-slide-up-delay-2">
+            <h3 class="text-lg sm:text-xl font-semibold mb-4 flex items-center justify-center sm:justify-start">
+                <i class="fas fa-question-circle text-yellow-400 mr-2"></i>
+                How to Get Started
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-300 animate-fade-in-1">
+                    <i class="fab fa-discord text-3xl sm:text-4xl asu-gold mb-2 animate-bounce-subtle"></i>
+                    <h4 class="font-semibold text-sm sm:text-base">1. Join Discord</h4>
+                    <p class="text-xs sm:text-sm text-muted mt-1">Connect with our community</p>
+                </div>
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-300 animate-fade-in-2">
+                    <i class="fas fa-comments text-3xl sm:text-4xl asu-gold mb-2 animate-bounce-subtle"></i>
+                    <h4 class="font-semibold text-sm sm:text-base">2. Be Active</h4>
+                    <p class="text-xs sm:text-sm text-muted mt-1">Chat and participate in activities</p>
+                </div>
+                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-300 animate-fade-in-3">
+                    <i class="fas fa-coins text-3xl sm:text-4xl asu-gold mb-2 animate-spin-slow"></i>
+                    <h4 class="font-semibold text-sm sm:text-base">3. Earn Points</h4>
+                    <p class="text-xs sm:text-sm text-muted mt-1">Get rewarded for your participation</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* Custom Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bounceSubtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes spinSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulseSubtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-fade-in-delay {
+    animation: fadeIn 0.8s ease-out 0.2s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-1 {
+    animation: fadeIn 0.6s ease-out 0.1s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-2 {
+    animation: fadeIn 0.6s ease-out 0.2s forwards;
+    opacity: 0;
+}
+
+.animate-fade-in-3 {
+    animation: fadeIn 0.6s ease-out 0.3s forwards;
+    opacity: 0;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.8s ease-out forwards;
+}
+
+.animate-slide-up-delay {
+    animation: slideUp 0.8s ease-out 0.3s forwards;
+    opacity: 0;
+}
+
+.animate-slide-up-delay-2 {
+    animation: slideUp 0.8s ease-out 0.6s forwards;
+    opacity: 0;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+.animate-bounce-subtle {
+    animation: bounceSubtle 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+    animation: spinSlow 3s linear infinite;
+}
+
+.animate-pulse-subtle {
+    animation: pulseSubtle 2s ease-in-out infinite;
+}
+
+/* Mobile-first responsive improvements */
+@media (max-width: 640px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .card {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+        border-radius: 0.75rem;
+    }
+    
+    .grid {
+        gap: 1rem;
+    }
+}
+
+/* Hover effects for mobile */
+@media (hover: hover) {
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(255, 198, 39, 0.15);
+    }
+}
+
+/* Touch-friendly improvements */
+.btn-primary, .btn-secondary {
+    min-height: 44px; /* Touch-friendly minimum size */
+    touch-action: manipulation;
+}
+
+/* Improved focus states for accessibility */
+.btn-primary:focus, .btn-secondary:focus {
+    outline: 2px solid var(--asu-gold);
+    outline-offset: 2px;
+}
+</style>
+{% endblock %} 

@@ -7,6 +7,7 @@ import requests
 import threading
 import os
 import uuid
+
 from dotenv import load_dotenv
 
 # Load environment variables with explicit path
@@ -25,9 +26,24 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+# Helper function to construct Discord avatar URL
+def get_discord_avatar_url(user_id, avatar_hash):
+    """Construct Discord avatar URL from user ID and avatar hash."""
+    if not avatar_hash:
+        # Use default Discord avatar based on discriminator
+        # For new Discord usernames (without discriminator), use user ID
+        return f"https://cdn.discordapp.com/embed/avatars/{int(user_id) % 5}.png"
+    
+    # Check if avatar is animated (starts with 'a_')
+    if avatar_hash.startswith('a_'):
+        return f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.gif"
+    else:
+        return f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -60,6 +76,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.String(20), primary_key=True)
     username = db.Column(db.String(80), nullable=False)
     discord_id = db.Column(db.String(20), unique=True)
+    avatar_url = db.Column(db.String(500))  # Store Discord avatar URL
+    user_uuid = db.Column(db.String(36), unique=True)  # Store unique UUID for each user
     is_admin = db.Column(db.Boolean, default=False)
     points = db.Column(db.Integer, default=0)
     balance = db.Column(db.Integer, default=0)
@@ -73,6 +91,10 @@ class User(UserMixin, db.Model):
     reaction_count = db.Column(db.Integer, default=0)
     voice_minutes = db.Column(db.Integer, default=0)
     has_boosted = db.Column(db.Boolean, default=False)
+    birthday = db.Column(db.Date)  # Store user's birthday (month/day)
+    birthday_points_received = db.Column(db.Boolean, default=False)  # Track if user got points for setting birthday
+    verification_bonus_received = db.Column(db.Boolean, default=False)  # Track if user got verification bonus
+    onboarding_bonus_received = db.Column(db.Boolean, default=False)  # Track if user got onboarding bonus
     achievements = db.relationship('UserAchievement', backref='user', lazy=True)
 
     def __repr__(self):
@@ -124,6 +146,15 @@ class UserAchievement(db.Model):
     def __repr__(self):
         return f'<UserAchievement {self.user_id} - {self.achievement_id}>'
 
+class EconomySettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    economy_enabled = db.Column(db.Boolean, default=False)
+    first_time_enabled = db.Column(db.Boolean, default=True)  # Track if it's the first time being enabled
+    enabled_at = db.Column(db.DateTime)
+    
+    def __repr__(self):
+        return f'<EconomySettings enabled={self.economy_enabled}>'
+
 # Initialize database
 with app.app_context():
     db.create_all()
@@ -172,7 +203,13 @@ def load_user(user_id):
 @app.route('/')
 def index():
     products = Product.query.all()
-    return render_template('index.html', products=products)
+    
+    # Get current user's purchases if they're logged in
+    user_purchases = []
+    if current_user.is_authenticated:
+        user_purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    
+    return render_template('index.html', products=products, purchases=user_purchases)
 
 @app.route('/login')
 def login():
@@ -330,12 +367,16 @@ def callback():
         
         print(f"Final admin status for {user_data['username']}: {is_admin}")
         
+        # Construct avatar URL
+        avatar_url = get_discord_avatar_url(user_data['id'], user_data.get('avatar'))
+        
         user = User.query.filter_by(discord_id=user_data['id']).first()
         if not user:
             user = User(
                 id=user_data['id'],  # Use Discord ID as primary key
                 username=user_data['username'],
                 discord_id=user_data['id'],
+                avatar_url=avatar_url,
                 is_admin=is_admin,
                 points=0,
                 balance=0
@@ -347,6 +388,7 @@ def callback():
             # Update admin status in case it changed
             user.is_admin = is_admin
             user.username = user_data['username']  # Update username in case it changed
+            user.avatar_url = avatar_url
             db.session.commit()
             print(f"Updated existing user: {user.username} (Admin: {is_admin})")
         
@@ -378,12 +420,31 @@ def purchase(product_id):
         flash('Insufficient balance')
         return redirect(url_for('index'))
     
+    # Check if product is available for purchase
+    # Stock logic: 0 = unlimited stock, > 0 = limited stock
+    # If product has limited stock and none available, prevent purchase
+    if product.stock != 0 and product.stock < 1:
+        flash('Product is out of stock')
+        return redirect(url_for('index'))
+    
+    # Generate UUID if user doesn't have one
+    if not current_user.user_uuid:
+        current_user.user_uuid = str(uuid.uuid4())
+        print(f"Generated new UUID for user {current_user.username}: {current_user.user_uuid}")
+    
     current_user.balance -= product.price
-    purchase = Purchase(user_id=current_user.id, product_id=product.id)
+    
+    # Decrease stock if it's not unlimited (stock > 0 means limited stock)
+    if product.stock > 0:
+        product.stock -= 1
+    
+    purchase = Purchase(user_id=current_user.id, product_id=product.id, points_spent=product.price)
     db.session.add(purchase)
     db.session.commit()
     
-    flash('Purchase successful!')
+    # For now, just notify about UUID - DM functionality will be added later
+    flash(f'Purchase successful! Your UUID: {current_user.user_uuid}')
+    
     return redirect(url_for('index'))
 
 @app.route('/admin')
@@ -395,6 +456,29 @@ def admin_panel():
     
     products = Product.query.all()
     return render_template('admin.html', products=products)
+
+@app.route('/admin/purchases')
+@login_required
+def admin_purchases():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Number of purchases per page
+    
+    # Get purchases with user and product information, ordered by most recent first
+    purchases_pagination = db.session.query(Purchase)\
+        .join(User, Purchase.user_id == User.id)\
+        .join(Product, Purchase.product_id == Product.id)\
+        .order_by(Purchase.timestamp.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    purchases = purchases_pagination.items
+    
+    return render_template('admin_purchases.html', 
+                         purchases=purchases,
+                         pagination=purchases_pagination)
 
 @app.route('/admin/product/new', methods=['GET', 'POST'])
 @login_required
@@ -491,7 +575,7 @@ def edit_product(product_id):
             product.price = int(request.form['price'])
             product.stock = int(request.form.get('stock', 0))
             product.image_url = image_filename
-            
+        
             db.session.commit()
             flash(f'Product "{product.name}" updated successfully!')
             return redirect(url_for('admin_panel'))
@@ -507,7 +591,7 @@ def delete_product(product_id):
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.')
         return redirect(url_for('index'))
-    
+
     product = Product.query.get_or_404(product_id)
     product_name = product.name
     
@@ -535,7 +619,7 @@ def delete_product(product_id):
 from bot import run_bot, init_bot_with_app
 
 # Initialize bot with app and models
-init_bot_with_app(app, db, User, Achievement, UserAchievement)
+init_bot_with_app(app, db, User, Achievement, UserAchievement, EconomySettings)
 
 if __name__ == '__main__':
     # Start Discord bot in a separate thread
