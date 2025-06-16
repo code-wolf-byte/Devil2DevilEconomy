@@ -1,3 +1,105 @@
+import sys
+import subprocess
+
+# Auto-setup functionality
+def ensure_dependencies():
+    """Ensure all required packages are installed"""
+    required_packages = [
+        'flask==3.0.2',
+        'nextcord==2.6.0', 
+        'sqlalchemy==2.0.27',
+        'python-dotenv==1.0.1',
+        'flask-sqlalchemy==3.1.1',
+        'flask-login==0.6.3',
+        'PyNaCl==1.5.0',
+        'qrcode==7.4.2',
+        'pillow==10.2.0',
+        'requests==2.31.0',
+        'pytz==2024.1',
+        'flask-migrate==4.0.5'
+    ]
+    
+    missing_packages = []
+    for package in required_packages:
+        package_name = package.split('==')[0]
+        try:
+            __import__(package_name.replace('-', '_'))
+        except ImportError:
+            missing_packages.append(package)
+    
+    if missing_packages:
+        print("🔧 Installing missing dependencies...")
+        for package in missing_packages:
+            print(f"   Installing {package}...")
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+        print("✅ Dependencies installed successfully!")
+
+def create_env_file():
+    """Create .env file with default values if it doesn't exist"""
+    import os
+    if not os.path.exists('.env'):
+        print("🔧 Creating .env file with default values...")
+        env_content = """# Discord Bot Configuration
+# Get these from Discord Developer Portal: https://discord.com/developers/applications
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_discord_client_id_here  
+DISCORD_CLIENT_SECRET=your_discord_client_secret_here
+DISCORD_REDIRECT_URI=http://localhost:5000/callback
+
+# Flask Configuration
+SECRET_KEY=your_super_secret_key_change_this_in_production
+
+# Database Configuration  
+DATABASE_URL=sqlite:///store.db
+
+# Guild Configuration (Optional - for Discord server integration)
+GUILD_ID=your_guild_id_here
+GENERAL_CHANNEL_ID=your_general_channel_id_here
+
+# Role Configuration for Economy System (Optional)
+VERIFIED_ROLE_ID=your_verified_role_id_here
+ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id
+"""
+        with open('.env', 'w') as f:
+            f.write(env_content)
+        print("✅ .env file created! Please edit it with your Discord bot credentials.")
+        return True
+    return False
+
+def setup_directories():
+    """Create required directories"""
+    import os
+    directories = ['logs', 'static/uploads', 'instance']
+    for directory in directories:
+        if not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+            print(f"📁 Created directory: {directory}")
+
+def check_configuration():
+    """Check if required configuration is present"""
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    required_vars = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET']
+    missing_vars = []
+    
+    for var in required_vars:
+        value = os.getenv(var)
+        if not value or value == f'your_{var.lower()}_here':
+            missing_vars.append(var)
+    
+    return missing_vars
+
+# Run auto-setup
+print("🚀 Economy Bot Auto-Setup")
+print("=" * 40)
+
+ensure_dependencies()
+setup_directories()
+env_created = create_env_file()
+
+# Now import everything else
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -9,6 +111,8 @@ import os
 import uuid
 import json
 import asyncio
+import logging
+import logging.handlers
 from contextlib import contextmanager
 from flask_migrate import Migrate
 
@@ -16,6 +120,79 @@ from dotenv import load_dotenv
 
 # Load environment variables with explicit path
 load_dotenv()
+
+missing_config = check_configuration()
+if missing_config:
+    print("\n⚠️  Configuration Required:")
+    print("Please edit your .env file and set the following variables:")
+    for var in missing_config:
+        print(f"   - {var}")
+    print("\n📖 To get Discord bot credentials:")
+    print("   1. Go to https://discord.com/developers/applications")
+    print("   2. Create a new application")
+    print("   3. Go to the 'Bot' section and create a bot")
+    print("   4. Copy the token to DISCORD_TOKEN")
+    print("   5. Go to 'OAuth2' section for CLIENT_ID and CLIENT_SECRET")
+    if env_created:
+        print(f"\n🔧 Then restart the application: python {sys.argv[0]}")
+        sys.exit(1)
+
+print("✅ Setup complete! Starting application...\n")
+
+# Configure logging
+def setup_logging():
+    """Set up centralized logging configuration"""
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Set up root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    
+    # File handler with rotation
+    file_handler = logging.handlers.RotatingFileHandler(
+        os.path.join(log_dir, 'economy_app.log'),
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    
+    # Error file handler
+    error_handler = logging.handlers.RotatingFileHandler(
+        os.path.join(log_dir, 'economy_errors.log'),
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(formatter)
+    
+    # Add handlers to root logger
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(error_handler)
+    
+    # Create specific loggers for different components
+    app_logger = logging.getLogger('economy.app')
+    bot_logger = logging.getLogger('economy.bot')
+    cog_logger = logging.getLogger('economy.cogs')
+    
+    return app_logger, bot_logger, cog_logger
+
+# Initialize logging
+app_logger, bot_logger, cog_logger = setup_logging()
 
 # Initialize Flask app and extensions
 app = Flask(__name__)
@@ -35,7 +212,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 # File upload configuration
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 @contextmanager
 def db_transaction():
@@ -46,7 +222,7 @@ def db_transaction():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Database transaction rolled back: {e}")
+        app_logger.error(f"Database transaction rolled back: {e}")
         raise
     finally:
         db.session.close()
@@ -66,6 +242,23 @@ def get_discord_avatar_url(user_id, avatar_hash):
         return f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
 
 def allowed_file(filename):
+    """Check if file extension is allowed"""
+    ALLOWED_EXTENSIONS = {
+        # Images
+        'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff',
+        # Archives
+        'zip', 'rar', '7z', 'tar', 'gz', 'tar.gz',
+        # Documents
+        'pdf', 'doc', 'docx', 'txt', 'md', 'rtf',
+        # Audio
+        'mp3', 'wav', 'ogg', 'flac', 'm4a',
+        # Video
+        'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv',
+        # Minecraft specific
+        'mcpack', 'mcworld', 'mctemplate', 'mcaddon',
+        # Other
+        'json', 'xml', 'csv', 'exe', 'msi'
+    }
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -83,19 +276,40 @@ DISCORD_REDIRECT_URI = 'http://localhost:5000/callback'
 DISCORD_OAUTH_SCOPE = 'identify guilds guilds.members.read'
 DISCORD_API_BASE_URL = 'https://discord.com/api'
 
-# Check for required environment variables
-if not DISCORD_CLIENT_ID:
-    print("ERROR: DISCORD_CLIENT_ID not found in environment variables")
-    exit(1)
-if not DISCORD_CLIENT_SECRET:
-    print("ERROR: DISCORD_CLIENT_SECRET not found in environment variables")
-    exit(1)
+# Check for required environment variables with graceful handling
+def validate_environment():
+    """Validate environment variables with helpful error messages"""
+    errors = []
+    
+    if not DISCORD_CLIENT_ID or DISCORD_CLIENT_ID == 'your_discord_client_id_here':
+        errors.append("DISCORD_CLIENT_ID")
+    if not DISCORD_CLIENT_SECRET or DISCORD_CLIENT_SECRET == 'your_discord_client_secret_here':
+        errors.append("DISCORD_CLIENT_SECRET")
+    
+    discord_token = os.getenv('DISCORD_TOKEN')
+    if not discord_token or discord_token == 'your_discord_bot_token_here':
+        errors.append("DISCORD_TOKEN")
+    
+    if errors:
+        app_logger.critical("Missing required Discord configuration!")
+        app_logger.critical("Please set the following environment variables in your .env file:")
+        for var in errors:
+            app_logger.critical(f"  - {var}")
+        app_logger.critical("\nTo get these values:")
+        app_logger.critical("1. Go to https://discord.com/developers/applications")
+        app_logger.critical("2. Create or select your application")
+        app_logger.critical("3. Copy the Application ID to DISCORD_CLIENT_ID")
+        app_logger.critical("4. Go to OAuth2 -> General for CLIENT_SECRET")
+        app_logger.critical("5. Go to Bot section for DISCORD_TOKEN")
+        app_logger.critical("\nThe bot will start in web-only mode until configured.")
+        return False
+    
+    return True
 
-# Get Discord Token for bot functionality
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-if not DISCORD_TOKEN:
-    print("ERROR: DISCORD_TOKEN not found in environment variables")
-    exit(1)
+discord_configured = validate_environment()
+
+# Get Discord Token for bot functionality (with fallback)
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN') if discord_configured else None
 
 # Models
 class User(UserMixin, db.Model):
@@ -121,6 +335,12 @@ class User(UserMixin, db.Model):
     birthday_points_received = db.Column(db.Boolean, default=False)  # Track if user got points for setting birthday
     verification_bonus_received = db.Column(db.Boolean, default=False)  # Track if user got verification bonus
     onboarding_bonus_received = db.Column(db.Boolean, default=False)  # Track if user got onboarding bonus
+    
+    # Earning limit tracking columns
+    daily_claims_count = db.Column(db.Integer, default=0)  # Track number of daily claims used
+    campus_photos_count = db.Column(db.Integer, default=0)  # Track number of campus photo approvals
+    daily_engagement_count = db.Column(db.Integer, default=0)  # Track number of daily engagement approvals
+    
     achievements = db.relationship('UserAchievement', backref='user', lazy=True)
 
     def __repr__(self):
@@ -233,45 +453,77 @@ class DownloadToken(db.Model):
     user = db.relationship('User', backref='download_tokens')
     purchase = db.relationship('Purchase', backref='download_tokens')
 
-# Initialize database
-with app.app_context():
-    db.create_all()
-    print("Database tables created successfully")
-    
-    # Initialize achievements
-    achievements = [
-        {
-            'name': 'Daily Reward',
-            'description': 'Claim your daily reward',
-            'points': 85,
-            'type': 'daily',
-            'requirement': 1
-        },
-        {
-            'name': 'Join Server',
-            'description': 'Join the server for the first time',
-            'points': 213,
-            'type': 'join',
-            'requirement': 1
-        },
-        {
-            'name': 'First Message',
-            'description': 'Send your first message',
-            'points': 425,
-            'type': 'message',
-            'requirement': 1
-        }
-        # Add more achievements as needed
-    ]
+# Initialize database and migrations
+def setup_database():
+    """Initialize database and run migrations if needed"""
+    with app.app_context():
+        try:
+            # Try to create migration repository if it doesn't exist
+            if not os.path.exists('migrations'):
+                app_logger.info("Initializing database migrations...")
+                from flask_migrate import init
+                init()
+                app_logger.info("Migration repository created")
+            
+            # Create all tables
+            db.create_all()
+            app_logger.info("Database tables created successfully")
+            
+            # Check if we need to run migrations
+            try:
+                from flask_migrate import upgrade
+                upgrade()
+                app_logger.info("Database migrations applied successfully")
+            except Exception as migration_error:
+                app_logger.warning(f"Migration warning (this is usually normal on first run): {migration_error}")
+                
+        except Exception as e:
+            app_logger.error(f"Database setup error: {e}")
+            # Fallback to simple table creation
+            db.create_all()
+            app_logger.info("Database tables created with fallback method")
 
-    for achievement_data in achievements:
-        achievement = Achievement.query.filter_by(name=achievement_data['name']).first()
-        if not achievement:
-            achievement = Achievement(**achievement_data)
-            db.session.add(achievement)
-    
-    db.session.commit()
-    print("Achievements initialized successfully")
+setup_database()
+
+# Initialize achievements
+def setup_achievements():
+    """Initialize default achievements"""
+    with app.app_context():
+        achievements = [
+            {
+                'name': 'Daily Reward',
+                'description': 'Claim your daily reward',
+                'points': 85,
+                'type': 'daily',
+                'requirement': 1
+            },
+            {
+                'name': 'Join Server',
+                'description': 'Join the server for the first time',
+                'points': 213,
+                'type': 'join',
+                'requirement': 1
+            },
+            {
+                'name': 'First Message',
+                'description': 'Send your first message',
+                'points': 425,
+                'type': 'message',
+                'requirement': 1
+            }
+            # Add more achievements as needed
+        ]
+
+        for achievement_data in achievements:
+            achievement = Achievement.query.filter_by(name=achievement_data['name']).first()
+            if not achievement:
+                achievement = Achievement(**achievement_data)
+                db.session.add(achievement)
+        
+        db.session.commit()
+        app_logger.info("Achievements initialized successfully")
+
+setup_achievements()
 
 # Initialize login manager
 @login_manager.user_loader
@@ -297,7 +549,7 @@ class DigitalDeliveryService:
             else:
                 return False, "Unknown delivery method"
         except Exception as e:
-            print(f"Digital delivery error: {e}")
+            app_logger.error(f"Digital delivery error: {e}")
             return False, f"Delivery failed: {str(e)}"
     
     @staticmethod
@@ -410,10 +662,10 @@ def callback():
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
-        print(f"Requesting token with data: {data}")
+        app_logger.debug(f"Requesting token with data: {data}")
         response = requests.post(f"{DISCORD_API_BASE_URL}/oauth2/token", data=data, headers=headers)
-        print(f"Token response status: {response.status_code}")
-        print(f"Token response: {response.text}")
+        app_logger.debug(f"Token response status: {response.status_code}")
+        app_logger.debug(f"Token response: {response.text}")
         
         if response.status_code != 200:
             flash('Failed to get access token')
@@ -425,15 +677,15 @@ def callback():
         }
         
         user_response = requests.get(f"{DISCORD_API_BASE_URL}/users/@me", headers=headers)
-        print(f"User response status: {user_response.status_code}")
-        print(f"User response: {user_response.text}")
+        app_logger.debug(f"User response status: {user_response.status_code}")
+        app_logger.debug(f"User response: {user_response.text}")
         
         if user_response.status_code != 200:
             flash('Failed to get user info')
             return redirect(url_for('index'))
         
         user_data = user_response.json()
-        print(f"User data: {user_data}")
+        app_logger.debug(f"User data: {user_data}")
         
         # Verify the Discord user ID matches the OAuth token
         if not user_data.get('id'):
@@ -449,7 +701,7 @@ def callback():
         # Check if user is admin in the Discord server
         is_admin = False
         guild_id = "1082823852322725888"  # Your test guild ID
-        print(f"Checking admin status for user: {user_data['username']} (ID: {user_data['id']})")
+        app_logger.info(f"Checking admin status for user: {user_data['username']} (ID: {user_data['id']})")
         
         try:
             # First, try to get guild member info using user token
@@ -457,13 +709,13 @@ def callback():
                 f"{DISCORD_API_BASE_URL}/users/@me/guilds/{guild_id}/member",
                 headers=headers
             )
-            print(f"Guild member API response status: {guild_member_response.status_code}")
-            print(f"Guild member API response: {guild_member_response.text}")
+            app_logger.debug(f"Guild member API response status: {guild_member_response.status_code}")
+            app_logger.debug(f"Guild member API response: {guild_member_response.text}")
             
             if guild_member_response.status_code == 200:
                 member_data = guild_member_response.json()
                 roles = member_data.get('roles', [])
-                print(f"User roles: {roles}")
+                app_logger.debug(f"User roles: {roles}")
                 
                 # Get guild roles to check for admin permissions
                 bot_token = os.getenv('DISCORD_TOKEN')
@@ -473,35 +725,35 @@ def callback():
                         f"{DISCORD_API_BASE_URL}/guilds/{guild_id}/roles",
                         headers=bot_headers
                     )
-                    print(f"Guild roles API response status: {roles_response.status_code}")
+                    app_logger.debug(f"Guild roles API response status: {roles_response.status_code}")
                     
                     if roles_response.status_code == 200:
                         guild_roles = roles_response.json()
-                        print(f"Found {len(guild_roles)} guild roles")
+                        app_logger.debug(f"Found {len(guild_roles)} guild roles")
                         
                         for role_id in roles:
                             for guild_role in guild_roles:
                                 if guild_role['id'] == role_id:
                                     permissions = int(guild_role.get('permissions', 0))
-                                    print(f"Role '{guild_role['name']}' (ID: {role_id}) has permissions: {permissions}")
+                                    app_logger.debug(f"Role '{guild_role['name']}' (ID: {role_id}) has permissions: {permissions}")
                                     
                                     # Check for Administrator permission (0x8) or Manage Server (0x20)
                                     if permissions & 0x8:
                                         is_admin = True
-                                        print(f"User has Administrator permission via role: {guild_role['name']}")
+                                        app_logger.info(f"User has Administrator permission via role: {guild_role['name']}")
                                         break
                                     elif permissions & 0x20:
                                         is_admin = True
-                                        print(f"User has Manage Server permission via role: {guild_role['name']}")
+                                        app_logger.info(f"User has Manage Server permission via role: {guild_role['name']}")
                                         break
                             if is_admin:
                                 break
                     else:
-                        print(f"Failed to get guild roles: {roles_response.text}")
+                        app_logger.warning(f"Failed to get guild roles: {roles_response.text}")
                 else:
-                    print("Bot token not available for role checking")
+                    app_logger.warning("Bot token not available for role checking")
             else:
-                print(f"Failed to get guild member info: {guild_member_response.text}")
+                app_logger.warning(f"Failed to get guild member info: {guild_member_response.text}")
                 # Alternative method: Try using bot token to get member info
                 bot_token = os.getenv('DISCORD_TOKEN')
                 if bot_token:
@@ -510,12 +762,12 @@ def callback():
                         f"{DISCORD_API_BASE_URL}/guilds/{guild_id}/members/{user_data['id']}",
                         headers=bot_headers
                     )
-                    print(f"Bot member API response status: {bot_member_response.status_code}")
+                    app_logger.debug(f"Bot member API response status: {bot_member_response.status_code}")
                     
                     if bot_member_response.status_code == 200:
                         member_data = bot_member_response.json()
                         roles = member_data.get('roles', [])
-                        print(f"User roles (via bot): {roles}")
+                        app_logger.debug(f"User roles (via bot): {roles}")
                         
                         # Get guild roles
                         roles_response = requests.get(
@@ -530,28 +782,28 @@ def callback():
                                 for guild_role in guild_roles:
                                     if guild_role['id'] == role_id:
                                         permissions = int(guild_role.get('permissions', 0))
-                                        print(f"Role '{guild_role['name']}' (ID: {role_id}) has permissions: {permissions}")
+                                        app_logger.debug(f"Role '{guild_role['name']}' (ID: {role_id}) has permissions: {permissions}")
                                         
                                         # Check for Administrator permission (0x8) or Manage Server (0x20)
                                         if permissions & 0x8:
                                             is_admin = True
-                                            print(f"User has Administrator permission via role: {guild_role['name']}")
+                                            app_logger.info(f"User has Administrator permission via role: {guild_role['name']}")
                                             break
                                         elif permissions & 0x20:
                                             is_admin = True
-                                            print(f"User has Manage Server permission via role: {guild_role['name']}")
+                                            app_logger.info(f"User has Manage Server permission via role: {guild_role['name']}")
                                             break
                                 if is_admin:
                                     break
                     else:
-                        print(f"Failed to get member info via bot: {bot_member_response.text}")
+                        app_logger.warning(f"Failed to get member info via bot: {bot_member_response.text}")
                         
         except Exception as e:
-            print(f"Error checking admin status: {e}")
-            import traceback
-            traceback.print_exc()
+                    app_logger.error(f"Error checking admin status: {e}")
+        import traceback
+        app_logger.error(traceback.format_exc())
         
-        print(f"Final admin status for {user_data['username']}: {is_admin}")
+        app_logger.info(f"Final admin status for {user_data['username']}: {is_admin}")
         
         # Construct avatar URL
         avatar_url = get_discord_avatar_url(user_data['id'], user_data.get('avatar'))
@@ -574,7 +826,7 @@ def callback():
                 )
                 db.session.add(user)
                 db.session.commit()
-                print(f"Created new user: {user.username} (Admin: {is_admin})")
+                app_logger.info(f"Created new user: {user.username} (Admin: {is_admin})")
             except Exception as e:
                 # Rollback and try to get user again in case of race condition
                 db.session.rollback()
@@ -583,7 +835,7 @@ def callback():
                     user = User.query.filter_by(discord_id=user_data['id']).first()
                 if not user:
                     raise e  # Re-raise if we still can't find the user
-                print(f"Race condition resolved, found existing user: {user.username}")
+                app_logger.info(f"Race condition resolved, found existing user: {user.username}")
         
         # Update user information
         user.is_admin = is_admin
@@ -591,10 +843,10 @@ def callback():
         user.avatar_url = avatar_url
         try:
             db.session.commit()
-            print(f"Updated existing user: {user.username} (Admin: {is_admin})")
+            app_logger.info(f"Updated existing user: {user.username} (Admin: {is_admin})")
         except Exception as e:
             db.session.rollback()
-            print(f"Error updating user: {e}")
+            app_logger.error(f"Error updating user: {e}")
         
         login_user(user)
         if is_admin:
@@ -604,9 +856,9 @@ def callback():
         return redirect(url_for('index'))
         
     except Exception as e:
-        print(f"Error in callback: {str(e)}")
+        app_logger.error(f"Error in callback: {str(e)}")
         import traceback
-        traceback.print_exc()
+        app_logger.error(traceback.format_exc())
         flash(f'Authentication error: {str(e)}')
         return redirect(url_for('index'))
 
@@ -642,7 +894,7 @@ def purchase(product_id):
         # Generate UUID if user doesn't have one
         if not current_user_fresh.user_uuid:
             current_user_fresh.user_uuid = str(uuid.uuid4())
-            print(f"Generated new UUID for user {current_user_fresh.username}: {current_user_fresh.user_uuid}")
+            app_logger.info(f"Generated new UUID for user {current_user_fresh.username}: {current_user_fresh.user_uuid}")
         
         # Atomic balance deduction
         current_user_fresh.balance -= product.price
@@ -691,14 +943,14 @@ def purchase(product_id):
         else:
             flash(f'Purchase successful! Your UUID: {current_user_fresh.user_uuid}')
         
-        print(f"Purchase completed: User {current_user_fresh.username} bought {product.name} for {product.price} points")
+        app_logger.info(f"Purchase completed: User {current_user_fresh.username} bought {product.name} for {product.price} points")
         
         return redirect(url_for('index'))
         
     except Exception as e:
         # Rollback transaction on any error
         db.session.rollback()
-        print(f"Purchase failed: {str(e)}")
+        app_logger.error(f"Purchase failed: {str(e)}")
         flash('Purchase failed. Please try again.')
         return redirect(url_for('index'))
 
@@ -784,7 +1036,7 @@ def new_product():
                     # Save file
                     file.save(file_path)
                     image_filename = unique_filename
-                    print(f"Image uploaded successfully: {image_filename}")
+                    app_logger.info(f"Image uploaded successfully: {image_filename}")
                 elif file and file.filename != '':
                     flash('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
                     return render_template('product_form.html', title='Add New Product')
@@ -863,7 +1115,7 @@ def new_product():
             return redirect(url_for('admin_panel'))
         except Exception as e:
             flash(f'Error adding product: {str(e)}')
-            print(f"Error in new_product: {e}")
+            app_logger.error(f"Error in new_product: {e}")
     
     return render_template('product_form.html', title='Add New Product')
 
@@ -890,9 +1142,9 @@ def edit_product(product_id):
                         if os.path.exists(old_image_path):
                             try:
                                 os.remove(old_image_path)
-                                print(f"Deleted old image: {product.image_url}")
+                                app_logger.info(f"Deleted old image: {product.image_url}")
                             except Exception as e:
-                                print(f"Error deleting old image: {e}")
+                                app_logger.error(f"Error deleting old image: {e}")
                     
                     # Save new image
                     filename = secure_filename(file.filename)
@@ -905,7 +1157,7 @@ def edit_product(product_id):
                     file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
                     file.save(file_path)
                     image_filename = unique_filename
-                    print(f"New image uploaded successfully: {image_filename}")
+                    app_logger.info(f"New image uploaded successfully: {image_filename}")
                 elif file and file.filename != '':
                     flash('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
                     return render_template('product_form.html', title='Edit Product', product=product)
@@ -921,7 +1173,7 @@ def edit_product(product_id):
             return redirect(url_for('admin_panel'))
         except Exception as e:
             flash(f'Error updating product: {str(e)}')
-            print(f"Error in edit_product: {e}")
+            app_logger.error(f"Error in edit_product: {e}")
     
     return render_template('product_form.html', title='Edit Product', product=product)
 
@@ -942,16 +1194,16 @@ def delete_product(product_id):
             if os.path.exists(image_path):
                 try:
                     os.remove(image_path)
-                    print(f"Deleted image file: {product.image_url}")
+                    app_logger.info(f"Deleted image file: {product.image_url}")
                 except Exception as e:
-                    print(f"Error deleting image file: {e}")
+                    app_logger.error(f"Error deleting image file: {e}")
         
         db.session.delete(product)
         db.session.commit()
         flash(f'Product "{product_name}" deleted successfully!')
     except Exception as e:
         flash(f'Error deleting product: {str(e)}')
-        print(f"Error in delete_product: {e}")
+        app_logger.error(f"Error in delete_product: {e}")
     
     return redirect(url_for('admin_panel'))
 
@@ -961,6 +1213,99 @@ from bot import run_bot, init_bot_with_app
 # Initialize bot with app and models
 init_bot_with_app(app, db, User, Achievement, UserAchievement, EconomySettings)
 
+@app.route('/admin/get-discord-roles')
+@login_required
+def get_discord_roles():
+    """Get available Discord roles from the server"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        from bot import bot
+        
+        # Check if bot is ready
+        if not bot.is_ready():
+            return jsonify({'error': 'Discord bot is not ready yet. Please try again in a moment.'}), 503
+        
+        # Get the guild (server)
+        guild = None
+        if os.getenv('DISCORD_GUILD_ID'):
+            guild = bot.get_guild(int(os.getenv('DISCORD_GUILD_ID')))
+        elif bot.guilds:
+            guild = bot.guilds[0]  # Use first guild if no specific guild ID
+        
+        if not guild:
+            return jsonify({'error': 'Bot not connected to any Discord server'}), 400
+        
+        # Get all roles from the guild, excluding @everyone and bot roles
+        roles = []
+        bot_member = guild.get_member(bot.user.id)
+        bot_highest_role = bot_member.top_role if bot_member else None
+        
+        for role in guild.roles:
+            # Skip @everyone role and bot roles
+            if role.name == "@everyone" or role.managed:
+                continue
+            
+            # Skip roles higher than the bot's highest role (bot can't assign them)
+            if bot_highest_role and role.position >= bot_highest_role.position:
+                continue
+            
+            # Skip the bot's own role
+            if bot_member and role in bot_member.roles:
+                continue
+                
+            roles.append({
+                'id': str(role.id),
+                'name': role.name,
+                'color': str(role.color) if role.color else '#000000',
+                'position': role.position,
+                'permissions': role.permissions.value,
+                'assignable': True
+            })
+        
+        # Sort by position (higher position = higher in hierarchy)
+        roles.sort(key=lambda x: x['position'], reverse=True)
+        
+        return jsonify({'roles': roles})
+    
+    except Exception as e:
+        app_logger.error(f"Error fetching Discord roles: {e}")
+        return jsonify({'error': f'Failed to fetch roles: {str(e)}'}), 500
+
+@app.route('/admin/get-role-products')
+@login_required
+def get_role_products():
+    """Get existing role-based products"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # Get all role products
+        role_products = Product.query.filter_by(product_type='role').all()
+        products = []
+        
+        for product in role_products:
+            # Parse delivery data to get role ID
+            role_data = product.delivery_config
+            role_id = role_data.get('role_id', 'Unknown')
+            
+            products.append({
+                'id': product.id,
+                'name': product.name,
+                'description': product.description,
+                'price': product.price,
+                'role_id': role_id,
+                'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'auto_delivery': product.auto_delivery
+            })
+        
+        return jsonify({'products': products})
+    
+    except Exception as e:
+        app_logger.error(f"Error fetching role products: {e}")
+        return jsonify({'error': f'Failed to fetch role products: {str(e)}'}), 500
+
 @app.route('/admin/digital-templates')
 @login_required
 def digital_templates():
@@ -969,45 +1314,14 @@ def digital_templates():
         flash('Access denied. Admin privileges required.')
         return redirect(url_for('index'))
     
-    # Digital product templates
+    # Enhanced digital product templates
     templates = {
-        "roles": [
-            {
-                "name": "💎 VIP Role",
-                "description": "Exclusive VIP status with special perms and color",
-                "price": 500,
-                "category": "roles",
-                "product_type": "role",
-                "delivery_method": "auto_role",
-                "auto_delivery": True,
-                "role_id_placeholder": "ROLE_ID_HERE"
-            },
-            {
-                "name": "🎨 Color Master",
-                "description": "Custom name color and hoisted role",
-                "price": 300,
-                "category": "roles", 
-                "product_type": "role",
-                "delivery_method": "auto_role",
-                "auto_delivery": True,
-                "role_id_placeholder": "ROLE_ID_HERE"
-            },
-            {
-                "name": "⭐ Server Booster Plus",
-                "description": "Enhanced booster perks and recognition",
-                "price": 750,
-                "category": "roles",
-                "product_type": "role", 
-                "delivery_method": "auto_role",
-                "auto_delivery": True,
-                "role_id_placeholder": "ROLE_ID_HERE"
-            }
-        ],
+        "roles": [],  # Dynamic roles will be loaded via JavaScript
         "skins": [
             {
                 "name": "🎮 Premium Minecraft Skin Pack",
-                "description": "5 exclusive custom skins designed by our artists",
-                "price": 200,
+                "description": "Collection of 5 exclusive custom skins designed by professional artists",
+                "price": 300,
                 "category": "minecraft",
                 "product_type": "minecraft_skin",
                 "delivery_method": "download",
@@ -1016,20 +1330,50 @@ def digital_templates():
             },
             {
                 "name": "🗡️ Medieval Knight Skin",
-                "description": "Epic knight skin with armor details", 
-                "price": 100,
+                "description": "Epic knight skin with detailed armor and medieval aesthetics", 
+                "price": 150,
                 "category": "minecraft",
                 "product_type": "minecraft_skin",
                 "delivery_method": "download",
                 "auto_delivery": True,
                 "file_path_placeholder": "skins/knight.png"
+            },
+            {
+                "name": "🧙‍♂️ Wizard Skin Collection",
+                "description": "Magical wizard skins with robes, staffs, and mystical details",
+                "price": 200,
+                "category": "minecraft",
+                "product_type": "minecraft_skin",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "skins/wizard_collection.zip"
+            },
+            {
+                "name": "🦸‍♀️ Superhero Skin Pack",
+                "description": "Collection of superhero skins with capes and unique powers theme",
+                "price": 250,
+                "category": "minecraft",
+                "product_type": "minecraft_skin",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "skins/superhero_pack.zip"
+            },
+            {
+                "name": "🎨 Custom Skin Commission",
+                "description": "Personalized skin created just for you by our artists",
+                "price": 400,
+                "category": "minecraft",
+                "product_type": "minecraft_skin",
+                "delivery_method": "manual",
+                "auto_delivery": False,
+                "file_path_placeholder": "skins/custom/"
             }
         ],
         "codes": [
             {
                 "name": "🎯 Steam Game Code",
-                "description": "Random steam game worth $10-20",
-                "price": 1000,
+                "description": "Random Steam game worth $10-20 from our curated collection",
+                "price": 1200,
                 "category": "gaming",
                 "product_type": "game_code",
                 "delivery_method": "code_generation", 
@@ -1037,19 +1381,146 @@ def digital_templates():
                 "code_pattern": "STEAM-{uuid}"
             },
             {
-                "name": "🎁 Gift Card Code",
-                "description": "$5 Amazon gift card",
-                "price": 500,  
+                "name": "🎁 $5 Amazon Gift Card",
+                "description": "Digital Amazon gift card code delivered instantly",
+                "price": 600,  
                 "category": "gift_cards",
                 "product_type": "gift_card",
                 "delivery_method": "code_generation",
                 "auto_delivery": True,
-                "code_pattern": "GIFT-{uuid}"
+                "code_pattern": "AMZN-{uuid}"
+            },
+            {
+                "name": "🎮 Discord Nitro Code",
+                "description": "1-month Discord Nitro subscription code",
+                "price": 800,
+                "category": "gaming",
+                "product_type": "game_code",
+                "delivery_method": "code_generation",
+                "auto_delivery": True,
+                "code_pattern": "NITRO-{uuid}"
+            },
+            {
+                "name": "🍕 $10 Food Delivery Credit",
+                "description": "Credit for popular food delivery services",
+                "price": 1000,
+                "category": "gift_cards",
+                "product_type": "gift_card",
+                "delivery_method": "code_generation",
+                "auto_delivery": True,
+                "code_pattern": "FOOD-{uuid}"
+            }
+        ],
+        "digital_content": [
+            {
+                "name": "📚 Study Guide Pack",
+                "description": "Comprehensive study materials and guides for ASU courses",
+                "price": 200,
+                "category": "education",
+                "product_type": "digital_content",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "content/study_guides.zip"
+            },
+            {
+                "name": "🎵 Music Pack",
+                "description": "Royalty-free music collection for content creation",
+                "price": 300,
+                "category": "creative",
+                "product_type": "digital_content",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "content/music_pack.zip"
+            },
+            {
+                "name": "🖼️ Design Assets Bundle",
+                "description": "Graphics, icons, and design elements for projects",
+                "price": 250,
+                "category": "creative",
+                "product_type": "digital_content",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "content/design_assets.zip"
             }
         ]
     }
     
     return render_template('digital_templates.html', templates=templates)
+
+@app.route('/admin/create-role-product', methods=['POST'])
+@login_required
+def create_role_product():
+    """Create a role-based digital product"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    try:
+        # Get form data
+        role_id = request.form.get('role_id', '').strip()
+        product_name = request.form.get('product_name', '').strip()
+        description = request.form.get('description', '').strip()
+        price = request.form.get('price', '').strip()
+        
+        # Validate required fields
+        if not role_id:
+            flash('Please select a Discord role')
+            return redirect(url_for('digital_templates'))
+        
+        if not product_name:
+            flash('Product name is required')
+            return redirect(url_for('digital_templates'))
+        
+        if not price:
+            flash('Price is required')
+            return redirect(url_for('digital_templates'))
+        
+        try:
+            price = int(price)
+            if price <= 0:
+                flash('Price must be greater than 0')
+                return redirect(url_for('digital_templates'))
+        except ValueError:
+            flash('Invalid price format')
+            return redirect(url_for('digital_templates'))
+        
+        # Check if a product with this role already exists
+        existing_product = Product.query.filter(
+            Product.product_type == 'role',
+            Product.delivery_data.contains(f'"role_id": "{role_id}"')
+        ).first()
+        
+        if existing_product:
+            flash(f'A product for this role already exists: {existing_product.name}')
+            return redirect(url_for('digital_templates'))
+        
+        # Create the delivery data
+        delivery_data = json.dumps({"role_id": role_id})
+        
+        # Create the product
+        product = Product(
+            name=product_name,
+            description=description or f"Gain access to the {product_name} role with special perks and privileges!",
+            price=price,
+            stock=0,  # Unlimited stock for digital role products
+            category="roles",
+            product_type="role",
+            delivery_method="auto_role",
+            delivery_data=delivery_data,
+            auto_delivery=True
+        )
+        
+        db.session.add(product)
+        db.session.commit()
+        
+        flash(f'Role product "{product_name}" created successfully!')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating role product: {str(e)}')
+        app_logger.error(f"Error in create_role_product: {e}")
+    
+    return redirect(url_for('admin_panel'))
 
 @app.route('/admin/create-from-template', methods=['POST'])
 @login_required
@@ -1067,21 +1538,19 @@ def create_from_template():
         category = request.form.get('category')
         product_type = request.form.get('product_type')
         delivery_method = request.form.get('delivery_method')
-        auto_delivery = 'auto_delivery' in request.form
+        auto_delivery = request.form.get('auto_delivery') == 'true'
         
         # Get delivery configuration
         delivery_data = ""
         if delivery_method == 'auto_role':
             role_id = request.form.get('role_id', '').strip()
             if not role_id:
-                flash('Role ID is required for role products')
-                return redirect(url_for('digital_templates'))
+                return jsonify({'error': 'Role ID is required for role products'}), 400
             delivery_data = json.dumps({"role_id": role_id})
         elif delivery_method == 'download':
             file_path = request.form.get('file_path', '').strip()
             if not file_path:
-                flash('File path is required for download products')
-                return redirect(url_for('digital_templates'))
+                return jsonify({'error': 'File path is required for download products'}), 400
             delivery_data = json.dumps({"file_path": file_path})
         elif delivery_method == 'code_generation':
             code_pattern = request.form.get('code_pattern', 'CODE-{uuid}')
@@ -1103,12 +1572,21 @@ def create_from_template():
         db.session.add(product)
         db.session.commit()
         
+        # Return JSON response for AJAX requests
+        if request.headers.get('Content-Type') == 'application/json' or 'application/json' in request.headers.get('Accept', ''):
+            return jsonify({'success': True, 'message': f'Digital product "{template_name}" created successfully!'})
+        
         flash(f'Digital product "{template_name}" created successfully!')
         
     except Exception as e:
         db.session.rollback()
+        app_logger.error(f"Error in create_from_template: {e}")
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('Content-Type') == 'application/json' or 'application/json' in request.headers.get('Accept', ''):
+            return jsonify({'error': str(e)}), 500
+        
         flash(f'Error creating product: {str(e)}')
-        print(f"Error in create_from_template: {e}")
     
     return redirect(url_for('admin_panel'))
 
@@ -1117,6 +1595,177 @@ def create_from_template():
 def my_purchases():
     purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).all()
     return render_template('my_purchases.html', purchases=purchases)
+
+@app.route('/how-to-earn')
+def how_to_earn():
+    return render_template('how_to_earn.html')
+
+@app.route('/admin/file-manager')
+@login_required
+def file_manager():
+    """File manager for digital assets"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    import os
+    upload_path = os.path.join(app.static_folder, 'uploads')
+    
+    # Ensure upload directory exists
+    if not os.path.exists(upload_path):
+        os.makedirs(upload_path)
+    
+    # Get all files in uploads directory
+    files = []
+    for root, dirs, filenames in os.walk(upload_path):
+        for filename in filenames:
+            file_path = os.path.join(root, filename)
+            relative_path = os.path.relpath(file_path, upload_path)
+            file_size = os.path.getsize(file_path)
+            file_modified = datetime.fromtimestamp(os.path.getmtime(file_path))
+            
+            files.append({
+                'name': filename,
+                'path': relative_path,
+                'size': file_size,
+                'modified': file_modified,
+                'is_image': filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')),
+                'is_archive': filename.lower().endswith(('.zip', '.rar', '.7z', '.tar.gz')),
+                'is_document': filename.lower().endswith(('.pdf', '.doc', '.docx', '.txt', '.md'))
+            })
+    
+    # Sort files by modification date (newest first)
+    files.sort(key=lambda x: x['modified'], reverse=True)
+    
+    return render_template('file_manager.html', files=files)
+
+@app.route('/admin/upload-file', methods=['POST'])
+@login_required
+def upload_file():
+    """Upload a file for digital products"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    if 'file' not in request.files:
+        flash('No file selected')
+        return redirect(url_for('file_manager'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected')
+        return redirect(url_for('file_manager'))
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        
+        # Add timestamp to prevent conflicts
+        name, ext = os.path.splitext(filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{name}_{timestamp}{ext}"
+        
+        # Create subdirectory based on file type
+        file_ext = filename.lower().split('.')[-1]
+        if file_ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+            subfolder = 'skins'
+        elif file_ext in ['zip', 'rar', '7z', 'tar.gz']:
+            subfolder = 'content'
+        elif file_ext in ['pdf', 'doc', 'docx', 'txt', 'md']:
+            subfolder = 'documents'
+        else:
+            subfolder = 'misc'
+        
+        upload_path = os.path.join(app.static_folder, 'uploads', subfolder)
+        if not os.path.exists(upload_path):
+            os.makedirs(upload_path)
+        
+        file_path = os.path.join(upload_path, filename)
+        file.save(file_path)
+        
+        relative_path = os.path.join(subfolder, filename)
+        flash(f'File uploaded successfully: {relative_path}')
+    else:
+        flash('Invalid file type. Allowed types: PNG, JPG, JPEG, GIF, WebP, ZIP, RAR, 7Z, PDF, DOC, DOCX, TXT, MD')
+    
+    return redirect(url_for('file_manager'))
+
+@app.route('/admin/delete-file', methods=['POST'])
+@login_required
+def delete_file():
+    """Delete a file from uploads"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    file_path = request.form.get('file_path')
+    if not file_path:
+        flash('No file specified')
+        return redirect(url_for('file_manager'))
+    
+    full_path = os.path.join(app.static_folder, 'uploads', file_path)
+    
+    try:
+        if os.path.exists(full_path):
+            os.remove(full_path)
+            flash(f'File deleted: {file_path}')
+        else:
+            flash('File not found')
+    except Exception as e:
+        flash(f'Error deleting file: {str(e)}')
+    
+    return redirect(url_for('file_manager'))
+
+@app.route('/download/<token>')
+@login_required
+def download_file(token):
+    """Secure download route for digital products"""
+    try:
+        # Find download token
+        download_token = DownloadToken.query.filter_by(token=token).first()
+        
+        if not download_token:
+            flash('Invalid download link')
+            return redirect(url_for('my_purchases'))
+        
+        # Check if token has expired
+        if datetime.utcnow() > download_token.expires_at:
+            flash('Download link has expired')
+            return redirect(url_for('my_purchases'))
+        
+        # Check if user owns this download
+        if download_token.user_id != current_user.id:
+            flash('Access denied')
+            return redirect(url_for('my_purchases'))
+        
+        # Build file path
+        file_path = os.path.join(app.static_folder, 'uploads', download_token.file_path)
+        
+        if not os.path.exists(file_path):
+            flash('File not found')
+            return redirect(url_for('my_purchases'))
+        
+        # Update download stats
+        download_token.downloaded = True
+        download_token.download_count += 1
+        db.session.commit()
+        
+        # Get filename for download
+        filename = os.path.basename(download_token.file_path)
+        
+        app_logger.info(f"File downloaded: {filename} by user {current_user.username}")
+        
+        # Send file for download
+        return send_from_directory(
+            os.path.dirname(file_path),
+            os.path.basename(file_path),
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        app_logger.error(f"Download error: {e}")
+        flash('Download failed. Please try again.')
+        return redirect(url_for('my_purchases'))
 
 if __name__ == '__main__':
     import signal
@@ -1127,9 +1776,9 @@ if __name__ == '__main__':
     
     def signal_handler(sig, frame):
         """Handle graceful shutdown"""
-        print("\nShutting down gracefully...")
+        app_logger.info("Shutting down gracefully...")
         if bot_thread and bot_thread.is_alive():
-            print("Waiting for bot thread to finish...")
+            app_logger.info("Waiting for bot thread to finish...")
             bot_thread.join(timeout=5)
         sys.exit(0)
     
@@ -1138,17 +1787,29 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
-        # Start Discord bot in a separate thread
-        bot_thread = threading.Thread(target=run_bot, name="DiscordBot")
-        bot_thread.daemon = False  # Not daemon to allow graceful shutdown
-        bot_thread.start()
+        # Start Discord bot in a separate thread (if configured)
+        if discord_configured and DISCORD_TOKEN:
+            app_logger.info("Starting Discord bot...")
+            bot_thread = threading.Thread(target=run_bot, name="DiscordBot")
+            bot_thread.daemon = False  # Not daemon to allow graceful shutdown
+            bot_thread.start()
+        else:
+            app_logger.warning("Discord bot not started - missing configuration")
+            app_logger.warning("Web interface will be available, but Discord integration disabled")
+            bot_thread = None
         
         # Start Flask application
-        print("Starting Flask application...")
+        app_logger.info("Starting Flask web application...")
+        app_logger.info("🌐 Web interface available at: http://localhost:5000")
+        if discord_configured:
+            app_logger.info("🤖 Discord bot is running")
+        else:
+            app_logger.info("⚠️  Discord bot disabled - configure .env file to enable")
+        
         app.run(host='0.0.0.0', port=5000, threaded=True)
         
     except KeyboardInterrupt:
         signal_handler(None, None)
     except Exception as e:
-        print(f"Application error: {e}")
+        app_logger.error(f"Application error: {e}")
         signal_handler(None, None) 

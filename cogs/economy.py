@@ -3,10 +3,15 @@ from nextcord.ext import commands, tasks
 from nextcord import Interaction
 from datetime import datetime, timedelta, date
 import os
+import asyncio
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Set up logging for cogs
+cog_logger = logging.getLogger('economy.cogs')
 
 VERIFIED_ROLE_ID = int(os.getenv('VERIFIED_ROLE_ID', 0))
 GENERAL_CHANNEL_ID = int(os.getenv('GENERAL_CHANNEL_ID')) if os.getenv('GENERAL_CHANNEL_ID') else None
@@ -23,6 +28,14 @@ CAMPUS_PICTURE_POINTS = 100    # Points for campus picture approval
 ENROLLMENT_DEPOSIT_POINTS = 500 # Points for enrollment deposit approval
 BIRTHDAY_SETUP_POINTS = 50     # Points for setting up birthday
 
+# Limits for recurring activities
+MAX_DAILY_CLAIMS = 90          # Maximum daily reward claims per user
+MAX_CAMPUS_PHOTOS = 5          # Maximum campus photo approvals per user
+MAX_DAILY_ENGAGEMENT = 365     # Maximum daily engagement approvals per user (1 per day for a year)
+MAX_VOICE_MINUTES = 10000      # Maximum voice minutes that count toward achievements
+MAX_MESSAGES = 50000           # Maximum messages that count toward achievements
+MAX_REACTIONS = 25000          # Maximum reactions that count toward achievements
+
 # Birthday system configuration
 BIRTHDAY_CHECK_TIME = "09:30"  # Time in MST (24-hour format)
 
@@ -36,14 +49,25 @@ class EconomyCog(commands.Cog):
         self.Achievement = Achievement
         self.UserAchievement = UserAchievement
         
-        # Start background tasks
-        self.daily_birthday_check.start()
-        self.process_role_assignments.start()
+        # Don't start tasks in __init__ - wait for bot to be ready
+        # self.daily_birthday_check.start()  # Moved to on_ready
+        # self.process_role_assignments.start()  # Moved to on_ready
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
-        self.daily_birthday_check.cancel()
-        self.process_role_assignments.cancel()
+        if self.daily_birthday_check.is_running():
+            self.daily_birthday_check.cancel()
+        if self.process_role_assignments.is_running():
+            self.process_role_assignments.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Called when the bot is ready - start background tasks"""
+        cog_logger.info("Economy cog ready - starting background tasks")
+        if not self.daily_birthday_check.is_running():
+            self.daily_birthday_check.start()
+        if not self.process_role_assignments.is_running():
+            self.process_role_assignments.start()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -63,14 +87,20 @@ class EconomyCog(commands.Cog):
                 self.db.session.add(user)
                 self.db.session.flush()  # Ensure user is created with default values
             
-            # Ensure message_count is not None
+            # Ensure message_count is not None and enforce limit
             if user.message_count is None:
                 user.message_count = 0
-            user.message_count += 1
-            self.db.session.commit()
             
-            # Check message achievements
-            await self.check_achievements(user, 'message', user.message_count)
+            # Only increment if under the limit
+            if user.message_count < MAX_MESSAGES:
+                user.message_count += 1
+                self.db.session.commit()
+                
+                # Check message achievements
+                await self.check_achievements(user, 'message', user.message_count)
+            else:
+                # User has reached message limit, still commit to update last activity
+                self.db.session.commit()
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -94,14 +124,20 @@ class EconomyCog(commands.Cog):
                 self.db.session.add(user_obj)
                 self.db.session.flush()  # Ensure user is created with default values
             
-            # Ensure reaction_count is not None
+            # Ensure reaction_count is not None and enforce limit
             if user_obj.reaction_count is None:
                 user_obj.reaction_count = 0
-            user_obj.reaction_count += 1
-            self.db.session.commit()
             
-            # Check reaction achievements
-            await self.check_achievements(user_obj, 'reaction', user_obj.reaction_count)
+            # Only increment if under the limit
+            if user_obj.reaction_count < MAX_REACTIONS:
+                user_obj.reaction_count += 1
+                self.db.session.commit()
+                
+                # Check reaction achievements
+                await self.check_achievements(user_obj, 'reaction', user_obj.reaction_count)
+            else:
+                # User has reached reaction limit, still commit to update last activity
+                self.db.session.commit()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -118,14 +154,20 @@ class EconomyCog(commands.Cog):
             
             # If user joined a voice channel
             if not before.channel and after.channel:
-                # Ensure voice_minutes is not None
+                # Ensure voice_minutes is not None and enforce limit
                 if user.voice_minutes is None:
                     user.voice_minutes = 0
-                user.voice_minutes += 1  # Increment by 1 minute
-                self.db.session.commit()
                 
-                # Check voice achievements
-                await self.check_achievements(user, 'voice')
+                # Only increment if under the limit
+                if user.voice_minutes < MAX_VOICE_MINUTES:
+                    user.voice_minutes += 1  # Increment by 1 minute
+                    self.db.session.commit()
+                    
+                    # Check voice achievements
+                    await self.check_achievements(user, 'voice')
+                else:
+                    # User has reached voice limit, still commit to update last activity
+                    self.db.session.commit()
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
@@ -167,20 +209,20 @@ class EconomyCog(commands.Cog):
                 
                 # Check if user already received verification bonus
                 if user.verification_bonus_received:
-                    print(f"Verification bonus already received by {member.display_name}")
+                    cog_logger.info(f"Verification bonus already received by {member.display_name}")
                     return
                 
                 # Award verification bonus atomically
                 user.balance += 200
                 user.verification_bonus_received = True
                 self.db.session.commit()
-                print(f"Verification bonus awarded to {member.display_name}: 200 points")
+                cog_logger.info(f"Verification bonus awarded to {member.display_name}: 200 points")
                 
             except Exception as e:
                 self.db.session.rollback()
-                print(f"Error awarding verification bonus to {member.display_name}: {e}")
+                cog_logger.error(f"Error awarding verification bonus to {member.display_name}: {e}")
                 import traceback
-                traceback.print_exc()
+                cog_logger.error(traceback.format_exc())
                 return
             
             # Send welcome message in general channel
@@ -216,9 +258,9 @@ class EconomyCog(commands.Cog):
                         embed.set_footer(text=f"Your current balance: {user.balance} points")
                         
                         await general_channel.send(embed=embed)
-                        print(f"Sent verification welcome message for {member.display_name}")
+                        cog_logger.info(f"Sent verification welcome message for {member.display_name}")
                 except Exception as e:
-                    print(f"Error sending verification welcome message: {e}")
+                    cog_logger.error(f"Error sending verification welcome message: {e}")
 
     async def handle_onboarding_bonus(self, member):
         """Handle onboarding bonus for new members with onboarding roles with atomic transaction"""
@@ -238,20 +280,20 @@ class EconomyCog(commands.Cog):
                 
                 # Check if user already received onboarding bonus
                 if user.onboarding_bonus_received:
-                    print(f"Onboarding bonus already received by {member.display_name}")
+                    cog_logger.info(f"Onboarding bonus already received by {member.display_name}")
                     return
                 
                 # Award onboarding bonus atomically
                 user.balance += 500
                 user.onboarding_bonus_received = True
                 self.db.session.commit()
-                print(f"Onboarding bonus awarded to {member.display_name}: 500 points")
+                cog_logger.info(f"Onboarding bonus awarded to {member.display_name}: 500 points")
                 
             except Exception as e:
                 self.db.session.rollback()
-                print(f"Error awarding onboarding bonus to {member.display_name}: {e}")
+                cog_logger.error(f"Error awarding onboarding bonus to {member.display_name}: {e}")
                 import traceback
-                traceback.print_exc()
+                cog_logger.error(traceback.format_exc())
                 return
             
             # Send congratulations message (ephemeral or DM)
@@ -277,15 +319,15 @@ class EconomyCog(commands.Cog):
                 # Try to send DM, fall back to general channel mention if fails
                 try:
                     await member.send(embed=embed)
-                    print(f"Sent onboarding bonus DM to {member.display_name}")
+                    cog_logger.info(f"Sent onboarding bonus DM to {member.display_name}")
                 except:
                     if GENERAL_CHANNEL_ID:
                         general_channel = self.bot.get_channel(GENERAL_CHANNEL_ID)
                         if general_channel:
                             await general_channel.send(f"{member.mention}", embed=embed)
-                            print(f"Sent onboarding bonus message in general for {member.display_name}")
+                            cog_logger.info(f"Sent onboarding bonus message in general for {member.display_name}")
             except Exception as e:
-                print(f"Error sending onboarding bonus message: {e}")
+                cog_logger.error(f"Error sending onboarding bonus message: {e}")
 
     async def award_daily_engagement_points(self, user, message):
         """Award points for daily engagement (admin approved)."""
@@ -294,6 +336,16 @@ class EconomyCog(commands.Cog):
             settings = self.EconomySettings.query.first()
             if not settings or not settings.economy_enabled:
                 return False  # Economy is disabled, don't award points
+            
+            # Check if user has reached maximum daily engagement approvals
+            daily_engagement_count = getattr(user, 'daily_engagement_count', 0) or 0
+            if daily_engagement_count >= MAX_DAILY_ENGAGEMENT:
+                # Send message to admin about limit reached
+                try:
+                    await message.reply(f"❌ {message.author.mention} has already reached the maximum of {MAX_DAILY_ENGAGEMENT} daily engagement approvals.")
+                except:
+                    pass
+                return False
             
             # Check if user has already received daily engagement points today
             if user.last_daily_engagement:
@@ -306,25 +358,42 @@ class EconomyCog(commands.Cog):
             user.balance += DAILY_ENGAGEMENT_POINTS
             user.last_daily_engagement = datetime.now()
             
+            # Increment daily engagement counter
+            if not hasattr(user, 'daily_engagement_count') or user.daily_engagement_count is None:
+                user.daily_engagement_count = 0
+            user.daily_engagement_count += 1
+            
+            remaining_engagements = MAX_DAILY_ENGAGEMENT - user.daily_engagement_count
+            
             # Send confirmation message
             embed = nextcord.Embed(
                 title="🎉 Daily Engagement Approved!",
                 description=f"Your daily engagement has been approved by an admin!\n\n**Points Earned:** {DAILY_ENGAGEMENT_POINTS}",
                 color=nextcord.Color.green()
             )
-            embed.set_footer(text=f"New balance: {user.balance} points")
+            embed.add_field(
+                name="New Balance",
+                value=f"{user.balance} pitchforks",
+                inline=True
+            )
+            embed.add_field(
+                name="Engagements Remaining",
+                value=f"{remaining_engagements} out of {MAX_DAILY_ENGAGEMENT}",
+                inline=True
+            )
+            embed.set_footer(text=f"New balance: {user.balance} pitchforks")
             
             try:
                 await message.author.send(embed=embed)
             except nextcord.Forbidden:
                 # If DM fails, reply to the original message
-                await message.reply(f"🎉 {message.author.mention} earned {DAILY_ENGAGEMENT_POINTS} points for daily engagement!")
+                await message.reply(f"🎉 {message.author.mention} earned {DAILY_ENGAGEMENT_POINTS} pitchforks for daily engagement! ({remaining_engagements} remaining)")
                 
-            print(f"Daily engagement points awarded to {user.username}: {DAILY_ENGAGEMENT_POINTS} points")
+            cog_logger.info(f"Daily engagement points awarded to {user.username}: {DAILY_ENGAGEMENT_POINTS} points ({user.daily_engagement_count}/{MAX_DAILY_ENGAGEMENT})")
             return True
             
         except Exception as e:
-            print(f"Error awarding daily engagement points: {e}")
+            cog_logger.error(f"Error awarding daily engagement points: {e}")
             return False
 
     async def check_admin_reactions(self, reaction, admin_user):
@@ -369,7 +438,7 @@ class EconomyCog(commands.Cog):
                 await self.award_enrollment_deposit_points(message_author, message)
             
         except Exception as e:
-            print(f"Error in check_admin_reactions: {e}")
+            cog_logger.error(f"Error in check_admin_reactions: {e}")
 
     async def award_campus_picture_points(self, user, message):
         """Award points for campus picture posts (admin approved)."""
@@ -379,9 +448,26 @@ class EconomyCog(commands.Cog):
             if not settings or not settings.economy_enabled:
                 return False  # Economy is disabled, don't award points
             
+            # Check if user has reached maximum campus photo approvals
+            campus_photos_count = getattr(user, 'campus_photos_count', 0) or 0
+            if campus_photos_count >= MAX_CAMPUS_PHOTOS:
+                # Send message to admin about limit reached
+                try:
+                    await message.reply(f"❌ {message.author.mention} has already reached the maximum of {MAX_CAMPUS_PHOTOS} campus photo approvals.")
+                except:
+                    pass
+                return False
+            
             # Award campus picture points
             user.points += CAMPUS_PICTURE_POINTS
             user.balance += CAMPUS_PICTURE_POINTS
+            
+            # Increment campus photos counter
+            if not hasattr(user, 'campus_photos_count') or user.campus_photos_count is None:
+                user.campus_photos_count = 0
+            user.campus_photos_count += 1
+            
+            remaining_photos = MAX_CAMPUS_PHOTOS - user.campus_photos_count
             
             # Send confirmation message
             embed = nextcord.Embed(
@@ -389,19 +475,29 @@ class EconomyCog(commands.Cog):
                 description=f"Your campus picture has been approved by an admin!\n\n**Points Earned:** {CAMPUS_PICTURE_POINTS}",
                 color=nextcord.Color.blue()
             )
-            embed.set_footer(text=f"New balance: {user.balance} points")
+            embed.add_field(
+                name="New Balance",
+                value=f"{user.balance} pitchforks",
+                inline=True
+            )
+            embed.add_field(
+                name="Campus Photos Remaining",
+                value=f"{remaining_photos} out of {MAX_CAMPUS_PHOTOS}",
+                inline=True
+            )
+            embed.set_footer(text=f"New balance: {user.balance} pitchforks")
             
             try:
                 await message.author.send(embed=embed)
             except nextcord.Forbidden:
                 # If DM fails, reply to the original message
-                await message.reply(f"📸 {message.author.mention} earned {CAMPUS_PICTURE_POINTS} points for sharing a campus picture!")
+                await message.reply(f"📸 {message.author.mention} earned {CAMPUS_PICTURE_POINTS} pitchforks for sharing a campus picture! ({remaining_photos} photos remaining)")
                 
-            print(f"Campus picture points awarded to {user.username}: {CAMPUS_PICTURE_POINTS} points")
+            cog_logger.info(f"Campus picture points awarded to {user.username}: {CAMPUS_PICTURE_POINTS} points ({user.campus_photos_count}/{MAX_CAMPUS_PHOTOS})")
             return True
             
         except Exception as e:
-            print(f"Error awarding campus picture points: {e}")
+            cog_logger.error(f"Error awarding campus picture points: {e}")
             return False
 
     async def award_enrollment_deposit_points(self, user, message):
@@ -435,11 +531,11 @@ class EconomyCog(commands.Cog):
                 # If DM fails, reply to the original message
                 await message.reply(f"💰 {message.author.mention} earned {ENROLLMENT_DEPOSIT_POINTS} points for enrollment deposit confirmation!")
                 
-            print(f"Enrollment deposit points awarded to {user.username}: {ENROLLMENT_DEPOSIT_POINTS} points")
+            cog_logger.info(f"Enrollment deposit points awarded to {user.username}: {ENROLLMENT_DEPOSIT_POINTS} points")
             return True
             
         except Exception as e:
-            print(f"Error awarding enrollment deposit points: {e}")
+            cog_logger.error(f"Error awarding enrollment deposit points: {e}")
             return False
 
     # Birthday system functions
@@ -471,14 +567,14 @@ class EconomyCog(commands.Cog):
                             embed.set_footer(text="Have an amazing day! 🎈")
                             
                             await channel.send(embed=embed)
-                            print(f"Birthday announcement sent for {user.username}")
+                            cog_logger.info(f"Birthday announcement sent for {user.username}")
                     else:
-                        print(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                        cog_logger.warning(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
                 else:
-                    print(f"No birthdays today ({today.strftime('%B %d')})")
+                    cog_logger.info(f"No birthdays today ({today.strftime('%B %d')})")
                     
         except Exception as e:
-            print(f"Error checking birthdays: {e}")
+            cog_logger.error(f"Error checking birthdays: {e}")
 
     # Set up daily birthday check task
     @tasks.loop(time=datetime.strptime(BIRTHDAY_CHECK_TIME, "%H:%M").time())
@@ -490,37 +586,69 @@ class EconomyCog(commands.Cog):
         mst = pytz.timezone('US/Mountain')
         now_mst = datetime.now(mst)
         
-        print(f"Running daily birthday check at {now_mst.strftime('%Y-%m-%d %H:%M:%S MST')}")
+        cog_logger.info(f"Running daily birthday check at {now_mst.strftime('%Y-%m-%d %H:%M:%S MST')}")
         await self.check_birthdays()
 
     @daily_birthday_check.before_loop
     async def before_birthday_check(self):
         """Wait until bot is ready before starting birthday checks"""
         await self.bot.wait_until_ready()
-        print("Birthday checking task started - will run daily at 9:30 MST")
+        cog_logger.info("Birthday checking task started - will run daily at 9:30 MST")
 
     # Role assignment processor for digital products
     @tasks.loop(seconds=30)
     async def process_role_assignments(self):
         """Process pending Discord role assignments"""
+        if not self.app or not self.db:
+            cog_logger.warning("App or DB not initialized for role assignment processor")
+            return
+            
         try:
-            with self.app.app_context():
-                from app import RoleAssignment
-                
+            # Use direct SQL approach to avoid Flask context issues
+            import sqlite3
+            import os
+            
+            # Get database path from Flask app config
+            db_path = self.app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///store.db')
+            if db_path.startswith('sqlite:///'):
+                db_path = db_path.replace('sqlite:///', '')
+                # Handle relative paths - Flask creates database in instance/ folder
+                if not os.path.isabs(db_path):
+                    db_path = os.path.join('instance', db_path)
+            
+            # Direct database connection
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row  # Enable dict-like access
+            cursor = conn.cursor()
+            
+            try:
                 # Get pending role assignments
-                pending_assignments = RoleAssignment.query.filter_by(status='pending').limit(10).all()
+                cursor.execute("""
+                    SELECT id, user_id, role_id, purchase_id, status, created_at, error_message
+                    FROM role_assignment 
+                    WHERE status = 'pending' 
+                    LIMIT 10
+                """)
+                pending_assignments = cursor.fetchall()
                 
                 for assignment in pending_assignments:
                     try:
+                        assignment_id = assignment['id']
+                        user_id = assignment['user_id']
+                        role_id = assignment['role_id']
+                        purchase_id = assignment['purchase_id']
+                        
                         # Get the Discord user
-                        user = self.bot.get_user(int(assignment.user_id))
+                        user = self.bot.get_user(int(user_id))
                         if not user:
                             try:
-                                user = await self.bot.fetch_user(int(assignment.user_id))
+                                user = await self.bot.fetch_user(int(user_id))
                             except Exception:
-                                assignment.status = 'failed'
-                                assignment.error_message = 'User not found on Discord'
-                                assignment.completed_at = datetime.utcnow()
+                                cursor.execute("""
+                                    UPDATE role_assignment 
+                                    SET status = 'failed', error_message = 'User not found on Discord', completed_at = ?
+                                    WHERE id = ?
+                                """, (datetime.utcnow().isoformat(), assignment_id))
                                 continue
                         
                         # Get the guild (server)
@@ -531,36 +659,45 @@ class EconomyCog(commands.Cog):
                                 guild = self.bot.guilds[0]  # Use first guild
                         
                         if not guild:
-                            assignment.status = 'failed'
-                            assignment.error_message = 'Bot not in any Discord server'
-                            assignment.completed_at = datetime.utcnow()
+                            cursor.execute("""
+                                UPDATE role_assignment 
+                                SET status = 'failed', error_message = 'Bot not in any Discord server', completed_at = ?
+                                WHERE id = ?
+                            """, (datetime.utcnow().isoformat(), assignment_id))
                             continue
                         
                         # Get the member from the guild
-                        member = guild.get_member(int(assignment.user_id))
+                        member = guild.get_member(int(user_id))
                         if not member:
                             try:
-                                member = await guild.fetch_member(int(assignment.user_id))
+                                member = await guild.fetch_member(int(user_id))
                             except Exception:
-                                assignment.status = 'failed'
-                                assignment.error_message = 'Member not found in server'
-                                assignment.completed_at = datetime.utcnow()
+                                cursor.execute("""
+                                    UPDATE role_assignment 
+                                    SET status = 'failed', error_message = 'Member not found in server', completed_at = ?
+                                    WHERE id = ?
+                                """, (datetime.utcnow().isoformat(), assignment_id))
                                 continue
                         
                         # Get the role
-                        role = guild.get_role(int(assignment.role_id))
+                        role = guild.get_role(int(role_id))
                         if not role:
-                            assignment.status = 'failed'
-                            assignment.error_message = f'Role {assignment.role_id} not found'
-                            assignment.completed_at = datetime.utcnow()
+                            cursor.execute("""
+                                UPDATE role_assignment 
+                                SET status = 'failed', error_message = ?, completed_at = ?
+                                WHERE id = ?
+                            """, (f'Role {role_id} not found', datetime.utcnow().isoformat(), assignment_id))
                             continue
                         
                         # Assign the role
-                        await member.add_roles(role, reason=f"Purchased from store (Purchase ID: {assignment.purchase_id})")
+                        await member.add_roles(role, reason=f"Purchased from store (Purchase ID: {purchase_id})")
                         
                         # Mark as completed
-                        assignment.status = 'completed'
-                        assignment.completed_at = datetime.utcnow()
+                        cursor.execute("""
+                            UPDATE role_assignment 
+                            SET status = 'completed', completed_at = ?
+                            WHERE id = ?
+                        """, (datetime.utcnow().isoformat(), assignment_id))
                         
                         # Send confirmation DM to user
                         try:
@@ -573,33 +710,66 @@ class EconomyCog(commands.Cog):
                         except Exception:
                             pass  # DM failed, but role was assigned successfully
                             
-                        print(f"Successfully assigned role {role.name} to {member.display_name}")
+                        cog_logger.info(f"Successfully assigned role {role.name} to {member.display_name}")
                         
                     except Exception as e:
-                        assignment.status = 'failed'
-                        assignment.error_message = str(e)
-                        assignment.completed_at = datetime.utcnow()
-                        print(f"Failed to assign role to user {assignment.user_id}: {e}")
+                        cursor.execute("""
+                            UPDATE role_assignment 
+                            SET status = 'failed', error_message = ?, completed_at = ?
+                            WHERE id = ?
+                        """, (str(e), datetime.utcnow().isoformat(), assignment_id))
+                        cog_logger.error(f"Failed to assign role to user {user_id}: {e}")
                 
                 # Commit all changes
-                self.db.session.commit()
+                conn.commit()
+                cog_logger.info("Role assignment changes committed successfully")
+                        
+            except Exception as e:
+                cog_logger.error(f"Error in role assignment processor: {e}")
+                try:
+                    conn.rollback()
+                except Exception as rollback_error:
+                    cog_logger.error(f"Error during rollback: {rollback_error}")
+            
+            finally:
+                # Always close the database connection
+                try:
+                    cursor.close()
+                    conn.close()
+                except Exception as close_error:
+                    cog_logger.error(f"Error closing database connection: {close_error}")
                 
         except Exception as e:
-            print(f"Error in role assignment processor: {e}")
-            try:
-                self.db.session.rollback()
-            except:
-                pass
+            cog_logger.error(f"Fatal error in role assignment processor: {e}")
+            import traceback
+            cog_logger.error(traceback.format_exc())
 
     @process_role_assignments.before_loop
     async def before_role_assignments(self):
         """Wait until bot is ready before starting role assignment processing"""
         await self.bot.wait_until_ready()
-        print("Role assignment processor started - will check every 30 seconds")
+        
+        # Wait for Flask app to be properly initialized
+        max_wait = 30  # Maximum wait time in seconds
+        wait_count = 0
+        while (not self.app or not self.db) and wait_count < max_wait:
+            cog_logger.warning(f"Waiting for Flask app initialization... ({wait_count + 1}/{max_wait})")
+            await asyncio.sleep(1)
+            wait_count += 1
+        
+        if not self.app or not self.db:
+            cog_logger.critical("ERROR: Flask app not properly initialized after waiting. Role assignment processor may not work.")
+        else:
+            cog_logger.info("Role assignment processor started - will check every 30 seconds")
 
     async def check_achievements(self, user, achievement_type, count=None):
         """Check and award achievements for a user."""
-        with self.app.app_context():
+        if not self.app:
+            return
+            
+        try:
+            ctx = self.app.app_context()
+            ctx.push()
             # Get all achievements of the specified type
             achievements = self.Achievement.query.filter_by(type=achievement_type).all()
             
@@ -630,6 +800,14 @@ class EconomyCog(commands.Cog):
                     
                 if requirement_met:
                     await self.award_achievement(user, achievement)
+                    
+        except Exception as e:
+            cog_logger.error(f"Error in check_achievements: {e}")
+        finally:
+            try:
+                ctx.pop()
+            except Exception as ctx_error:
+                cog_logger.error(f"Error popping Flask context in check_achievements: {ctx_error}")
 
     async def send_achievement_announcement(self, user, achievement):
         """Send achievement announcement to general channel."""
@@ -670,17 +848,22 @@ class EconomyCog(commands.Cog):
                 
                 # Send message with user ping and embed
                 await channel.send(f"🎉 Congratulations <@{user.id}>! You've unlocked a new achievement!", embed=embed)
-                print(f"Achievement announcement sent for {user.username}: {achievement.name}")
+                cog_logger.info(f"Achievement announcement sent for {user.username}: {achievement.name}")
                 
             else:
-                print(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                cog_logger.warning(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
                 
         except Exception as e:
-            print(f"Error sending achievement announcement: {e}")
+            cog_logger.error(f"Error sending achievement announcement: {e}")
 
     async def award_achievement(self, user, achievement):
         """Award an achievement to a user with atomic transaction."""
-        with self.app.app_context():
+        if not self.app:
+            return
+            
+        try:
+            ctx = self.app.app_context()
+            ctx.push()
             try:
                 # Check if user already has this achievement (race condition protection)
                 existing_achievement = self.UserAchievement.query.filter_by(
@@ -689,13 +872,13 @@ class EconomyCog(commands.Cog):
                 ).first()
                 
                 if existing_achievement:
-                    print(f"Achievement '{achievement.name}' already awarded to {user.username}")
+                    cog_logger.info(f"Achievement \'{achievement.name}\' already awarded to {user.username}")
                     return
                 
                 # Lock user row to prevent concurrent balance modifications
                 user_fresh = self.User.query.with_for_update().get(user.id)
                 if not user_fresh:
-                    print(f"User {user.id} not found for achievement award")
+                    cog_logger.warning(f"User {user.id} not found for achievement award")
                     return
                 
                 # Add achievement to user
@@ -712,16 +895,27 @@ class EconomyCog(commands.Cog):
                 # Commit transaction
                 self.db.session.commit()
                 
-                print(f"Achievement '{achievement.name}' awarded to {user_fresh.username} for {achievement.points} points!")
+                cog_logger.info(f"Achievement \'{achievement.name}\' awarded to {user_fresh.username} for {achievement.points} points!")
                 
                 # Send achievement announcement to general channel
                 await self.send_achievement_announcement(user_fresh, achievement)
                 
             except Exception as e:
-                self.db.session.rollback()
-                print(f"Error awarding achievement to {user.username}: {e}")
+                try:
+                    self.db.session.rollback()
+                except Exception as rollback_error:
+                    cog_logger.error(f"Error during rollback in award_achievement: {rollback_error}")
+                cog_logger.error(f"Error awarding achievement to {user.username}: {e}")
                 import traceback
-                traceback.print_exc()
+                cog_logger.error(traceback.format_exc())
+                
+        except Exception as e:
+            cog_logger.error(f"Fatal error in award_achievement: {e}")
+        finally:
+            try:
+                ctx.pop()
+            except Exception as ctx_error:
+                cog_logger.error(f"Error popping Flask context in award_achievement: {ctx_error}")
 
     @nextcord.slash_command(name="achievements", description="View your achievements")
     async def achievements(self, interaction: Interaction):
@@ -755,9 +949,9 @@ class EconomyCog(commands.Cog):
             embed.set_footer(text=f"Total Points Earned: {user.points}")
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @nextcord.slash_command(name="balance", description="Check your current balance")
+    @nextcord.slash_command(name="balance", description="Check your current pitchfork balance")
     async def balance(self, interaction: Interaction):
-        """Check your current balance"""
+        """Check your current pitchfork balance"""
         with self.app.app_context():
             user = self.User.query.filter_by(id=str(interaction.user.id)).first()
             if not user:
@@ -765,15 +959,15 @@ class EconomyCog(commands.Cog):
                 self.db.session.add(user)
                 self.db.session.commit()
             embed = nextcord.Embed(
-                title="Balance",
-                description=f"Your current balance: {user.balance} points",
+                title="Pitchfork Balance",
+                description=f"Your current balance: {user.balance} pitchforks",
                 color=nextcord.Color.green()
             )
             await interaction.response.send_message(embed=embed)
 
-    @nextcord.slash_command(name="daily", description="Claim your daily points reward")
+    @nextcord.slash_command(name="daily", description="Claim your daily pitchfork reward")
     async def daily(self, interaction: Interaction):
-        """Claim your daily points with atomic transaction"""
+        """Claim your daily pitchforks with atomic transaction"""
         with self.app.app_context():
             try:
                 settings = self.EconomySettings.query.first()
@@ -785,11 +979,24 @@ class EconomyCog(commands.Cog):
                     )
                     await interaction.response.send_message(embed=embed, ephemeral=True)
                     return
+                
                 user = self.User.query.filter_by(id=str(interaction.user.id)).first()
                 if not user:
                     user = self.User(id=str(interaction.user.id), username=interaction.user.name)
                     self.db.session.add(user)
                     self.db.session.commit()
+                
+                # Check if user has reached maximum daily claims
+                daily_claims = getattr(user, 'daily_claims_count', 0) or 0
+                if daily_claims >= MAX_DAILY_CLAIMS:
+                    embed = nextcord.Embed(
+                        title="🚫 Daily Limit Reached",
+                        description=f"You have reached the maximum of {MAX_DAILY_CLAIMS} daily claims. No more daily rewards available!",
+                        color=nextcord.Color.red()
+                    )
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
                 current_time = datetime.now()
                 if user.last_daily and (current_time - user.last_daily) < timedelta(days=1):
                     time_left = user.last_daily + timedelta(days=1) - current_time
@@ -797,20 +1004,34 @@ class EconomyCog(commands.Cog):
                     minutes = int((time_left.total_seconds() % 3600) // 60)
                     embed = nextcord.Embed(
                         title="⏰ Daily Reward Not Ready",
-                        description=f"You can claim your daily points again in {hours} hours and {minutes} minutes.",
+                        description=f"You can claim your daily pitchforks again in {hours} hours and {minutes} minutes.",
                         color=nextcord.Color.red()
                     )
                     await interaction.response.send_message(embed=embed, ephemeral=True)
                     return
+                
+                # Award daily reward and increment counter
                 user.balance += 85
                 user.last_daily = current_time
+                if not hasattr(user, 'daily_claims_count') or user.daily_claims_count is None:
+                    user.daily_claims_count = 0
+                user.daily_claims_count += 1
+                
                 self.db.session.commit()
+                
+                remaining_claims = MAX_DAILY_CLAIMS - user.daily_claims_count
                 embed = nextcord.Embed(
                     title="🎉 Daily Reward Claimed!",
-                    description=f"You have received 85 points. Your new balance is {user.balance} points.",
+                    description=f"You have received 85 pitchforks. Your new balance is {user.balance} pitchforks.",
                     color=nextcord.Color.green()
                 )
+                embed.add_field(
+                    name="Daily Claims Remaining",
+                    value=f"{remaining_claims} out of {MAX_DAILY_CLAIMS}",
+                    inline=True
+                )
                 await interaction.response.send_message(embed=embed)
+                
             except Exception as e:
                 self.db.session.rollback()
                 embed = nextcord.Embed(
@@ -820,21 +1041,21 @@ class EconomyCog(commands.Cog):
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @nextcord.slash_command(name="leaderboard", description="Show the top 10 users by balance")
+    @nextcord.slash_command(name="leaderboard", description="Show the top 10 users by pitchfork balance")
     async def leaderboard(self, interaction: Interaction):
         with self.app.app_context():
             users = self.User.query.order_by(self.User.balance.desc()).limit(10).all()
             desc = "\n".join([
-                f"**{idx+1}. {user.username}** — {user.balance} points" for idx, user in enumerate(users)
+                f"**{idx+1}. {user.username}** — {user.balance} pitchforks" for idx, user in enumerate(users)
             ])
             embed = nextcord.Embed(
-                title="🏆 Leaderboard",
+                title="🏆 Pitchfork Leaderboard",
                 description=desc or "No users found.",
                 color=nextcord.Color.gold()
             )
             await interaction.response.send_message(embed=embed)
 
-    @nextcord.slash_command(name="give_all", description="Give points to all users (Admin only)")
+    @nextcord.slash_command(name="give_all", description="Give pitchforks to all users (Admin only)")
     async def give_all(self, interaction: Interaction, amount: int):
         with self.app.app_context():
             if not interaction.user.guild_permissions.administrator:
@@ -844,7 +1065,66 @@ class EconomyCog(commands.Cog):
             for user in users:
                 user.balance += amount
             self.db.session.commit()
-            await interaction.response.send_message(f"Gave {amount} points to all users.")
+            await interaction.response.send_message(f"Gave {amount} pitchforks to all users.")
+
+    @nextcord.slash_command(name="give", description="Give pitchforks to a specific user (Admin only)")
+    async def give(self, interaction: Interaction, user: nextcord.Member, amount: int):
+        """Give pitchforks to a specific user"""
+        with self.app.app_context():
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+                return
+            
+            if amount <= 0:
+                await interaction.response.send_message("Amount must be greater than 0.", ephemeral=True)
+                return
+            
+            # Get or create the target user
+            target_user = self.User.query.filter_by(id=str(user.id)).first()
+            if not target_user:
+                target_user = self.User(id=str(user.id), username=user.display_name, discord_id=str(user.id))
+                self.db.session.add(target_user)
+                self.db.session.flush()
+            
+            # Add points to the user's balance
+            target_user.balance += amount
+            self.db.session.commit()
+            
+            # Send confirmation message
+            embed = nextcord.Embed(
+                title="💰 Pitchforks Awarded",
+                description=f"Successfully gave **{amount} pitchforks** to {user.mention}",
+                color=nextcord.Color.green()
+            )
+            embed.add_field(
+                name="New Balance",
+                value=f"{target_user.balance} pitchforks",
+                inline=True
+            )
+            embed.add_field(
+                name="Awarded by",
+                value=interaction.user.mention,
+                inline=True
+            )
+            
+            await interaction.response.send_message(embed=embed)
+            
+            # Try to notify the user via DM
+            try:
+                dm_embed = nextcord.Embed(
+                    title="🎉 Pitchforks Received!",
+                    description=f"You've received **{amount} pitchforks** from an admin!",
+                    color=nextcord.Color.gold()
+                )
+                dm_embed.add_field(
+                    name="New Balance",
+                    value=f"{target_user.balance} pitchforks",
+                    inline=True
+                )
+                await user.send(embed=dm_embed)
+            except nextcord.Forbidden:
+                # DM failed, but that's okay
+                pass
 
     def on_first_economy_enable(self, interaction):
         # This function runs only the first time the economy is enabled
@@ -861,7 +1141,7 @@ class EconomyCog(commands.Cog):
                             user_achievement = self.UserAchievement(user_id=user.id, achievement_id=achievement.id)
                             self.db.session.add(user_achievement)
                             self.db.session.commit()
-                            print(f"Awarded 'Verified' achievement to {member.display_name}")
+                            cog_logger.info(f"Awarded \'Verified\' achievement to {member.display_name}")
 
     @nextcord.slash_command(name="economy", description="Enable or disable the economy system (Admin only)")
     async def economy_toggle(self, interaction: Interaction, action: str):
@@ -887,6 +1167,114 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_message("Economy disabled.")
             else:
                 await interaction.response.send_message("Invalid action. Use 'enable' or 'disable'.", ephemeral=True)
+
+    @nextcord.slash_command(name="limits", description="View your earning limits and theoretical maximum pitchforks")
+    async def limits(self, interaction: Interaction):
+        """Show user's current progress toward earning limits and theoretical maximum"""
+        with self.app.app_context():
+            user = self.User.query.filter_by(id=str(interaction.user.id)).first()
+            if not user:
+                user = self.User(id=str(interaction.user.id), username=interaction.user.name)
+                self.db.session.add(user)
+                self.db.session.commit()
+            
+            # Get current counts (with safe defaults)
+            daily_claims = getattr(user, 'daily_claims_count', 0) or 0
+            campus_photos = getattr(user, 'campus_photos_count', 0) or 0
+            daily_engagement = getattr(user, 'daily_engagement_count', 0) or 0
+            messages = user.message_count or 0
+            reactions = user.reaction_count or 0
+            voice_minutes = user.voice_minutes or 0
+            
+            # Calculate theoretical maximum pitchforks
+            max_from_daily = MAX_DAILY_CLAIMS * 85  # 90 * 85 = 7,650
+            max_from_campus = MAX_CAMPUS_PHOTOS * 100  # 5 * 100 = 500
+            max_from_engagement = MAX_DAILY_ENGAGEMENT * 25  # 365 * 25 = 9,125
+            max_from_onetime = 200 + 500 + 500 + 50  # verification + onboarding + enrollment + birthday = 1,250
+            
+            # Achievement points (estimated based on typical achievement values)
+            estimated_achievement_points = 2000  # Conservative estimate for all achievements
+            
+            theoretical_max = max_from_daily + max_from_campus + max_from_engagement + max_from_onetime + estimated_achievement_points
+            
+            # Calculate current earned from limited sources
+            earned_from_daily = daily_claims * 85
+            earned_from_campus = campus_photos * 100
+            earned_from_engagement = daily_engagement * 25
+            
+            embed = nextcord.Embed(
+                title="🎯 Pitchfork Earning Limits",
+                description="Your progress toward maximum earning limits",
+                color=nextcord.Color.gold()
+            )
+            
+            # Recurring limits section
+            embed.add_field(
+                name="📅 Daily Claims",
+                value=f"{daily_claims}/{MAX_DAILY_CLAIMS}\n💰 {earned_from_daily:,} pitchforks",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📸 Campus Photos",
+                value=f"{campus_photos}/{MAX_CAMPUS_PHOTOS}\n💰 {earned_from_campus:,} pitchforks",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🔥 Daily Engagement",
+                value=f"{daily_engagement}/{MAX_DAILY_ENGAGEMENT}\n💰 {earned_from_engagement:,} pitchforks",
+                inline=True
+            )
+            
+            # Activity limits section
+            embed.add_field(
+                name="💬 Messages",
+                value=f"{messages:,}/{MAX_MESSAGES:,}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="❤️ Reactions",
+                value=f"{reactions:,}/{MAX_REACTIONS:,}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🎤 Voice Minutes",
+                value=f"{voice_minutes:,}/{MAX_VOICE_MINUTES:,}",
+                inline=True
+            )
+            
+            # Theoretical maximum
+            embed.add_field(
+                name="🏆 Theoretical Maximum",
+                value=f"**{theoretical_max:,} pitchforks**\n"
+                      f"Daily: {max_from_daily:,}\n"
+                      f"Campus: {max_from_campus:,}\n"
+                      f"Engagement: {max_from_engagement:,}\n"
+                      f"One-time: {max_from_onetime:,}\n"
+                      f"Achievements: ~{estimated_achievement_points:,}",
+                inline=False
+            )
+            
+            # Current balance
+            embed.add_field(
+                name="💰 Current Balance",
+                value=f"{user.balance:,} pitchforks",
+                inline=True
+            )
+            
+            # Progress percentage
+            progress_percentage = (user.balance / theoretical_max) * 100 if theoretical_max > 0 else 0
+            embed.add_field(
+                name="📊 Progress",
+                value=f"{progress_percentage:.1f}% of maximum",
+                inline=True
+            )
+            
+            embed.set_footer(text="Limits help maintain balance and prevent exploitation")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 def setup(bot, app, db, User, EconomySettings, Achievement, UserAchievement):
     bot.add_cog(EconomyCog(bot, app, db, User, EconomySettings, Achievement, UserAchievement)) 

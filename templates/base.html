@@ -257,10 +257,16 @@
                 <span>Devil2Devil Store</span>
             </a>
             <div class="flex items-center space-x-6">
+                <a href="{{ url_for('index') }}" class="hover:text-yellow-300 transition-colors">
+                    <i class="fas fa-store mr-1"></i>Store
+                </a>
+                <a href="{{ url_for('how_to_earn') }}" class="hover:text-yellow-300 transition-colors">
+                    <i class="fas fa-coins mr-1"></i>Earn Pitchforks
+                </a>
                 {% if current_user.is_authenticated %}
                     <div class="points-badge">
                         <i class="fas fa-coins"></i>
-                        {{ current_user.balance }} Points
+                        {{ current_user.balance }} Pitchforks
                     </div>
                     <div class="flex items-center space-x-3">
                         <!-- Discord Profile Picture -->

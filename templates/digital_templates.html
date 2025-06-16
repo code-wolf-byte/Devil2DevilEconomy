@@ -5,139 +5,1217 @@
 {% block content %}
 <div class="container">
     <div class="header-section text-center">
-        <h1 class="display-4 asu-gold mb-4">🎮 Digital Product Templates</h1>
-        <p class="lead text-muted">Quick setup for popular digital products</p>
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-magic text-yellow-400 mr-3"></i>
+            Digital Product Creator
+        </h1>
+        <p class="text-xl text-muted mb-2">Create digital products that deliver automatically</p>
+        <p class="text-sm text-muted">Set up role products, minecraft skins, or create custom digital items</p>
     </div>
 
-    <!-- Role Templates -->
-    <div class="card mb-6 animate-slide-up">
-        <div class="card-header">
-            <h3 class="asu-gold">🎭 Discord Roles</h3>
-            <p class="text-muted mb-0">Fancy roles that get automatically assigned</p>
+    <!-- Quick Info Banner -->
+    <div class="card bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/30 mb-6">
+        <div class="card-body text-center">
+            <h3 class="text-lg font-semibold mb-2">
+                <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+                How Digital Products Work
+            </h3>
+            <p class="text-sm text-muted">
+                Digital products are automatically delivered to users after purchase. 
+                Discord roles are assigned instantly, files are made available for download, 
+                and codes are generated automatically.
+            </p>
         </div>
-        <div class="card-body">
-            <div class="row">
-                {% for role in templates.roles %}
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ role.name }}</h5>
-                            <p class="card-text">{{ role.description }}</p>
-                            <p class="text-muted"><strong>{{ role.price }} points</strong></p>
-                            
-                            <form method="POST" action="{{ url_for('create_from_template') }}">
-                                <input type="hidden" name="name" value="{{ role.name }}">
-                                <input type="hidden" name="description" value="{{ role.description }}">
-                                <input type="hidden" name="price" value="{{ role.price }}">
-                                <input type="hidden" name="category" value="{{ role.category }}">
-                                <input type="hidden" name="product_type" value="{{ role.product_type }}">
-                                <input type="hidden" name="delivery_method" value="{{ role.delivery_method }}">
-                                <input type="hidden" name="auto_delivery" value="on">
-                                
-                                <div class="form-group">
-                                    <label for="role_id_{{ loop.index }}">Discord Role ID:</label>
-                                    <input type="text" name="role_id" id="role_id_{{ loop.index }}" 
-                                           class="form-control" placeholder="123456789012345678" required>
-                                    <small class="text-muted">Right-click role → Copy ID</small>
-                                </div>
-                                
-                                <button type="submit" class="btn btn-primary btn-sm">Create Product</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="card mb-6">
+        <div class="card-body p-0">
+            <div class="flex border-b border-gray-600">
+                <button class="category-tab active" data-category="discord-roles">
+                    <i class="fas fa-user-tag text-purple-400 mr-2"></i>
+                    Discord Roles
+                </button>
+                <button class="category-tab" data-category="minecraft-skins">
+                    <i class="fas fa-cube text-green-400 mr-2"></i>
+                    Minecraft Skins
+                </button>
+                <button class="category-tab" data-category="other-digital">
+                    <i class="fas fa-cogs text-indigo-400 mr-2"></i>
+                    Other Digital
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Minecraft Skins Templates -->
-    <div class="card mb-6 animate-slide-up">
-        <div class="card-header">
-            <h3 class="asu-gold">🎮 Minecraft Skins</h3>
-            <p class="text-muted mb-0">Custom skins for download</p>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                {% for skin in templates.skins %}
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ skin.name }}</h5>
-                            <p class="card-text">{{ skin.description }}</p>
-                            <p class="text-muted"><strong>{{ skin.price }} points</strong></p>
-                            
-                            <form method="POST" action="{{ url_for('create_from_template') }}">
-                                <input type="hidden" name="name" value="{{ skin.name }}">
-                                <input type="hidden" name="description" value="{{ skin.description }}">
-                                <input type="hidden" name="price" value="{{ skin.price }}">
-                                <input type="hidden" name="category" value="{{ skin.category }}">
-                                <input type="hidden" name="product_type" value="{{ skin.product_type }}">
-                                <input type="hidden" name="delivery_method" value="{{ skin.delivery_method }}">
-                                <input type="hidden" name="auto_delivery" value="on">
-                                
-                                <div class="form-group">
-                                    <label for="file_path_{{ loop.index }}">File Path:</label>
-                                    <input type="text" name="file_path" id="file_path_{{ loop.index }}" 
-                                           class="form-control" placeholder="{{ skin.file_path_placeholder }}" required>
-                                    <small class="text-muted">Path to skin file in uploads folder</small>
+    <!-- Discord Roles Section -->
+    <div id="discord-roles-section" class="category-section">
+        <div class="card mb-6 animate-slide-up">
+            <div class="card-header">
+                <h3 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-user-tag text-purple-400 mr-3"></i>
+                    Discord Role Products
+                </h3>
+                <p class="text-muted mb-0">Create purchasable products that automatically assign Discord roles to users</p>
+            </div>
+            <div class="card-body">
+                <!-- Loading State -->
+                <div id="roles-loading" class="text-center py-8">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="text-muted">Loading Discord roles...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="roles-error" class="text-center py-8" style="display: none;">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <span id="roles-error-message">Failed to load Discord roles</span>
+                    </div>
+                    <button onclick="loadDiscordRoles()" class="btn btn-primary">
+                        <i class="fas fa-refresh mr-2"></i>Retry
+                    </button>
+                </div>
+
+                <!-- Role Creation Form -->
+                <div id="role-creation-form" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-purple-500/30">
+                                <div class="card-body">
+                                    <h5 class="card-title text-lg font-semibold mb-4">
+                                        <i class="fas fa-plus mr-2"></i>Create Role Product
+                                    </h5>
+                                    
+                                    <form id="roleProductForm" action="{{ url_for('create_role_product') }}" method="POST" class="space-y-4">
+                                        <div class="form-group">
+                                            <label class="form-label text-sm font-medium mb-2">
+                                                <i class="fas fa-crown mr-1"></i>Select Discord Role *
+                                            </label>
+                                            
+                                            <!-- Hidden input for form submission -->
+                                            <input type="hidden" name="role_id" id="selected_role_id" required>
+                                            
+                                            <!-- Custom Discord-style dropdown -->
+                                            <div class="discord-dropdown" id="role_dropdown">
+                                                <div class="discord-dropdown-trigger" id="dropdown_trigger">
+                                                    <div class="discord-dropdown-content">
+                                                        <span class="discord-dropdown-placeholder">Choose a role...</span>
+                                                    </div>
+                                                    <div class="discord-dropdown-arrow">
+                                                        <i class="fas fa-chevron-down"></i>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="discord-dropdown-menu" id="dropdown_menu">
+                                                    <div class="discord-dropdown-search">
+                                                        <input type="text" placeholder="Search roles..." id="role_search" class="discord-search-input">
+                                                    </div>
+                                                    <div class="discord-dropdown-options" id="dropdown_options">
+                                                        <div class="discord-dropdown-loading">
+                                                            <i class="fas fa-spinner fa-spin mr-2"></i>Loading roles...
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <small class="text-muted mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Only roles that can be managed by the bot are shown
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="product_name" class="form-label text-sm font-medium">
+                                                <i class="fas fa-tag mr-1"></i>Product Name *
+                                            </label>
+                                            <input type="text" name="product_name" id="product_name" 
+                                                   class="form-control" placeholder="e.g., VIP Member Access" required>
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                This will appear in the store
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="description" class="form-label text-sm font-medium">
+                                                <i class="fas fa-align-left mr-1"></i>Description
+                                            </label>
+                                            <textarea name="description" id="description" 
+                                                      class="form-control" rows="3" 
+                                                      placeholder="Describe what this role provides..."></textarea>
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Leave empty for auto-generated description
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="price" class="form-label text-sm font-medium">
+                                                <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
+                                            </label>
+                                            <input type="number" name="price" id="price" 
+                                                   class="form-control" min="1" placeholder="100" required>
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                How many pitchforks will this role cost?
+                                            </small>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary w-full">
+                                            <i class="fas fa-plus mr-2"></i>Create Role Product
+                                        </button>
+                                    </form>
                                 </div>
-                                
-                                <button type="submit" class="btn btn-primary btn-sm">Create Product</button>
-                            </form>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card bg-gradient-to-br from-blue-900/20 to-indigo-900/20 border-blue-500/30">
+                                <div class="card-body">
+                                    <h5 class="card-title text-lg font-semibold mb-4">
+                                        <i class="fas fa-eye mr-2"></i>Role Preview
+                                    </h5>
+                                    <div id="role-preview" class="text-center py-8">
+                                        <i class="fas fa-user-tag text-6xl text-gray-600 mb-3"></i>
+                                        <p class="text-muted">Select a role to see preview</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
+
+                <!-- Existing Role Products -->
+                <div id="existing-role-products" style="display: none;">
+                    <hr class="my-6">
+                    <h5 class="text-lg font-semibold mb-4">
+                        <i class="fas fa-store mr-2"></i>Existing Role Products
+                    </h5>
+                    <div id="existing-products-list" class="row">
+                        <!-- Products will be loaded here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Game Codes Templates -->
-    <div class="card mb-6 animate-slide-up">
-        <div class="card-header">
-            <h3 class="asu-gold">🎯 Game Codes & Gift Cards</h3>
-            <p class="text-muted mb-0">Auto-generated codes for games and gift cards</p>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                {% for code in templates.codes %}
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ code.name }}</h5>
-                            <p class="card-text">{{ code.description }}</p>
-                            <p class="text-muted"><strong>{{ code.price }} points</strong></p>
-                            
-                            <form method="POST" action="{{ url_for('create_from_template') }}">
-                                <input type="hidden" name="name" value="{{ code.name }}">
-                                <input type="hidden" name="description" value="{{ code.description }}">
-                                <input type="hidden" name="price" value="{{ code.price }}">
-                                <input type="hidden" name="category" value="{{ code.category }}">
-                                <input type="hidden" name="product_type" value="{{ code.product_type }}">
-                                <input type="hidden" name="delivery_method" value="{{ code.delivery_method }}">
-                                <input type="hidden" name="auto_delivery" value="on">
-                                
-                                <div class="form-group">
-                                    <label for="code_pattern_{{ loop.index }}">Code Pattern:</label>
-                                    <input type="text" name="code_pattern" id="code_pattern_{{ loop.index }}" 
-                                           class="form-control" value="{{ code.code_pattern }}">
-                                    <small class="text-muted">{uuid} will be replaced with unique code</small>
+    <!-- Minecraft Skins Section -->
+    <div id="minecraft-skins-section" class="category-section" style="display: none;">
+        <div class="card mb-6 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+            <div class="card-header">
+                <h3 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-cube text-green-400 mr-3"></i>
+                    Minecraft Skin Products
+                </h3>
+                <p class="text-muted mb-0">Create downloadable Minecraft skin products with instant file delivery</p>
+            </div>
+            <div class="card-body">
+                <!-- Skin Templates -->
+                <div class="row mb-6">
+                    <div class="col-md-12">
+                        <h5 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-palette mr-2"></i>Featured Skin Templates
+                        </h5>
+                        <div class="row">
+                            <!-- Premium Skin Pack -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/4CAF50/FFFFFF?text=SKIN" alt="Premium Skin Pack">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('premium_pack')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🎮 Premium Skin Pack</h6>
+                                        <p class="text-sm text-muted">5 exclusive custom skins</p>
+                                        <div class="text-xs text-green-400">
+                                            <i class="fas fa-download mr-1"></i>ZIP Download
+                                        </div>
+                                    </div>
                                 </div>
-                                
-                                <button type="submit" class="btn btn-primary btn-sm">Create Product</button>
-                            </form>
+                            </div>
+
+                            <!-- Medieval Knight -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/795548/FFFFFF?text=KNIGHT" alt="Medieval Knight">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('knight')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🗡️ Medieval Knight</h6>
+                                        <p class="text-sm text-muted">Epic knight armor skin</p>
+                                        <div class="text-xs text-green-400">
+                                            <i class="fas fa-download mr-1"></i>PNG Download
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Wizard Collection -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/9C27B0/FFFFFF?text=WIZARD" alt="Wizard Skin">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('wizard')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🧙‍♂️ Wizard Collection</h6>
+                                        <p class="text-sm text-muted">Magical wizard skins</p>
+                                        <div class="text-xs text-green-400">
+                                            <i class="fas fa-download mr-1"></i>ZIP Download
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Superhero Pack -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/F44336/FFFFFF?text=HERO" alt="Superhero Pack">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('superhero')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🦸‍♀️ Superhero Pack</h6>
+                                        <p class="text-sm text-muted">Hero skins with capes</p>
+                                        <div class="text-xs text-green-400">
+                                            <i class="fas fa-download mr-1"></i>ZIP Download
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Commission -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/FF9800/FFFFFF?text=CUSTOM" alt="Custom Skin">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('custom')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🎨 Custom Commission</h6>
+                                        <p class="text-sm text-muted">Personalized skin design</p>
+                                        <div class="text-xs text-yellow-400">
+                                            <i class="fas fa-user mr-1"></i>Manual Delivery
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Animal Pack -->
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="skin-template-card">
+                                    <div class="skin-preview">
+                                        <img src="https://via.placeholder.com/64x64/8BC34A/FFFFFF?text=ANIMAL" alt="Animal Pack">
+                                        <div class="skin-overlay">
+                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('animal')">
+                                                <i class="fas fa-plus mr-1"></i>Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="skin-info">
+                                        <h6 class="font-semibold">🐺 Animal Pack</h6>
+                                        <p class="text-sm text-muted">Cute animal-themed skins</p>
+                                        <div class="text-xs text-green-400">
+                                            <i class="fas fa-download mr-1"></i>ZIP Download
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
+
+                <!-- Upload Custom Skin Section -->
+                <div class="card bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border-blue-500/30">
+                    <div class="card-body">
+                        <h5 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-upload mr-2"></i>Upload Custom Skin
+                        </h5>
+                        <p class="text-muted mb-4">Upload your own Minecraft skin files (.png or .zip) to create custom products.</p>
+                        
+                        <form id="customSkinForm" class="space-y-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label text-sm font-medium">
+                                            <i class="fas fa-tag mr-1"></i>Product Name *
+                                        </label>
+                                        <input type="text" class="form-control" placeholder="e.g., My Epic Skin">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label text-sm font-medium">
+                                            <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
+                                        </label>
+                                        <input type="number" class="form-control" placeholder="150" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label text-sm font-medium">
+                                    <i class="fas fa-align-left mr-1"></i>Description
+                                </label>
+                                <textarea class="form-control" rows="3" placeholder="Describe your skin..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label text-sm font-medium">
+                                    <i class="fas fa-file mr-1"></i>Skin File *
+                                </label>
+                                <div class="file-upload-area">
+                                    <input type="file" id="skinFile" accept=".png,.zip" style="display: none;">
+                                    <div class="file-upload-content" onclick="document.getElementById('skinFile').click()">
+                                        <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                                        <p class="mb-1">Click to upload skin file</p>
+                                        <p class="text-sm text-muted">PNG or ZIP files only</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary">
+                                <i class="fas fa-plus mr-2"></i>Create Skin Product
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="text-center mt-6">
-        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">← Back to Admin Panel</a>
-        <a href="{{ url_for('new_product') }}" class="btn btn-primary">Create Custom Product</a>
+    <!-- Other Digital Products Section -->
+    <div id="other-digital-section" class="category-section" style="display: none;">
+        <div class="card mb-6 bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border-indigo-500/30">
+            <div class="card-header">
+                <h3 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-cogs text-indigo-400 mr-3"></i>
+                    Other Digital Products
+                </h3>
+                <p class="text-muted mb-0">Create custom digital products beyond Discord roles and Minecraft skins</p>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-download text-cyan-400" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="font-semibold mb-2">File Downloads</h5>
+                        <p class="text-sm text-muted">Content packs, documents, and digital assets</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-gift text-red-400" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="font-semibold mb-2">Generated Codes</h5>
+                        <p class="text-sm text-muted">Game codes, gift cards, and unique access codes</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-tools text-orange-400" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="font-semibold mb-2">Custom Delivery</h5>
+                        <p class="text-sm text-muted">Manual delivery, special instructions, or unique setups</p>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <p class="text-muted mb-4">
+                        Need something beyond Discord roles and Minecraft skins? Use the full product creation form for advanced configurations and custom delivery methods.
+                    </p>
+                    <a href="{{ url_for('new_product') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus mr-2"></i>Create Custom Digital Product
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="text-center mt-6 space-x-4">
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
+        </a>
+        <a href="{{ url_for('new_product') }}" class="btn btn-outline-primary">
+            <i class="fas fa-plus mr-2"></i>Advanced Product Creator
+        </a>
     </div>
 </div>
+
+<style>
+.animate-slide-up {
+    animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+}
+
+#role-preview {
+    min-height: 200px;
+}
+
+.role-preview-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.role-color-badge {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 2px solid white;
+}
+
+.feature-icon {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Category Tabs */
+.category-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+}
+
+.category-tab:hover {
+    color: #f3f4f6;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.category-tab.active {
+    color: #fbbf24;
+    border-bottom-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.category-section {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Minecraft Skin Templates */
+.skin-template-card {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.skin-template-card:hover {
+    border-color: #10b981;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+}
+
+.skin-preview {
+    position: relative;
+    height: 120px;
+    background: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.skin-preview img {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    transition: transform 0.2s ease;
+}
+
+.skin-template-card:hover .skin-preview img {
+    transform: scale(1.1);
+}
+
+.skin-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.skin-template-card:hover .skin-overlay {
+    opacity: 1;
+}
+
+.skin-info {
+    padding: 12px;
+}
+
+.skin-info h6 {
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.skin-info p {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+/* File Upload Area */
+.file-upload-area {
+    border: 2px dashed #4b5563;
+    border-radius: 8px;
+    background: #1f2937;
+    transition: all 0.2s ease;
+}
+
+.file-upload-area:hover {
+    border-color: #10b981;
+    background: #064e3b;
+}
+
+.file-upload-content {
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* Discord-style dropdown styles */
+.discord-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.discord-dropdown-trigger {
+    background: #36393f;
+    border: 1px solid #42464d;
+    border-radius: 3px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    min-height: 38px;
+}
+
+.discord-dropdown-trigger:hover {
+    border-color: #040405;
+}
+
+.discord-dropdown-trigger.active {
+    border-color: #5865f2;
+    box-shadow: 0 0 0 1px #5865f2;
+}
+
+.discord-dropdown-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.discord-dropdown-placeholder {
+    color: #b9bbbe;
+    font-size: 14px;
+}
+
+.discord-dropdown-selected {
+    color: #dcddde;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.discord-dropdown-arrow {
+    color: #b9bbbe;
+    transition: transform 0.15s ease;
+}
+
+.discord-dropdown-trigger.active .discord-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.discord-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #36393f;
+    border: 1px solid #42464d;
+    border-radius: 3px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+    z-index: 1000;
+    max-height: 300px;
+    overflow: hidden;
+    display: none;
+    margin-top: 4px;
+}
+
+.discord-dropdown-menu.show {
+    display: block;
+}
+
+.discord-dropdown-search {
+    padding: 8px 8px 0 8px;
+    border-bottom: 1px solid #42464d;
+}
+
+.discord-search-input {
+    width: 100%;
+    background: #202225;
+    border: none;
+    border-radius: 3px;
+    color: #dcddde;
+    font-size: 14px;
+    padding: 8px 10px;
+    outline: none;
+}
+
+.discord-search-input::placeholder {
+    color: #72767d;
+}
+
+.discord-search-input:focus {
+    background: #1e2124;
+}
+
+.discord-dropdown-options {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+.discord-dropdown-option {
+    padding: 6px 8px 6px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #dcddde;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.15s ease;
+}
+
+.discord-dropdown-option:hover {
+    background: #42464d;
+}
+
+.discord-dropdown-option.selected {
+    background: #5865f2;
+    color: #ffffff;
+}
+
+.discord-role-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.discord-role-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.discord-role-position {
+    font-size: 11px;
+    color: #b9bbbe;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.discord-dropdown-loading {
+    padding: 20px;
+    text-align: center;
+    color: #b9bbbe;
+    font-size: 14px;
+}
+
+.discord-dropdown-no-results {
+    padding: 20px;
+    text-align: center;
+    color: #b9bbbe;
+    font-size: 14px;
+}
+</style>
+
+<script>
+let discordRoles = [];
+let existingRoleProducts = [];
+
+// Load Discord roles when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadDiscordRoles();
+    loadExistingRoleProducts();
+    initializeCategoryTabs();
+    initializeFileUpload();
+});
+
+async function loadDiscordRoles() {
+    try {
+        const response = await fetch('/admin/get-discord-roles');
+        const data = await response.json();
+        
+        if (response.ok) {
+            discordRoles = data.roles;
+            populateRoleSelect();
+            showRoleCreationForm();
+        } else {
+            showRoleError(data.error || 'Failed to load Discord roles');
+        }
+    } catch (error) {
+        console.error('Error loading Discord roles:', error);
+        showRoleError('Failed to connect to server');
+    }
+}
+
+function populateRoleSelect() {
+    const dropdownOptions = document.getElementById('dropdown_options');
+    
+    // Clear loading state
+    dropdownOptions.innerHTML = '';
+    
+    // Add roles to dropdown
+    discordRoles.forEach(role => {
+        const option = document.createElement('div');
+        option.className = 'discord-dropdown-option';
+        option.dataset.roleId = role.id;
+        option.dataset.roleName = role.name;
+        option.dataset.roleColor = role.color;
+        option.dataset.rolePosition = role.position;
+        
+        const roleColor = role.color !== '#000000' ? role.color : '#99aab5';
+        
+        option.innerHTML = `
+            <div class="discord-role-color" style="background-color: ${roleColor};"></div>
+            <div class="discord-role-name">${role.name}</div>
+            <div class="discord-role-position">#${role.position}</div>
+        `;
+        
+        option.addEventListener('click', () => selectRole(role));
+        dropdownOptions.appendChild(option);
+    });
+    
+    // Initialize dropdown functionality
+    initializeDiscordDropdown();
+}
+
+function showRoleCreationForm() {
+    document.getElementById('roles-loading').style.display = 'none';
+    document.getElementById('roles-error').style.display = 'none';
+    document.getElementById('role-creation-form').style.display = 'block';
+}
+
+function showRoleError(message) {
+    document.getElementById('roles-loading').style.display = 'none';
+    document.getElementById('role-creation-form').style.display = 'none';
+    document.getElementById('roles-error-message').textContent = message;
+    document.getElementById('roles-error').style.display = 'block';
+}
+
+function initializeDiscordDropdown() {
+    const dropdownTrigger = document.getElementById('dropdown_trigger');
+    const dropdownMenu = document.getElementById('dropdown_menu');
+    const searchInput = document.getElementById('role_search');
+    
+    // Toggle dropdown
+    dropdownTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = dropdownMenu.classList.contains('show');
+        
+        if (isOpen) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    });
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        filterRoles(this.value);
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('role_dropdown').contains(e.target)) {
+            closeDropdown();
+        }
+    });
+    
+    // Prevent dropdown from closing when clicking inside the menu
+    dropdownMenu.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+}
+
+function openDropdown() {
+    const dropdownTrigger = document.getElementById('dropdown_trigger');
+    const dropdownMenu = document.getElementById('dropdown_menu');
+    const searchInput = document.getElementById('role_search');
+    
+    dropdownTrigger.classList.add('active');
+    dropdownMenu.classList.add('show');
+    searchInput.focus();
+    searchInput.value = '';
+    filterRoles('');
+}
+
+function closeDropdown() {
+    const dropdownTrigger = document.getElementById('dropdown_trigger');
+    const dropdownMenu = document.getElementById('dropdown_menu');
+    
+    dropdownTrigger.classList.remove('active');
+    dropdownMenu.classList.remove('show');
+}
+
+function filterRoles(searchTerm) {
+    const options = document.querySelectorAll('.discord-dropdown-option');
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    let hasVisibleOptions = false;
+    
+    options.forEach(option => {
+        const roleName = option.dataset.roleName.toLowerCase();
+        const matches = roleName.includes(lowerSearchTerm);
+        
+        if (matches) {
+            option.style.display = 'flex';
+            hasVisibleOptions = true;
+        } else {
+            option.style.display = 'none';
+        }
+    });
+    
+    // Show no results message if needed
+    const optionsContainer = document.getElementById('dropdown_options');
+    let noResultsMessage = optionsContainer.querySelector('.discord-dropdown-no-results');
+    
+    if (!hasVisibleOptions && searchTerm) {
+        if (!noResultsMessage) {
+            noResultsMessage = document.createElement('div');
+            noResultsMessage.className = 'discord-dropdown-no-results';
+            noResultsMessage.textContent = 'No roles found';
+            optionsContainer.appendChild(noResultsMessage);
+        }
+        noResultsMessage.style.display = 'block';
+    } else if (noResultsMessage) {
+        noResultsMessage.style.display = 'none';
+    }
+}
+
+function selectRole(role) {
+    // Update hidden input
+    document.getElementById('selected_role_id').value = role.id;
+    
+    // Update dropdown trigger display
+    const dropdownContent = document.querySelector('.discord-dropdown-content');
+    const roleColor = role.color !== '#000000' ? role.color : '#99aab5';
+    
+    dropdownContent.innerHTML = `
+        <div class="discord-dropdown-selected">
+            <div class="discord-role-color" style="background-color: ${roleColor};"></div>
+            <div class="discord-role-name">${role.name}</div>
+        </div>
+    `;
+    
+    // Update role preview
+    updateRolePreview(role);
+    
+    // Auto-fill product name if empty
+    const productNameInput = document.getElementById('product_name');
+    if (!productNameInput.value) {
+        productNameInput.value = role.name;
+    }
+    
+    // Close dropdown
+    closeDropdown();
+    
+    // Update selected state in options
+    document.querySelectorAll('.discord-dropdown-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    const selectedOption = document.querySelector(`[data-role-id="${role.id}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+    }
+}
+
+function updateRolePreview(role) {
+    const rolePreview = document.getElementById('role-preview');
+    const roleColor = role.color !== '#000000' ? role.color : '#7289da';
+    
+    rolePreview.innerHTML = `
+        <div class="role-preview-card" style="background: linear-gradient(135deg, ${roleColor}aa, ${roleColor}ff);">
+            <div class="mb-3">
+                <span class="role-color-badge" style="background-color: ${roleColor};"></span>
+                <strong>${role.name}</strong>
+            </div>
+            <p class="mb-2"><i class="fas fa-layer-group mr-2"></i>Position: ${role.position}</p>
+            <p class="mb-0"><i class="fas fa-palette mr-2"></i>Color: ${roleColor}</p>
+        </div>
+    `;
+}
+
+async function loadExistingRoleProducts() {
+    try {
+        const response = await fetch('/admin/get-role-products');
+        const data = await response.json();
+        
+        if (response.ok && data.products.length > 0) {
+            displayExistingProducts(data.products);
+            document.getElementById('existing-role-products').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading existing role products:', error);
+    }
+}
+
+// Category Tab Functionality
+function initializeCategoryTabs() {
+    const tabs = document.querySelectorAll('.category-tab');
+    const sections = document.querySelectorAll('.category-section');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetCategory = this.dataset.category;
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show corresponding section
+            sections.forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            const targetSection = document.getElementById(targetCategory + '-section');
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            }
+        });
+    });
+}
+
+// Minecraft Skin Product Creation
+const skinTemplates = {
+    premium_pack: {
+        name: "🎮 Premium Minecraft Skin Pack",
+        description: "Collection of 5 exclusive custom skins designed by professional artists",
+        price: 300,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "download",
+        auto_delivery: true,
+        file_path: "skins/premium_pack.zip"
+    },
+    knight: {
+        name: "🗡️ Medieval Knight Skin",
+        description: "Epic knight skin with detailed armor and medieval aesthetics",
+        price: 150,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "download",
+        auto_delivery: true,
+        file_path: "skins/knight.png"
+    },
+    wizard: {
+        name: "🧙‍♂️ Wizard Skin Collection",
+        description: "Magical wizard skins with robes, staffs, and mystical details",
+        price: 200,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "download",
+        auto_delivery: true,
+        file_path: "skins/wizard_collection.zip"
+    },
+    superhero: {
+        name: "🦸‍♀️ Superhero Skin Pack",
+        description: "Collection of superhero skins with capes and unique powers theme",
+        price: 250,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "download",
+        auto_delivery: true,
+        file_path: "skins/superhero_pack.zip"
+    },
+    custom: {
+        name: "🎨 Custom Skin Commission",
+        description: "Personalized skin created just for you by our artists",
+        price: 400,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "manual",
+        auto_delivery: false,
+        file_path: "skins/custom/"
+    },
+    animal: {
+        name: "🐺 Animal Pack",
+        description: "Cute animal-themed skins including wolves, cats, pandas and more",
+        price: 175,
+        category: "minecraft",
+        product_type: "minecraft_skin",
+        delivery_method: "download",
+        auto_delivery: true,
+        file_path: "skins/animal_pack.zip"
+    }
+};
+
+async function createSkinProduct(templateKey) {
+    const template = skinTemplates[templateKey];
+    if (!template) {
+        alert('Template not found');
+        return;
+    }
+    
+    const confirmed = confirm(`Create "${template.name}" for ${template.price} pitchforks?`);
+    if (!confirmed) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('name', template.name);
+        formData.append('description', template.description);
+        formData.append('price', template.price);
+        formData.append('category', template.category);
+        formData.append('product_type', template.product_type);
+        formData.append('delivery_method', template.delivery_method);
+        formData.append('auto_delivery', template.auto_delivery);
+        formData.append('file_path', template.file_path);
+        
+        const response = await fetch('/admin/create-from-template', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('Skin product created successfully!');
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert('Error creating product: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error creating skin product:', error);
+        alert('Error creating product. Please try again.');
+    }
+}
+
+// File upload handling for custom skins
+function initializeFileUpload() {
+    const skinFileInput = document.getElementById('skinFile');
+    if (skinFileInput) {
+        skinFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const uploadContent = document.querySelector('.file-upload-content');
+                uploadContent.innerHTML = `
+                    <i class="fas fa-file-image text-3xl mb-2 text-green-400"></i>
+                    <p class="mb-1">${file.name}</p>
+                    <p class="text-sm text-muted">Click to change file</p>
+                `;
+            }
+        });
+    }
+}
+
+function displayExistingProducts(products) {
+    const productsList = document.getElementById('existing-products-list');
+    productsList.innerHTML = '';
+    
+    products.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'col-md-6 col-lg-4 mb-4';
+        productCard.innerHTML = `
+            <div class="card h-100 bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-purple-500/30">
+                <div class="card-body">
+                    <h6 class="card-title font-semibold mb-2">${product.name}</h6>
+                    <p class="card-text text-sm text-muted mb-2">${product.description || 'No description'}</p>
+                    <div class="mb-3">
+                        <span class="inline-block bg-yellow-600 text-white px-2 py-1 rounded text-xs">
+                            <i class="fas fa-coins mr-1"></i>${product.price} pitchforks
+                        </span>
+                        ${product.auto_delivery ? '<span class="inline-block bg-green-600 text-white px-2 py-1 rounded text-xs ml-2"><i class="fas fa-bolt mr-1"></i>Auto</span>' : ''}
+                    </div>
+                    <div class="text-xs text-muted">
+                        <div><i class="fas fa-id-badge mr-1"></i>Role ID: ${product.role_id}</div>
+                        <div><i class="fas fa-calendar mr-1"></i>Created: ${product.created_at}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        productsList.appendChild(productCard);
+    });
+}
+</script>
 {% endblock %} 

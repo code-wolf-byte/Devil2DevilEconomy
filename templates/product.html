@@ -16,7 +16,7 @@
                 <p class="text-gray-600 mb-6">{{ product.description }}</p>
                 
                 <div class="mb-6">
-                    <span class="text-2xl font-bold text-indigo-600">{{ product.price }} points</span>
+                    <span class="text-2xl font-bold text-indigo-600">{{ product.price }} pitchforks</span>
                     <span class="text-gray-500 ml-2">({{ product.stock }} in stock)</span>
                 </div>
 
@@ -25,12 +25,12 @@
                         <form action="{{ url_for('purchase', product_id=product.id) }}" method="POST" onsubmit="return confirmPurchase(event, '{{ product.name }}', {{ product.price }})">
                             <button type="submit" 
                                     class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 
-                                           {% if current_user.points < product.price %}opacity-50 cursor-not-allowed{% endif %}"
-                                    {% if current_user.points < product.price %}disabled{% endif %}>
-                                {% if current_user.points >= product.price %}
+                                           {% if current_user.balance < product.price %}opacity-50 cursor-not-allowed{% endif %}"
+                                    {% if current_user.balance < product.price %}disabled{% endif %}>
+                                {% if current_user.balance >= product.price %}
                                     Purchase
                                 {% else %}
-                                    Insufficient Points
+                                    Insufficient Pitchforks
                                 {% endif %}
                             </button>
                         </form>

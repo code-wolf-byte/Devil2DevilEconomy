@@ -1,0 +1,77 @@
+# Git files
+.git
+.gitignore
+*.md
+LICENSE
+
+# Python cache and virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development files
+.env.local
+.env.development
+.env.test
+
+# Database files (will be created in container)
+*.db
+instance/
+
+# Log files (will be created in container)
+logs/
+*.log
+
+# Docker files
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+docs/
+*.md
+QUICKSTART.md
+DIGITAL_PRODUCTS_GUIDE.md
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node.js (if any)
+node_modules/
+npm-debug.log
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test files
+test_*
+*_test.py
+tests/
+
+# Local uploads (will be mounted as volume)
+data/
+uploads/ 
