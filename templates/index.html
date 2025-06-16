@@ -17,52 +17,7 @@
         </p>
     </div>
 
-    {% if current_user.is_authenticated %}
-        <!-- User Dashboard -->
-        <div class="card p-4 sm:p-6 lg:p-8 animate-slide-up">
-            <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0">
-                <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                    <!-- Discord Profile Picture -->
-                    {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" 
-                             alt="{{ current_user.username }}'s avatar" 
-                             class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-3 border-yellow-400 avatar-glow animate-bounce-subtle">
-                    {% else %}
-                        <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-600 border-3 border-yellow-400 flex items-center justify-center avatar-glow animate-bounce-subtle">
-                            <i class="fas fa-user text-yellow-400 text-xl sm:text-2xl"></i>
-                        </div>
-                    {% endif %}
-                    <div class="text-center sm:text-left">
-                        <h2 class="text-xl sm:text-2xl font-semibold flex items-center justify-center sm:justify-start">
-                            <i class="fas fa-user-circle text-yellow-400 mr-3"></i>
-                            Dashboard
-                        </h2>
-                        <p class="text-muted mt-2">Track your economy progress</p>
-                    </div>
-                </div>
-                {% if current_user.is_admin %}
-                    <a href="{{ url_for('admin_panel') }}" class="btn-primary animate-pulse-subtle">
-                        <i class="fas fa-cog mr-2"></i>Manage Shop
-                    </a>
-                {% endif %}
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-6">
-                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-yellow-400 transition-all duration-300 animate-fade-in-1">
-                    <div class="text-2xl sm:text-3xl font-bold asu-gold mb-2">{{ current_user.balance }}</div>
-                    <div class="text-muted text-sm sm:text-base">Available Balance</div>
-                </div>
-                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-green-400 transition-all duration-300 animate-fade-in-2">
-                    <div class="text-2xl sm:text-3xl font-bold text-green-400 mb-2">{{ current_user.points }}</div>
-                    <div class="text-muted text-sm sm:text-base">Total Points Earned</div>
-                </div>
-                <div class="text-center p-4 bg-gray-800 rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-300 animate-fade-in-3 sm:col-span-2 lg:col-span-1">
-                    <div class="text-2xl sm:text-3xl font-bold text-blue-400 mb-2">{{ purchases|length if purchases else 0 }}</div>
-                    <div class="text-muted text-sm sm:text-base">Items Purchased</div>
-                </div>
-            </div>
-        </div>
-    {% else %}
+    {% if not current_user.is_authenticated %}
         <!-- Guest Welcome -->
         <div class="card p-6 sm:p-8 text-center animate-slide-up">
             <i class="fas fa-shopping-cart text-4xl sm:text-6xl asu-gold mb-4 animate-bounce-subtle"></i>
@@ -139,7 +94,7 @@
                             
                             {% if current_user.is_authenticated %}
                                 {% if (product.stock == 0 or product.stock > 0) and current_user.balance >= product.price %}
-                                    <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}">
+                                    <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}" onsubmit="return confirmPurchase(event, '{{ product.name }}', {{ product.price }})">
                                         <button type="submit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
                                             <i class="fas fa-shopping-cart mr-2"></i>
                                             Purchase Now
@@ -202,6 +157,47 @@
         </div>
     {% endif %}
 </div>
+
+<!-- Purchase Confirmation Modal -->
+<div id="purchaseConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
+        <h3 class="text-xl font-bold mb-4">Confirm Purchase</h3>
+        <p class="mb-4">Are you sure you want to purchase <span id="productName" class="font-semibold"></span> for <span id="productPrice" class="font-semibold asu-gold"></span> points?</p>
+        <div class="text-sm text-gray-400 mb-4">
+            <p><i class="fas fa-info-circle mr-2"></i>All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</p>
+        </div>
+        <div class="flex justify-end space-x-4">
+            <button onclick="closePurchaseConfirmation()" class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
+            <button onclick="confirmPurchaseSubmit()" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">Confirm Purchase</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentForm = null;
+
+    function confirmPurchase(event, productName, price) {
+        event.preventDefault();
+        currentForm = event.target;
+        document.getElementById('productName').textContent = productName;
+        document.getElementById('productPrice').textContent = price;
+        document.getElementById('purchaseConfirmationModal').classList.remove('hidden');
+        document.getElementById('purchaseConfirmationModal').classList.add('flex');
+    }
+
+    function closePurchaseConfirmation() {
+        document.getElementById('purchaseConfirmationModal').classList.add('hidden');
+        document.getElementById('purchaseConfirmationModal').classList.remove('flex');
+        currentForm = null;
+    }
+
+    function confirmPurchaseSubmit() {
+        if (currentForm) {
+            currentForm.submit();
+        }
+        closePurchaseConfirmation();
+    }
+</script>
 
 <style>
 /* Custom Animations */

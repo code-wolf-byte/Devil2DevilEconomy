@@ -260,7 +260,7 @@
                 {% if current_user.is_authenticated %}
                     <div class="points-badge">
                         <i class="fas fa-coins"></i>
-                        {{ current_user.points }} Points
+                        {{ current_user.balance }} Points
                     </div>
                     <div class="flex items-center space-x-3">
                         <!-- Discord Profile Picture -->
@@ -285,6 +285,9 @@
                     {% endif %}
                     <a href="{{ url_for('logout') }}" class="hover:text-yellow-300 transition-colors">
                         <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                    </a>
+                    <a href="{{ url_for('my_purchases') }}" class="hover:text-yellow-300 transition-colors">
+                        <i class="fas fa-shopping-bag mr-1"></i>My Purchases
                     </a>
                 {% else %}
                     <div class="text-sm text-gray-300">

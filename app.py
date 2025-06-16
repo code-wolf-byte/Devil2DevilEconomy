@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
@@ -7,6 +7,10 @@ import requests
 import threading
 import os
 import uuid
+import json
+import asyncio
+from contextlib import contextmanager
+from flask_migrate import Migrate
 
 from dotenv import load_dotenv
 
@@ -20,11 +24,32 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///store.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_timeout': 20,
+    'pool_recycle': 300,
+    'pool_pre_ping': True,
+    'pool_size': 10,
+    'max_overflow': 20
+}
 
 # File upload configuration
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+@contextmanager
+def db_transaction():
+    """Database transaction context manager with proper error handling."""
+    try:
+        db.session.begin()
+        yield db.session
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database transaction rolled back: {e}")
+        raise
+    finally:
+        db.session.close()
 
 # Helper function to construct Discord avatar URL
 def get_discord_avatar_url(user_id, avatar_hash):
@@ -47,13 +72,14 @@ def allowed_file(filename):
 
 # Initialize extensions
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # Discord configuration with fallbacks and debugging
 DISCORD_CLIENT_ID = os.getenv('DISCORD_CLIENT_ID')
 DISCORD_CLIENT_SECRET = os.getenv('DISCORD_CLIENT_SECRET')
-DISCORD_REDIRECT_URI = os.getenv('DISCORD_REDIRECT_URI', 'http://localhost:5000/callback')
+DISCORD_REDIRECT_URI = 'http://localhost:5000/callback'
 DISCORD_OAUTH_SCOPE = 'identify guilds guilds.members.read'
 DISCORD_API_BASE_URL = 'https://discord.com/api'
 
@@ -108,9 +134,29 @@ class Product(db.Model):
     stock = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
+    # Digital product fields
+    product_type = db.Column(db.String(50), default='physical')  # physical, role, minecraft_skin, game_code, custom
+    delivery_method = db.Column(db.String(50))  # auto_role, manual, download, code_generation
+    delivery_data = db.Column(db.Text)  # JSON data for delivery (role_id, file_path, etc.)
+    auto_delivery = db.Column(db.Boolean, default=False)
+    category = db.Column(db.String(50), default='general')
+    
     def __repr__(self):
-        return f'<Product {self.name}>'
+        return f'<Product {self.name} ({self.product_type})>'
+    
+    @property
+    def is_digital(self):
+        return self.product_type != 'physical'
+    
+    @property
+    def delivery_config(self):
+        """Parse delivery_data as JSON"""
+        import json
+        try:
+            return json.loads(self.delivery_data) if self.delivery_data else {}
+        except:
+            return {}
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -118,6 +164,8 @@ class Purchase(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     points_spent = db.Column(db.Integer, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    delivery_info = db.Column(db.Text)  # Store delivery details (codes, download links, etc.)
+    status = db.Column(db.String(20), default='completed')  # completed, pending_delivery, failed
 
     user = db.relationship('User', backref=db.backref('purchases', lazy=True))
     product = db.relationship('Product', backref=db.backref('purchases', lazy=True))
@@ -154,6 +202,36 @@ class EconomySettings(db.Model):
     
     def __repr__(self):
         return f'<EconomySettings enabled={self.economy_enabled}>'
+
+# Digital Product Support Models
+class RoleAssignment(db.Model):
+    """Queue for Discord role assignments"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(20), db.ForeignKey('user.id'), nullable=False)
+    role_id = db.Column(db.String(20), nullable=False)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchase.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, completed, failed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    error_message = db.Column(db.Text)
+    
+    user = db.relationship('User', backref='role_assignments')
+    purchase = db.relationship('Purchase', backref='role_assignment')
+
+class DownloadToken(db.Model):
+    """Secure download tokens for digital products"""
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(36), unique=True, nullable=False)
+    user_id = db.Column(db.String(20), db.ForeignKey('user.id'), nullable=False)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchase.id'), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    downloaded = db.Column(db.Boolean, default=False)
+    download_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    
+    user = db.relationship('User', backref='download_tokens')
+    purchase = db.relationship('Purchase', backref='download_tokens')
 
 # Initialize database
 with app.app_context():
@@ -198,7 +276,104 @@ with app.app_context():
 # Initialize login manager
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.query.get(str(user_id))
+
+# Digital Product Delivery System
+class DigitalDeliveryService:
+    """Service for handling digital product delivery"""
+    
+    @staticmethod
+    def deliver_product(user, product, purchase):
+        """Deliver digital product to user based on product type"""
+        try:
+            if product.delivery_method == 'auto_role':
+                return DigitalDeliveryService._deliver_discord_role(user, product, purchase)
+            elif product.delivery_method == 'code_generation':
+                return DigitalDeliveryService._generate_code(user, product, purchase)
+            elif product.delivery_method == 'download':
+                return DigitalDeliveryService._prepare_download(user, product, purchase)
+            elif product.delivery_method == 'manual':
+                return DigitalDeliveryService._queue_manual_delivery(user, product, purchase)
+            else:
+                return False, "Unknown delivery method"
+        except Exception as e:
+            print(f"Digital delivery error: {e}")
+            return False, f"Delivery failed: {str(e)}"
+    
+    @staticmethod
+    def _deliver_discord_role(user, product, purchase):
+        """Deliver Discord role to user"""
+        delivery_config = product.delivery_config
+        role_id = delivery_config.get('role_id')
+        
+        if not role_id:
+            return False, "Role ID not configured"
+        
+        # Queue role assignment for bot to process
+        role_assignment = RoleAssignment(
+            user_id=user.id,
+            role_id=role_id,
+            purchase_id=purchase.id,
+            status='pending'
+        )
+        db.session.add(role_assignment)
+        db.session.commit()
+        
+        return True, f"Discord role will be assigned within 1 minute"
+    
+    @staticmethod
+    def _generate_code(user, product, purchase):
+        """Generate unique code for user"""
+        delivery_config = product.delivery_config
+        code_pattern = delivery_config.get('code_pattern', 'GAME-{uuid}')
+        
+        # Generate unique code
+        unique_code = code_pattern.format(
+            uuid=str(uuid.uuid4())[:8].upper(),
+            user_id=user.id,
+            product_id=product.id
+        )
+        
+        # Store code in purchase notes (we'll need to add this field)
+        purchase.delivery_info = f"Generated code: {unique_code}"
+        db.session.commit()
+        
+        return True, f"Your code: **{unique_code}**"
+    
+    @staticmethod
+    def _prepare_download(user, product, purchase):
+        """Prepare download link for user"""
+        delivery_config = product.delivery_config
+        file_path = delivery_config.get('file_path')
+        
+        if not file_path:
+            return False, "Download file not configured"
+        
+        # Generate secure download token
+        download_token = str(uuid.uuid4())
+        
+        # Store download info
+        from datetime import timedelta
+        download_info = DownloadToken(
+            token=download_token,
+            user_id=user.id,
+            purchase_id=purchase.id,
+            file_path=file_path,
+            expires_at=datetime.utcnow() + timedelta(hours=24)
+        )
+        db.session.add(download_info)
+        db.session.commit()
+        
+        download_url = f"/download/{download_token}"
+        return True, f"Download link: {download_url} (expires in 24 hours)"
+    
+    @staticmethod
+    def _queue_manual_delivery(user, product, purchase):
+        """Queue product for manual delivery by admin"""
+        purchase.delivery_info = f"Manual delivery required for {product.name}"
+        db.session.commit()
+        
+        return True, "Your purchase is queued for manual delivery. You'll be contacted within 24 hours."
 
 @app.route('/')
 def index():
@@ -259,6 +434,17 @@ def callback():
         
         user_data = user_response.json()
         print(f"User data: {user_data}")
+        
+        # Verify the Discord user ID matches the OAuth token
+        if not user_data.get('id'):
+            flash('Invalid Discord user data received')
+            return redirect(url_for('index'))
+        
+        # Additional validation: Check token validity by re-requesting user info
+        verify_response = requests.get(f"{DISCORD_API_BASE_URL}/users/@me", headers=headers)
+        if verify_response.status_code != 200 or verify_response.json().get('id') != user_data['id']:
+            flash('Authentication verification failed')
+            return redirect(url_for('index'))
         
         # Check if user is admin in the Discord server
         is_admin = False
@@ -370,27 +556,45 @@ def callback():
         # Construct avatar URL
         avatar_url = get_discord_avatar_url(user_data['id'], user_data.get('avatar'))
         
-        user = User.query.filter_by(discord_id=user_data['id']).first()
+        # Try to get user by primary key (id) first, then by discord_id
+        user = User.query.filter_by(id=user_data['id']).first()
         if not user:
-            user = User(
-                id=user_data['id'],  # Use Discord ID as primary key
-                username=user_data['username'],
-                discord_id=user_data['id'],
-                avatar_url=avatar_url,
-                is_admin=is_admin,
-                points=0,
-                balance=0
-            )
-            db.session.add(user)
-            db.session.commit()
-            print(f"Created new user: {user.username} (Admin: {is_admin})")
-        else:
-            # Update admin status in case it changed
-            user.is_admin = is_admin
-            user.username = user_data['username']  # Update username in case it changed
-            user.avatar_url = avatar_url
+            user = User.query.filter_by(discord_id=user_data['id']).first()
+        
+        if not user:
+            try:
+                user = User(
+                    id=user_data['id'],  # Use Discord ID as primary key
+                    username=user_data['username'],
+                    discord_id=user_data['id'],
+                    avatar_url=avatar_url,
+                    is_admin=is_admin,
+                    points=0,
+                    balance=0
+                )
+                db.session.add(user)
+                db.session.commit()
+                print(f"Created new user: {user.username} (Admin: {is_admin})")
+            except Exception as e:
+                # Rollback and try to get user again in case of race condition
+                db.session.rollback()
+                user = User.query.filter_by(id=user_data['id']).first()
+                if not user:
+                    user = User.query.filter_by(discord_id=user_data['id']).first()
+                if not user:
+                    raise e  # Re-raise if we still can't find the user
+                print(f"Race condition resolved, found existing user: {user.username}")
+        
+        # Update user information
+        user.is_admin = is_admin
+        user.username = user_data['username']  # Update username in case it changed
+        user.avatar_url = avatar_url
+        try:
             db.session.commit()
             print(f"Updated existing user: {user.username} (Admin: {is_admin})")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating user: {e}")
         
         login_user(user)
         if is_admin:
@@ -415,37 +619,88 @@ def logout():
 @app.route('/purchase/<int:product_id>', methods=['POST'])
 @login_required
 def purchase(product_id):
-    product = Product.query.get_or_404(product_id)
-    if current_user.balance < product.price:
-        flash('Insufficient balance')
+    try:
+        # Re-fetch current user to get latest balance
+        current_user_fresh = User.query.with_for_update().get(current_user.id)
+        if not current_user_fresh:
+            flash('User not found')
+            return redirect(url_for('index'))
+        
+        # Lock the product row to prevent race conditions
+        product = Product.query.with_for_update().get_or_404(product_id)
+        
+        # Validate balance
+        if current_user_fresh.balance < product.price:
+            flash('Insufficient balance')
+            return redirect(url_for('index'))
+        
+        # Check stock availability (with race condition protection)
+        if product.stock != 0 and product.stock < 1:
+            flash('Product is out of stock')
+            return redirect(url_for('index'))
+        
+        # Generate UUID if user doesn't have one
+        if not current_user_fresh.user_uuid:
+            current_user_fresh.user_uuid = str(uuid.uuid4())
+            print(f"Generated new UUID for user {current_user_fresh.username}: {current_user_fresh.user_uuid}")
+        
+        # Atomic balance deduction
+        current_user_fresh.balance -= product.price
+        
+        # Atomic stock reduction (if limited stock)
+        if product.stock > 0:
+            product.stock -= 1
+        
+        # Create purchase record
+        purchase = Purchase(
+            user_id=current_user_fresh.id, 
+            product_id=product.id, 
+            points_spent=product.price
+        )
+        db.session.add(purchase)
+        db.session.flush()  # Get purchase ID for digital delivery
+        
+        # Handle digital product delivery
+        delivery_success = True
+        delivery_message = ""
+        
+        if product.is_digital and product.auto_delivery:
+            delivery_success, delivery_message = DigitalDeliveryService.deliver_product(
+                current_user_fresh, product, purchase
+            )
+            
+            if delivery_success:
+                purchase.status = 'completed'
+                purchase.delivery_info = delivery_message
+            else:
+                purchase.status = 'pending_delivery'
+                purchase.delivery_info = f"Delivery failed: {delivery_message}"
+        
+        # Commit all changes atomically
+        db.session.commit()
+        
+        # Update current_user object for session
+        current_user.balance = current_user_fresh.balance
+        current_user.user_uuid = current_user_fresh.user_uuid
+        
+        # Success message based on delivery
+        if delivery_success and product.is_digital:
+            flash(f'Purchase successful! {delivery_message}')
+        elif product.is_digital and not delivery_success:
+            flash(f'Purchase completed but delivery pending: {delivery_message}')
+        else:
+            flash(f'Purchase successful! Your UUID: {current_user_fresh.user_uuid}')
+        
+        print(f"Purchase completed: User {current_user_fresh.username} bought {product.name} for {product.price} points")
+        
         return redirect(url_for('index'))
-    
-    # Check if product is available for purchase
-    # Stock logic: 0 = unlimited stock, > 0 = limited stock
-    # If product has limited stock and none available, prevent purchase
-    if product.stock != 0 and product.stock < 1:
-        flash('Product is out of stock')
+        
+    except Exception as e:
+        # Rollback transaction on any error
+        db.session.rollback()
+        print(f"Purchase failed: {str(e)}")
+        flash('Purchase failed. Please try again.')
         return redirect(url_for('index'))
-    
-    # Generate UUID if user doesn't have one
-    if not current_user.user_uuid:
-        current_user.user_uuid = str(uuid.uuid4())
-        print(f"Generated new UUID for user {current_user.username}: {current_user.user_uuid}")
-    
-    current_user.balance -= product.price
-    
-    # Decrease stock if it's not unlimited (stock > 0 means limited stock)
-    if product.stock > 0:
-        product.stock -= 1
-    
-    purchase = Purchase(user_id=current_user.id, product_id=product.id, points_spent=product.price)
-    db.session.add(purchase)
-    db.session.commit()
-    
-    # For now, just notify about UUID - DM functionality will be added later
-    flash(f'Purchase successful! Your UUID: {current_user.user_uuid}')
-    
-    return redirect(url_for('index'))
 
 @app.route('/admin')
 @login_required
@@ -494,15 +749,39 @@ def new_product():
             if 'image' in request.files:
                 file = request.files['image']
                 if file and file.filename != '' and allowed_file(file.filename):
-                    # Generate unique filename
-                    filename = secure_filename(file.filename)
-                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    # Generate secure filename (prevent any directory traversal)
+                    original_filename = secure_filename(file.filename)
+                    # Remove any remaining path separators and dots
+                    safe_filename = original_filename.replace('..', '').replace('/', '').replace('\\', '')
+                    if not safe_filename:
+                        safe_filename = 'upload'
                     
-                    # Ensure upload directory exists
-                    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                    # Generate completely new filename with safe extension
+                    file_ext = safe_filename.rsplit('.', 1)[1].lower() if '.' in safe_filename else 'jpg'
+                    if file_ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
+                        file_ext = 'jpg'
+                    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+                    
+                    # Ensure upload directory exists and is secure
+                    upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Create full file path and verify it's within upload directory
+                    file_path = os.path.abspath(os.path.join(upload_dir, unique_filename))
+                    if not file_path.startswith(upload_dir):
+                        flash('Invalid file path detected')
+                        return render_template('product_form.html', title='Add New Product')
+                    
+                    # Validate file size and type
+                    file.seek(0, 2)  # Seek to end
+                    file_size = file.tell()
+                    file.seek(0)  # Reset to beginning
+                    
+                    if file_size > app.config['MAX_CONTENT_LENGTH']:
+                        flash('File too large. Maximum size is 16MB.')
+                        return render_template('product_form.html', title='Add New Product')
                     
                     # Save file
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
                     file.save(file_path)
                     image_filename = unique_filename
                     print(f"Image uploaded successfully: {image_filename}")
@@ -510,12 +789,73 @@ def new_product():
                     flash('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
                     return render_template('product_form.html', title='Add New Product')
             
+            # Validate and sanitize input
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            
+            if not name:
+                flash('Product name is required')
+                return render_template('product_form.html', title='Add New Product')
+            
+            if len(name) > 100:
+                flash('Product name must be 100 characters or less')
+                return render_template('product_form.html', title='Add New Product')
+            
+            try:
+                price = int(request.form['price'])
+                if price < 0:
+                    flash('Price must be a positive number')
+                    return render_template('product_form.html', title='Add New Product')
+                if price > 999999:
+                    flash('Price must be less than 1,000,000')
+                    return render_template('product_form.html', title='Add New Product')
+            except (ValueError, KeyError):
+                flash('Invalid price. Please enter a valid number.')
+                return render_template('product_form.html', title='Add New Product')
+            
+            try:
+                stock = int(request.form.get('stock', 0))
+                if stock < 0:
+                    flash('Stock must be a positive number or 0 for unlimited')
+                    return render_template('product_form.html', title='Add New Product')
+                if stock > 999999:
+                    flash('Stock must be less than 1,000,000')
+                    return render_template('product_form.html', title='Add New Product')
+            except ValueError:
+                flash('Invalid stock. Please enter a valid number.')
+                return render_template('product_form.html', title='Add New Product')
+
+            # Get digital product fields
+            product_type = request.form.get('product_type', 'physical')
+            delivery_method = request.form.get('delivery_method', '')
+            auto_delivery = 'auto_delivery' in request.form
+            category = request.form.get('category', 'general')
+            
+            # Handle delivery data (JSON)
+            delivery_data = ""
+            if product_type == 'role' and delivery_method == 'auto_role':
+                role_id = request.form.get('role_id', '').strip()
+                if role_id:
+                    delivery_data = json.dumps({"role_id": role_id})
+            elif product_type == 'game_code' and delivery_method == 'code_generation':
+                code_pattern = request.form.get('code_pattern', 'GAME-{uuid}').strip()
+                delivery_data = json.dumps({"code_pattern": code_pattern})
+            elif delivery_method == 'download':
+                file_path = request.form.get('file_path', '').strip()
+                if file_path:
+                    delivery_data = json.dumps({"file_path": file_path})
+
             product = Product(
-                name=request.form['name'],
-                description=request.form['description'],
-                price=int(request.form['price']),
-                stock=int(request.form.get('stock', 0)),
-                image_url=image_filename  # Store filename instead of URL
+                name=name,
+                description=description,
+                price=price,
+                stock=stock,
+                image_url=image_filename,  # Store filename instead of URL
+                product_type=product_type,
+                delivery_method=delivery_method,
+                delivery_data=delivery_data,
+                auto_delivery=auto_delivery,
+                category=category
             )
             db.session.add(product)
             db.session.commit()
@@ -621,12 +961,194 @@ from bot import run_bot, init_bot_with_app
 # Initialize bot with app and models
 init_bot_with_app(app, db, User, Achievement, UserAchievement, EconomySettings)
 
-if __name__ == '__main__':
-    # Start Discord bot in a separate thread
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
+@app.route('/admin/digital-templates')
+@login_required
+def digital_templates():
+    """Show pre-made digital product templates"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
     
-    # Start Flask application
-    print("Starting Flask application...")
-    app.run(host='0.0.0.0', port=5000) 
+    # Digital product templates
+    templates = {
+        "roles": [
+            {
+                "name": "💎 VIP Role",
+                "description": "Exclusive VIP status with special perms and color",
+                "price": 500,
+                "category": "roles",
+                "product_type": "role",
+                "delivery_method": "auto_role",
+                "auto_delivery": True,
+                "role_id_placeholder": "ROLE_ID_HERE"
+            },
+            {
+                "name": "🎨 Color Master",
+                "description": "Custom name color and hoisted role",
+                "price": 300,
+                "category": "roles", 
+                "product_type": "role",
+                "delivery_method": "auto_role",
+                "auto_delivery": True,
+                "role_id_placeholder": "ROLE_ID_HERE"
+            },
+            {
+                "name": "⭐ Server Booster Plus",
+                "description": "Enhanced booster perks and recognition",
+                "price": 750,
+                "category": "roles",
+                "product_type": "role", 
+                "delivery_method": "auto_role",
+                "auto_delivery": True,
+                "role_id_placeholder": "ROLE_ID_HERE"
+            }
+        ],
+        "skins": [
+            {
+                "name": "🎮 Premium Minecraft Skin Pack",
+                "description": "5 exclusive custom skins designed by our artists",
+                "price": 200,
+                "category": "minecraft",
+                "product_type": "minecraft_skin",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "skins/premium_pack.zip"
+            },
+            {
+                "name": "🗡️ Medieval Knight Skin",
+                "description": "Epic knight skin with armor details", 
+                "price": 100,
+                "category": "minecraft",
+                "product_type": "minecraft_skin",
+                "delivery_method": "download",
+                "auto_delivery": True,
+                "file_path_placeholder": "skins/knight.png"
+            }
+        ],
+        "codes": [
+            {
+                "name": "🎯 Steam Game Code",
+                "description": "Random steam game worth $10-20",
+                "price": 1000,
+                "category": "gaming",
+                "product_type": "game_code",
+                "delivery_method": "code_generation", 
+                "auto_delivery": True,
+                "code_pattern": "STEAM-{uuid}"
+            },
+            {
+                "name": "🎁 Gift Card Code",
+                "description": "$5 Amazon gift card",
+                "price": 500,  
+                "category": "gift_cards",
+                "product_type": "gift_card",
+                "delivery_method": "code_generation",
+                "auto_delivery": True,
+                "code_pattern": "GIFT-{uuid}"
+            }
+        ]
+    }
+    
+    return render_template('digital_templates.html', templates=templates)
+
+@app.route('/admin/create-from-template', methods=['POST'])
+@login_required
+def create_from_template():
+    """Create product from template"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    try:
+        # Get template data from form
+        template_name = request.form.get('name')
+        description = request.form.get('description')
+        price = int(request.form.get('price'))
+        category = request.form.get('category')
+        product_type = request.form.get('product_type')
+        delivery_method = request.form.get('delivery_method')
+        auto_delivery = 'auto_delivery' in request.form
+        
+        # Get delivery configuration
+        delivery_data = ""
+        if delivery_method == 'auto_role':
+            role_id = request.form.get('role_id', '').strip()
+            if not role_id:
+                flash('Role ID is required for role products')
+                return redirect(url_for('digital_templates'))
+            delivery_data = json.dumps({"role_id": role_id})
+        elif delivery_method == 'download':
+            file_path = request.form.get('file_path', '').strip()
+            if not file_path:
+                flash('File path is required for download products')
+                return redirect(url_for('digital_templates'))
+            delivery_data = json.dumps({"file_path": file_path})
+        elif delivery_method == 'code_generation':
+            code_pattern = request.form.get('code_pattern', 'CODE-{uuid}')
+            delivery_data = json.dumps({"code_pattern": code_pattern})
+        
+        # Create product
+        product = Product(
+            name=template_name,
+            description=description,
+            price=price,
+            stock=0,  # Digital products typically have unlimited stock
+            category=category,
+            product_type=product_type,
+            delivery_method=delivery_method,
+            delivery_data=delivery_data,
+            auto_delivery=auto_delivery
+        )
+        
+        db.session.add(product)
+        db.session.commit()
+        
+        flash(f'Digital product "{template_name}" created successfully!')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating product: {str(e)}')
+        print(f"Error in create_from_template: {e}")
+    
+    return redirect(url_for('admin_panel'))
+
+@app.route('/my-purchases')
+@login_required
+def my_purchases():
+    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).all()
+    return render_template('my_purchases.html', purchases=purchases)
+
+if __name__ == '__main__':
+    import signal
+    import sys
+    
+    # Global variable to track bot thread
+    bot_thread = None
+    
+    def signal_handler(sig, frame):
+        """Handle graceful shutdown"""
+        print("\nShutting down gracefully...")
+        if bot_thread and bot_thread.is_alive():
+            print("Waiting for bot thread to finish...")
+            bot_thread.join(timeout=5)
+        sys.exit(0)
+    
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        # Start Discord bot in a separate thread
+        bot_thread = threading.Thread(target=run_bot, name="DiscordBot")
+        bot_thread.daemon = False  # Not daemon to allow graceful shutdown
+        bot_thread.start()
+        
+        # Start Flask application
+        print("Starting Flask application...")
+        app.run(host='0.0.0.0', port=5000, threaded=True)
+        
+    except KeyboardInterrupt:
+        signal_handler(None, None)
+    except Exception as e:
+        print(f"Application error: {e}")
+        signal_handler(None, None) 

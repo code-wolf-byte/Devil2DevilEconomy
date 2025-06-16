@@ -2,6 +2,222 @@
 
 A professional Discord economy bot and web application built with Flask and Nextcord, featuring a modern ASU-themed UI, custom emoji reward system, and comprehensive shop management.
 
+## 🧪 Economy System Testing Checklist
+
+Before deploying the economy system, perform these tests to ensure everything works as intended:
+
+### 🔧 **Initial Setup Tests**
+
+#### ✅ **Bot Startup & Connection**
+- [ ] Bot starts without errors
+- [ ] Bot connects to Discord successfully
+- [ ] Bot shows as online in Discord server
+- [ ] Slash commands sync properly (`/balance`, `/daily`, etc. appear in Discord)
+- [ ] Web application starts on correct port (default: 5000)
+- [ ] Database migrations run successfully
+
+#### ✅ **Environment Configuration**
+- [ ] All required environment variables are set in `.env`
+- [ ] Discord bot token is valid
+- [ ] Discord OAuth credentials work
+- [ ] Channel IDs are correct (GENERAL_CHANNEL_ID, etc.)
+- [ ] Role IDs are correct (VERIFIED_ROLE_ID, ONBOARDING_ROLE_IDS)
+
+### 💰 **Basic Economy Commands**
+
+#### ✅ **Balance Command** (`/balance`)
+- [ ] New users get default balance (0 points)
+- [ ] Balance displays correctly for existing users
+- [ ] Command works in DMs and server channels
+- [ ] Embed formatting displays properly
+
+#### ✅ **Daily Reward** (`/daily`)
+- [ ] First-time users can claim 85 points
+- [ ] Balance increases by 85 points after claiming
+- [ ] 24-hour cooldown prevents multiple claims
+- [ ] Cooldown timer shows remaining time accurately
+- [ ] Error message displays when economy is disabled
+
+#### ✅ **Leaderboard** (`/leaderboard`)
+- [ ] Shows top 10 users by balance
+- [ ] Users are ranked correctly (highest to lowest)
+- [ ] Displays "No users found" when database is empty
+- [ ] Updates in real-time as balances change
+
+### 🏆 **Achievement System**
+
+#### ✅ **Achievement Tracking**
+- [ ] Message count increases when users send messages
+- [ ] Reaction count increases when users react to messages
+- [ ] Voice minutes track when users join voice channels
+- [ ] Achievement requirements are checked correctly
+
+#### ✅ **Achievement Awards**
+- [ ] Users receive achievements when meeting requirements
+- [ ] Points are awarded correctly for achievements
+- [ ] Achievement announcements appear in general channel
+- [ ] Users can't receive the same achievement twice
+- [ ] `/achievements` command shows user's unlocked achievements
+
+### 👑 **Admin Functions**
+
+#### ✅ **Economy Toggle** (`/economy`)
+- [ ] Only administrators can use the command
+- [ ] `/economy enable` activates the economy system
+- [ ] `/economy disable` deactivates the economy system
+- [ ] First-time enable awards "Verified" achievement to verified users
+- [ ] Commands are disabled when economy is off
+
+#### ✅ **Bulk Point Distribution** (`/give_all`)
+- [ ] Only administrators can use the command
+- [ ] Points are added to all users' balances
+- [ ] Database updates correctly for all users
+- [ ] No users are missed in the distribution
+
+### 🎯 **Point Earning Methods**
+
+#### ✅ **Role-Based Bonuses**
+- [ ] Verification bonus (200 points) awarded when user gets verified role
+- [ ] Onboarding bonus (500 points) awarded for onboarding roles
+- [ ] Bonuses are only awarded once per user
+- [ ] Welcome messages appear in general channel
+- [ ] Atomic transactions prevent duplicate bonuses
+
+#### ✅ **Custom Emoji Rewards**
+- [ ] Admin reactions with `:daily_engage:` award 25 points
+- [ ] Admin reactions with `:campus_photo:` award 100 points (only on image posts)
+- [ ] Admin reactions with `:deposit_check:` award 500 points (one-time)
+- [ ] Non-admin reactions don't award points
+- [ ] Cooldowns work correctly (20 hours for daily engagement)
+- [ ] Confirmation messages are sent to users
+
+#### ✅ **Activity Tracking**
+- [ ] Message count increases when users post messages
+- [ ] Reaction count increases when users react
+- [ ] Voice time tracks when users join voice channels
+- [ ] Only human users are tracked (bots ignored)
+
+### 🎂 **Birthday System**
+
+#### ✅ **Birthday Registration**
+- [ ] Users can set birthday with `/birthday` command
+- [ ] Birthday can only be set once per user
+- [ ] 50 points awarded for setting birthday
+- [ ] Invalid dates are rejected
+
+#### ✅ **Birthday Announcements**
+- [ ] Daily birthday check runs at 9:30 MST
+- [ ] Birthday announcements appear in general channel
+- [ ] Correct users are announced on their birthday
+- [ ] No announcements when no birthdays
+
+### 🌐 **Web Interface Tests**
+
+#### ✅ **Authentication**
+- [ ] Discord OAuth login works
+- [ ] Users are redirected correctly after login
+- [ ] User sessions persist correctly
+- [ ] Logout functionality works
+
+#### ✅ **Store Functionality**
+- [ ] Products display correctly on homepage
+- [ ] Purchase confirmation dialog appears
+- [ ] Purchases deduct correct points from balance
+- [ ] Purchase history shows in "My Purchases" page
+- [ ] Stock levels update after purchases
+
+#### ✅ **Admin Panel**
+- [ ] Only admins can access admin routes
+- [ ] Product management (add/edit/delete) works
+- [ ] Image uploads function properly
+- [ ] Purchase history displays correctly
+- [ ] User management features work
+
+### 🔄 **Background Tasks**
+
+#### ✅ **Role Assignment Processor**
+- [ ] Digital product role assignments process correctly
+- [ ] Failed assignments are marked appropriately
+- [ ] Users receive confirmation DMs when roles are assigned
+- [ ] Task runs every 30 seconds without errors
+
+#### ✅ **Birthday Check Task**
+- [ ] Task starts automatically when bot starts
+- [ ] Runs daily at configured time (9:30 MST)
+- [ ] Handles timezone conversion correctly
+- [ ] Doesn't crash on database errors
+
+### 🛡️ **Error Handling & Edge Cases**
+
+#### ✅ **Database Integrity**
+- [ ] Concurrent transactions don't cause race conditions
+- [ ] Database rollbacks work on errors
+- [ ] User creation handles duplicates gracefully
+- [ ] Foreign key constraints are respected
+
+#### ✅ **Discord API Limits**
+- [ ] Rate limiting is handled properly
+- [ ] Failed DMs fall back to channel messages
+- [ ] Bot handles missing permissions gracefully
+- [ ] Large embed messages don't exceed Discord limits
+
+#### ✅ **Input Validation**
+- [ ] Invalid command parameters are rejected
+- [ ] SQL injection attempts are prevented
+- [ ] File uploads are validated properly
+- [ ] User input is sanitized
+
+### 📊 **Performance Tests**
+
+#### ✅ **Load Testing**
+- [ ] Bot handles multiple simultaneous commands
+- [ ] Web interface responds quickly under load
+- [ ] Database queries are optimized
+- [ ] Memory usage remains stable over time
+
+#### ✅ **Data Consistency**
+- [ ] Point balances match transaction history
+- [ ] Achievement counts are accurate
+- [ ] Purchase records are complete
+- [ ] User statistics are correct
+
+### 🔍 **Final Verification**
+
+#### ✅ **End-to-End User Journey**
+- [ ] New user joins server → gets roles → receives bonuses
+- [ ] User earns points through various methods
+- [ ] User makes purchases → balance decreases → purchase recorded
+- [ ] User unlocks achievements → receives points → announcement sent
+- [ ] Admin manages economy → changes take effect immediately
+
+#### ✅ **System Health**
+- [ ] No memory leaks after extended operation
+- [ ] Log files don't show recurring errors
+- [ ] All background tasks continue running
+- [ ] Database performance remains stable
+
+---
+
+### 🚨 **Critical Issues to Watch For**
+
+- **Duplicate Bonuses**: Users receiving verification/onboarding bonuses multiple times
+- **Race Conditions**: Multiple transactions modifying the same user's balance simultaneously
+- **Achievement Spam**: Users receiving the same achievement repeatedly
+- **Command Failures**: Slash commands not responding or showing errors
+- **Database Locks**: Long-running transactions blocking other operations
+- **Memory Leaks**: Bot memory usage increasing over time
+- **Task Failures**: Background tasks stopping unexpectedly
+
+### 📝 **Testing Notes**
+
+- Test with multiple users to verify concurrent operations
+- Use different Discord clients (desktop, mobile, web) to ensure compatibility
+- Test during peak usage times to identify performance issues
+- Monitor logs during testing for any warnings or errors
+- Verify all features work when economy is disabled and re-enabled
+
+---
+
 ## 🌟 Features
 
 ### 🎮 Discord Bot Integration
