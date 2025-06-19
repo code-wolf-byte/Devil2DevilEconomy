@@ -342,7 +342,7 @@ login_manager.login_view = 'login'
 # Discord configuration with fallbacks and debugging
 DISCORD_CLIENT_ID = os.getenv('DISCORD_CLIENT_ID')
 DISCORD_CLIENT_SECRET = os.getenv('DISCORD_CLIENT_SECRET')
-DISCORD_REDIRECT_URI = 'http://localhost:6000/callback'
+DISCORD_REDIRECT_URI = os.getenv('DISCORD_REDIRECT_URI', 'http://localhost:6000/callback')
 DISCORD_OAUTH_SCOPE = 'identify guilds guilds.members.read'
 DISCORD_API_BASE_URL = 'https://discord.com/api'
 
