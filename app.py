@@ -795,9 +795,20 @@ class DigitalDeliveryService:
 def index():
     products = Product.query.all()
     
+    # Fix any None values in products before sending to template
+    for product in products:
+        if product.stock is None:
+            product.stock = -1  # Use -1 to represent unlimited stock
+    
     # Get current user's purchases if they're logged in
     user_purchases = []
     if current_user.is_authenticated:
+        # Ensure current user has proper balance/points values
+        if current_user.balance is None:
+            current_user.balance = 0
+        if current_user.points is None:
+            current_user.points = 0
+            
         user_purchases = Purchase.query.filter_by(user_id=current_user.id).all()
     
     return render_template('index.html', products=products, purchases=user_purchases)
@@ -2225,4 +2236,4 @@ if __name__ == '__main__':
         signal_handler(None, None)
     except Exception as e:
         app_logger.error(f"Application error: {e}")
-        signal_handler(None, None) 
+        signal_handler(None, None)  
