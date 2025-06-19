@@ -687,7 +687,7 @@ update_minecraft_skin_delivery_methods()
 # Initialize login manager
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(str(user_id))
+    return db.session.get(User, str(user_id))
 
 # Digital Product Delivery System
 class DigitalDeliveryService:
