@@ -1155,6 +1155,12 @@ def admin_panel():
         return redirect(url_for('index'))
     
     products = Product.query.all()
+    
+    # Fix any None values in products before sending to template
+    for product in products:
+        if product.stock is None:
+            product.stock = -1  # Use -1 to represent unlimited stock
+    
     return render_template('admin.html', products=products)
 
 @app.route('/admin/purchases')
