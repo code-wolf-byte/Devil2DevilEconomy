@@ -368,8 +368,8 @@ class EconomyCog(commands.Cog):
             
             # Send confirmation message
             embed = nextcord.Embed(
-                title="🎉 Daily Engagement Approved!",
-                description=f"Your daily engagement has been approved by an admin!\n\n**Points Earned:** {DAILY_ENGAGEMENT_POINTS}",
+                title="🎉 Daily Engagement awarded!",
+                description=f"You have be awarded daily engagement!\n\n**Points Earned:** {DAILY_ENGAGEMENT_POINTS}",
                 color=nextcord.Color.green()
             )
             embed.add_field(
