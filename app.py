@@ -44,7 +44,7 @@ def create_env_file():
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here  
 DISCORD_CLIENT_SECRET=your_discord_client_secret_here
-DISCORD_REDIRECT_URI=http://localhost:5000/callback
+DISCORD_REDIRECT_URI=http://localhost:6000/callback
 
 # Flask Configuration
 SECRET_KEY=your_super_secret_key_change_this_in_production
@@ -60,10 +60,15 @@ GENERAL_CHANNEL_ID=your_general_channel_id_here
 VERIFIED_ROLE_ID=your_verified_role_id_here
 ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id
 """
-        with open('.env', 'w') as f:
-            f.write(env_content)
-        print("✅ .env file created! Please edit it with your Discord bot credentials.")
-        return True
+        try:
+            with open('.env', 'w') as f:
+                f.write(env_content)
+            print("✅ .env file created! Please edit it with your Discord bot credentials.")
+            return True
+        except (OSError, PermissionError) as e:
+            print(f"⚠️  Could not create .env file: {e}")
+            print("   This is normal in Docker environments. Using environment variables instead.")
+            return False
     return False
 
 def setup_directories():
@@ -104,6 +109,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
+import datetime as dt
 from werkzeug.utils import secure_filename
 import requests
 import threading
@@ -124,7 +130,7 @@ load_dotenv()
 missing_config = check_configuration()
 if missing_config:
     print("\n⚠️  Configuration Required:")
-    print("Please edit your .env file and set the following variables:")
+    print("Please set the following environment variables:")
     for var in missing_config:
         print(f"   - {var}")
     print("\n📖 To get Discord bot credentials:")
@@ -133,9 +139,13 @@ if missing_config:
     print("   3. Go to the 'Bot' section and create a bot")
     print("   4. Copy the token to DISCORD_TOKEN")
     print("   5. Go to 'OAuth2' section for CLIENT_ID and CLIENT_SECRET")
-    if env_created:
+    
+    # In Docker, we should continue with default values rather than exit
+    if env_created and not os.getenv('DOCKER_ENV'):
         print(f"\n🔧 Then restart the application: python {sys.argv[0]}")
         sys.exit(1)
+    else:
+        print("\n⚠️  Running with default configuration. Some features may not work properly.")
 
 print("✅ Setup complete! Starting application...\n")
 
@@ -161,28 +171,34 @@ def setup_logging():
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
     
-    # File handler with rotation
-    file_handler = logging.handlers.RotatingFileHandler(
-        os.path.join(log_dir, 'economy_app.log'),
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(formatter)
-    
-    # Error file handler
-    error_handler = logging.handlers.RotatingFileHandler(
-        os.path.join(log_dir, 'economy_errors.log'),
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(formatter)
-    
-    # Add handlers to root logger
+    # Add console handler first
     root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(error_handler)
+    
+    # Try to add file handlers, but continue if they fail (Docker environments)
+    try:
+        # File handler with rotation
+        file_handler = logging.handlers.RotatingFileHandler(
+            os.path.join(log_dir, 'economy_app.log'),
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+        
+        # Error file handler
+        error_handler = logging.handlers.RotatingFileHandler(
+            os.path.join(log_dir, 'economy_errors.log'),
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(formatter)
+        root_logger.addHandler(error_handler)
+        
+    except (OSError, PermissionError) as e:
+        print(f"⚠️  Could not set up file logging: {e}")
+        print("   Continuing with console logging only (normal in Docker environments)")
     
     # Create specific loggers for different components
     app_logger = logging.getLogger('economy.app')
@@ -199,7 +215,9 @@ app = Flask(__name__)
 
 # Configure the app
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///store.db'
+# Use absolute path for database to avoid path resolution issues
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'store.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_timeout': 20,
@@ -253,7 +271,7 @@ def allowed_file(filename):
         # Audio
         'mp3', 'wav', 'ogg', 'flac', 'm4a',
         # Video
-        'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv',
+        'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'ogv',
         # Minecraft specific
         'mcpack', 'mcworld', 'mctemplate', 'mcaddon',
         # Other
@@ -261,6 +279,58 @@ def allowed_file(filename):
     }
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_uploaded_file(file, file_type='image'):
+    """Save uploaded file securely and return filename"""
+    try:
+        # Generate secure filename (prevent any directory traversal)
+        original_filename = secure_filename(file.filename)
+        # Remove any remaining path separators and dots
+        safe_filename = original_filename.replace('..', '').replace('/', '').replace('\\', '')
+        if not safe_filename:
+            safe_filename = 'upload'
+        
+        # Generate completely new filename with safe extension
+        file_ext = safe_filename.rsplit('.', 1)[1].lower() if '.' in safe_filename else 'jpg'
+        
+        # Validate extension based on file type
+        if file_type == 'image':
+            if file_ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
+                file_ext = 'jpg'
+        elif file_type == 'preview':
+            # Allow both images and videos for preview
+            if file_ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm', 'ogv', 'mov'}:
+                file_ext = 'jpg'
+        
+        unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+        
+        # Ensure upload directory exists and is secure
+        upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Create full file path and verify it's within upload directory
+        file_path = os.path.abspath(os.path.join(upload_dir, unique_filename))
+        if not file_path.startswith(upload_dir):
+            app_logger.error('Invalid file path detected during upload')
+            return None
+        
+        # Validate file size
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        if file_size > app.config['MAX_CONTENT_LENGTH']:
+            app_logger.error(f'File too large: {file_size} bytes')
+            return None
+        
+        # Save file
+        file.save(file_path)
+        app_logger.info(f"{file_type.capitalize()} uploaded successfully: {unique_filename}")
+        return unique_filename
+        
+    except Exception as e:
+        app_logger.error(f"Error saving uploaded file: {e}")
+        return None
 
 
 # Initialize extensions
@@ -272,7 +342,7 @@ login_manager.login_view = 'login'
 # Discord configuration with fallbacks and debugging
 DISCORD_CLIENT_ID = os.getenv('DISCORD_CLIENT_ID')
 DISCORD_CLIENT_SECRET = os.getenv('DISCORD_CLIENT_SECRET')
-DISCORD_REDIRECT_URI = 'http://localhost:5000/callback'
+DISCORD_REDIRECT_URI = 'http://localhost:6000/callback'
 DISCORD_OAUTH_SCOPE = 'identify guilds guilds.members.read'
 DISCORD_API_BASE_URL = 'https://discord.com/api'
 
@@ -351,7 +421,7 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Integer, nullable=False)
-    stock = db.Column(db.Integer, default=0)
+    stock = db.Column(db.Integer, nullable=True, default=None)  # None = unlimited, 0 = out of stock, >0 = limited stock
     image_url = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -361,6 +431,10 @@ class Product(db.Model):
     delivery_data = db.Column(db.Text)  # JSON data for delivery (role_id, file_path, etc.)
     auto_delivery = db.Column(db.Boolean, default=False)
     category = db.Column(db.String(50), default='general')
+    
+    # Minecraft skin specific fields
+    preview_image_url = db.Column(db.String(200))  # Preview image for minecraft skins
+    download_file_url = db.Column(db.String(200))  # Actual downloadable file for minecraft skins
     
     def __repr__(self):
         return f'<Product {self.name} ({self.product_type})>'
@@ -377,6 +451,18 @@ class Product(db.Model):
             return json.loads(self.delivery_data) if self.delivery_data else {}
         except:
             return {}
+    
+    @property
+    def display_image(self):
+        """Get the appropriate image for display (preview for minecraft skins, regular image for others)"""
+        if self.product_type == 'minecraft_skin' and self.preview_image_url:
+            return self.preview_image_url
+        return self.image_url
+    
+    @property
+    def has_dual_files(self):
+        """Check if this product uses dual-file system (minecraft skins)"""
+        return self.product_type == 'minecraft_skin' and self.preview_image_url and self.download_file_url
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -420,8 +506,31 @@ class EconomySettings(db.Model):
     first_time_enabled = db.Column(db.Boolean, default=True)  # Track if it's the first time being enabled
     enabled_at = db.Column(db.DateTime)
     
+    # Role configurations for first-time economy setup
+    verified_role_id = db.Column(db.String(20))  # Discord role ID for verified users
+    onboarding_role_ids = db.Column(db.Text)  # JSON array of Discord role IDs for onboarding
+    verified_bonus_points = db.Column(db.Integer, default=200)  # Points to award for verified role
+    onboarding_bonus_points = db.Column(db.Integer, default=500)  # Points to award for onboarding roles
+    
+    # Configuration completion flag
+    roles_configured = db.Column(db.Boolean, default=False)  # Whether roles have been configured
+    
     def __repr__(self):
         return f'<EconomySettings enabled={self.economy_enabled}>'
+    
+    @property
+    def onboarding_roles_list(self):
+        """Get onboarding role IDs as a list"""
+        import json
+        try:
+            return json.loads(self.onboarding_role_ids) if self.onboarding_role_ids else []
+        except:
+            return []
+    
+    def set_onboarding_roles(self, role_ids):
+        """Set onboarding role IDs from a list"""
+        import json
+        self.onboarding_role_ids = json.dumps(role_ids) if role_ids else None
 
 # Digital Product Support Models
 class RoleAssignment(db.Model):
@@ -510,6 +619,13 @@ def setup_achievements():
                 'points': 425,
                 'type': 'message',
                 'requirement': 1
+            },
+            {
+                'name': 'Verified',
+                'description': 'Get verified in the server',
+                'points': 200,
+                'type': 'verification',
+                'requirement': 1
             }
             # Add more achievements as needed
         ]
@@ -524,6 +640,49 @@ def setup_achievements():
         app_logger.info("Achievements initialized successfully")
 
 setup_achievements()
+
+def setup_economy_settings():
+    """Initialize default economy settings"""
+    with app.app_context():
+        settings = EconomySettings.query.first()
+        if not settings:
+            settings = EconomySettings(
+                economy_enabled=False,
+                first_time_enabled=False,  # False means it hasn't been enabled for the first time yet
+                enabled_at=None
+            )
+            db.session.add(settings)
+            db.session.commit()
+            app_logger.info("Economy settings initialized successfully")
+
+setup_economy_settings()
+
+def update_minecraft_skin_delivery_methods():
+    """Update existing Minecraft skin products to have proper delivery method for auto-download"""
+    try:
+        with app.app_context():
+            minecraft_skins = Product.query.filter_by(product_type='minecraft_skin').all()
+            updated_count = 0
+            
+            for product in minecraft_skins:
+                if product.delivery_method != 'download' or not product.auto_delivery:
+                    product.delivery_method = 'download'
+                    product.auto_delivery = True
+                    updated_count += 1
+                    app_logger.info(f"Updated delivery method for Minecraft skin: {product.name}")
+            
+            if updated_count > 0:
+                db.session.commit()
+                app_logger.info(f"Updated {updated_count} Minecraft skin products for auto-download")
+            else:
+                app_logger.info("All Minecraft skin products already have correct delivery method")
+                
+    except Exception as e:
+        app_logger.error(f"Error updating Minecraft skin delivery methods: {e}")
+        db.session.rollback()
+
+# Run the update function
+update_minecraft_skin_delivery_methods()
 
 # Initialize login manager
 @login_manager.user_loader
@@ -595,8 +754,13 @@ class DigitalDeliveryService:
     @staticmethod
     def _prepare_download(user, product, purchase):
         """Prepare download link for user"""
-        delivery_config = product.delivery_config
-        file_path = delivery_config.get('file_path')
+        # Handle dual-file system for Minecraft skins
+        if product.product_type == 'minecraft_skin' and product.download_file_url:
+            file_path = product.download_file_url
+        else:
+            # Use legacy delivery_config for other products
+            delivery_config = product.delivery_config
+            file_path = delivery_config.get('file_path')
         
         if not file_path:
             return False, "Download file not configured"
@@ -611,7 +775,7 @@ class DigitalDeliveryService:
             user_id=user.id,
             purchase_id=purchase.id,
             file_path=file_path,
-            expires_at=datetime.utcnow() + timedelta(hours=24)
+            expires_at=datetime.now(dt.timezone.utc) + timedelta(hours=24)
         )
         db.session.add(download_info)
         db.session.commit()
@@ -887,7 +1051,8 @@ def purchase(product_id):
             return redirect(url_for('index'))
         
         # Check stock availability (with race condition protection)
-        if product.stock != 0 and product.stock < 1:
+        # None = unlimited, 0 = out of stock, >0 = limited stock
+        if product.stock == 0:
             flash('Product is out of stock')
             return redirect(url_for('index'))
         
@@ -900,7 +1065,7 @@ def purchase(product_id):
         current_user_fresh.balance -= product.price
         
         # Atomic stock reduction (if limited stock)
-        if product.stock > 0:
+        if product.stock is not None and product.stock > 0:
             product.stock -= 1
         
         # Create purchase record
@@ -937,6 +1102,17 @@ def purchase(product_id):
         
         # Success message based on delivery
         if delivery_success and product.is_digital:
+            # For Minecraft skins, auto-redirect to download
+            if product.product_type == 'minecraft_skin' and product.delivery_method == 'download':
+                # Extract download token from delivery message
+                import re
+                token_match = re.search(r'/download/([a-f0-9-]+)', delivery_message)
+                if token_match:
+                    download_token = token_match.group(1)
+                    flash(f'Purchase successful! Your download will start automatically.')
+                    app_logger.info(f"Auto-downloading Minecraft skin: User {current_user_fresh.username} bought {product.name}")
+                    return redirect(url_for('download_file', token=download_token))
+            
             flash(f'Purchase successful! {delivery_message}')
         elif product.is_digital and not delivery_success:
             flash(f'Purchase completed but delivery pending: {delivery_message}')
@@ -996,50 +1172,59 @@ def new_product():
     
     if request.method == 'POST':
         try:
-            # Handle image upload
+            # Get product type first to determine file handling
+            product_type = request.form.get('product_type', 'physical')
+            
+            # Initialize file variables
             image_filename = None
-            if 'image' in request.files:
-                file = request.files['image']
-                if file and file.filename != '' and allowed_file(file.filename):
-                    # Generate secure filename (prevent any directory traversal)
-                    original_filename = secure_filename(file.filename)
-                    # Remove any remaining path separators and dots
-                    safe_filename = original_filename.replace('..', '').replace('/', '').replace('\\', '')
-                    if not safe_filename:
-                        safe_filename = 'upload'
-                    
-                    # Generate completely new filename with safe extension
-                    file_ext = safe_filename.rsplit('.', 1)[1].lower() if '.' in safe_filename else 'jpg'
-                    if file_ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
-                        file_ext = 'jpg'
-                    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
-                    
-                    # Ensure upload directory exists and is secure
-                    upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
-                    os.makedirs(upload_dir, exist_ok=True)
-                    
-                    # Create full file path and verify it's within upload directory
-                    file_path = os.path.abspath(os.path.join(upload_dir, unique_filename))
-                    if not file_path.startswith(upload_dir):
-                        flash('Invalid file path detected')
+            preview_image_filename = None
+            download_file_filename = None
+            
+            # Handle file uploads based on product type
+            if product_type == 'minecraft_skin':
+                # Handle dual-file system for Minecraft skins
+                
+                # Preview image upload
+                if 'preview_image' in request.files:
+                    file = request.files['preview_image']
+                    if file and file.filename != '' and allowed_file(file.filename):
+                        preview_image_filename = save_uploaded_file(file, 'preview')
+                        if not preview_image_filename:
+                            flash('Error uploading preview image.')
+                            return render_template('product_form.html', title='Add New Product')
+                    elif file and file.filename != '':
+                        flash('Invalid preview image type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
                         return render_template('product_form.html', title='Add New Product')
-                    
-                    # Validate file size and type
-                    file.seek(0, 2)  # Seek to end
-                    file_size = file.tell()
-                    file.seek(0)  # Reset to beginning
-                    
-                    if file_size > app.config['MAX_CONTENT_LENGTH']:
-                        flash('File too large. Maximum size is 16MB.')
+                
+                # Download file upload
+                if 'download_file' in request.files:
+                    file = request.files['download_file']
+                    if file and file.filename != '' and allowed_file(file.filename):
+                        download_file_filename = save_uploaded_file(file, 'download')
+                        if not download_file_filename:
+                            flash('Error uploading download file.')
+                            return render_template('product_form.html', title='Add New Product')
+                    elif file and file.filename != '':
+                        flash('Invalid download file type.')
                         return render_template('product_form.html', title='Add New Product')
-                    
-                    # Save file
-                    file.save(file_path)
-                    image_filename = unique_filename
-                    app_logger.info(f"Image uploaded successfully: {image_filename}")
-                elif file and file.filename != '':
-                    flash('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
+                
+                # For Minecraft skins, require both files
+                if not preview_image_filename or not download_file_filename:
+                    flash('Both preview image and download file are required for Minecraft skins.')
                     return render_template('product_form.html', title='Add New Product')
+                    
+            else:
+                # Handle regular image upload for other product types
+                if 'image' in request.files:
+                    file = request.files['image']
+                    if file and file.filename != '' and allowed_file(file.filename):
+                        image_filename = save_uploaded_file(file, 'image')
+                        if not image_filename:
+                            flash('Error uploading image.')
+                            return render_template('product_form.html', title='Add New Product')
+                    elif file and file.filename != '':
+                        flash('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
+                        return render_template('product_form.html', title='Add New Product')
             
             # Validate and sanitize input
             name = request.form.get('name', '').strip()
@@ -1065,23 +1250,32 @@ def new_product():
                 flash('Invalid price. Please enter a valid number.')
                 return render_template('product_form.html', title='Add New Product')
             
-            try:
-                stock = int(request.form.get('stock', 0))
-                if stock < 0:
-                    flash('Stock must be a positive number or 0 for unlimited')
+            # Handle stock - empty means unlimited (None), otherwise convert to int
+            stock_input = request.form.get('stock', '').strip()
+            if stock_input == '':
+                stock = None  # Unlimited stock
+            else:
+                try:
+                    stock = int(stock_input)
+                    if stock < 0:
+                        flash('Stock must be a positive number')
+                        return render_template('product_form.html', title='Add New Product')
+                    if stock > 999999:
+                        flash('Stock must be less than 1,000,000')
+                        return render_template('product_form.html', title='Add New Product')
+                except ValueError:
+                    flash('Invalid stock. Please enter a valid number.')
                     return render_template('product_form.html', title='Add New Product')
-                if stock > 999999:
-                    flash('Stock must be less than 1,000,000')
-                    return render_template('product_form.html', title='Add New Product')
-            except ValueError:
-                flash('Invalid stock. Please enter a valid number.')
-                return render_template('product_form.html', title='Add New Product')
 
-            # Get digital product fields
-            product_type = request.form.get('product_type', 'physical')
+            # Get digital product fields (product_type already retrieved above)
             delivery_method = request.form.get('delivery_method', '')
             auto_delivery = 'auto_delivery' in request.form
             category = request.form.get('category', 'general')
+            
+            # Set default delivery method for Minecraft skins
+            if product_type == 'minecraft_skin':
+                delivery_method = 'download'
+                auto_delivery = True
             
             # Handle delivery data (JSON)
             delivery_data = ""
@@ -1092,7 +1286,8 @@ def new_product():
             elif product_type == 'game_code' and delivery_method == 'code_generation':
                 code_pattern = request.form.get('code_pattern', 'GAME-{uuid}').strip()
                 delivery_data = json.dumps({"code_pattern": code_pattern})
-            elif delivery_method == 'download':
+            elif delivery_method == 'download' and product_type != 'minecraft_skin':
+                # For non-minecraft products, use legacy file_path system
                 file_path = request.form.get('file_path', '').strip()
                 if file_path:
                     delivery_data = json.dumps({"file_path": file_path})
@@ -1107,7 +1302,9 @@ def new_product():
                 delivery_method=delivery_method,
                 delivery_data=delivery_data,
                 auto_delivery=auto_delivery,
-                category=category
+                category=category,
+                preview_image_url=preview_image_filename,  # For Minecraft skins
+                download_file_url=download_file_filename   # For Minecraft skins
             )
             db.session.add(product)
             db.session.commit()
@@ -1165,7 +1362,14 @@ def edit_product(product_id):
             product.name = request.form['name']
             product.description = request.form['description']
             product.price = int(request.form['price'])
-            product.stock = int(request.form.get('stock', 0))
+            
+            # Handle stock - empty means unlimited (None), otherwise convert to int
+            stock_input = request.form.get('stock', '').strip()
+            if stock_input == '':
+                product.stock = None  # Unlimited stock
+            else:
+                product.stock = int(stock_input)
+            
             product.image_url = image_filename
         
             db.session.commit()
@@ -1306,6 +1510,45 @@ def get_role_products():
         app_logger.error(f"Error fetching role products: {e}")
         return jsonify({'error': f'Failed to fetch role products: {str(e)}'}), 500
 
+@app.route('/admin/get-minecraft-skin-products')
+@login_required
+def get_minecraft_skin_products():
+    """Get existing Minecraft skin products for the digital templates page"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # Get all Minecraft skin products
+        skin_products = Product.query.filter_by(product_type='minecraft_skin').all()
+        
+        products_data = []
+        for product in skin_products:
+            # Determine if preview is video or image
+            preview_type = 'image'
+            if product.preview_image_url:
+                file_ext = product.preview_image_url.split('.')[-1].lower()
+                if file_ext in ['mp4', 'webm', 'ogv', 'mov']:
+                    preview_type = 'video'
+            
+            products_data.append({
+                'id': product.id,
+                'name': product.name,
+                'description': product.description,
+                'price': product.price,
+                'stock': product.stock,
+                'preview_image_url': product.preview_image_url,
+                'download_file_url': product.download_file_url,
+                'preview_type': preview_type,
+                'created_at': product.created_at.strftime('%Y-%m-%d %H:%M'),
+                'has_dual_files': product.has_dual_files
+            })
+        
+        return jsonify({'products': products_data})
+        
+    except Exception as e:
+        app_logger.error(f"Error getting Minecraft skin products: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/digital-templates')
 @login_required
 def digital_templates():
@@ -1317,58 +1560,7 @@ def digital_templates():
     # Enhanced digital product templates
     templates = {
         "roles": [],  # Dynamic roles will be loaded via JavaScript
-        "skins": [
-            {
-                "name": "🎮 Premium Minecraft Skin Pack",
-                "description": "Collection of 5 exclusive custom skins designed by professional artists",
-                "price": 300,
-                "category": "minecraft",
-                "product_type": "minecraft_skin",
-                "delivery_method": "download",
-                "auto_delivery": True,
-                "file_path_placeholder": "skins/premium_pack.zip"
-            },
-            {
-                "name": "🗡️ Medieval Knight Skin",
-                "description": "Epic knight skin with detailed armor and medieval aesthetics", 
-                "price": 150,
-                "category": "minecraft",
-                "product_type": "minecraft_skin",
-                "delivery_method": "download",
-                "auto_delivery": True,
-                "file_path_placeholder": "skins/knight.png"
-            },
-            {
-                "name": "🧙‍♂️ Wizard Skin Collection",
-                "description": "Magical wizard skins with robes, staffs, and mystical details",
-                "price": 200,
-                "category": "minecraft",
-                "product_type": "minecraft_skin",
-                "delivery_method": "download",
-                "auto_delivery": True,
-                "file_path_placeholder": "skins/wizard_collection.zip"
-            },
-            {
-                "name": "🦸‍♀️ Superhero Skin Pack",
-                "description": "Collection of superhero skins with capes and unique powers theme",
-                "price": 250,
-                "category": "minecraft",
-                "product_type": "minecraft_skin",
-                "delivery_method": "download",
-                "auto_delivery": True,
-                "file_path_placeholder": "skins/superhero_pack.zip"
-            },
-            {
-                "name": "🎨 Custom Skin Commission",
-                "description": "Personalized skin created just for you by our artists",
-                "price": 400,
-                "category": "minecraft",
-                "product_type": "minecraft_skin",
-                "delivery_method": "manual",
-                "auto_delivery": False,
-                "file_path_placeholder": "skins/custom/"
-            }
-        ],
+        "skins": [],  # Dynamic skins will be loaded via JavaScript
         "codes": [
             {
                 "name": "🎯 Steam Game Code",
@@ -1447,6 +1639,195 @@ def digital_templates():
     
     return render_template('digital_templates.html', templates=templates)
 
+@app.route('/admin/economy-config', methods=['GET', 'POST'])
+@login_required
+def economy_config():
+    """Configure economy settings before enabling for the first time"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+    
+    settings = EconomySettings.query.first()
+    if not settings:
+        # Create default settings if they don't exist
+        settings = EconomySettings(
+            economy_enabled=False,
+            first_time_enabled=False,
+            roles_configured=False
+        )
+        db.session.add(settings)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        try:
+            action = request.form.get('action')
+            
+            # Get form data
+            verified_role_id = request.form.get('verified_role_id', '').strip()
+            onboarding_role_ids = request.form.getlist('onboarding_role_ids')
+            verified_bonus_points = int(request.form.get('verified_bonus_points', 200))
+            onboarding_bonus_points = int(request.form.get('onboarding_bonus_points', 500))
+            
+            # Validate points
+            if verified_bonus_points < 0 or verified_bonus_points > 10000:
+                flash('Verified bonus points must be between 0 and 10,000')
+                return render_template('economy_config.html', settings=settings)
+            
+            if onboarding_bonus_points < 0 or onboarding_bonus_points > 10000:
+                flash('Onboarding bonus points must be between 0 and 10,000')
+                return render_template('economy_config.html', settings=settings)
+            
+            # Update settings
+            settings.verified_role_id = verified_role_id if verified_role_id else None
+            settings.set_onboarding_roles(onboarding_role_ids)
+            settings.verified_bonus_points = verified_bonus_points
+            settings.onboarding_bonus_points = onboarding_bonus_points
+            settings.roles_configured = True
+            
+            if action == 'save_config':
+                db.session.commit()
+                flash('Economy configuration saved successfully!')
+                app_logger.info(f"Economy configuration saved by {current_user.username}")
+                
+            elif action == 'enable_economy':
+                # Enable the economy and award first-time bonuses
+                settings.economy_enabled = True
+                settings.enabled_at = datetime.now(dt.timezone.utc)
+                db.session.commit()
+                
+                # Award first-time bonuses in a separate thread to avoid blocking
+                from threading import Thread
+                bonus_thread = Thread(target=award_first_time_bonuses, args=(settings,))
+                bonus_thread.daemon = True
+                bonus_thread.start()
+                
+                flash('Economy system enabled successfully! First-time bonuses are being awarded to eligible users.')
+                app_logger.info(f"Economy system enabled by {current_user.username}")
+                return redirect(url_for('admin_panel'))
+            
+        except ValueError as e:
+            flash(f'Invalid input: {str(e)}')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error saving configuration: {str(e)}')
+            app_logger.error(f"Error in economy_config: {e}")
+    
+    return render_template('economy_config.html', settings=settings)
+
+def award_first_time_bonuses(settings):
+    """Award first-time bonuses to users with configured roles"""
+    try:
+        with app.app_context():
+            app_logger.info("Starting first-time bonus awards...")
+            
+            # Import bot to get guild information
+            from bot import bot
+            
+            # Wait for bot to be ready
+            import time
+            max_wait = 30  # Maximum wait time in seconds
+            wait_time = 0
+            while not bot.is_ready() and wait_time < max_wait:
+                time.sleep(1)
+                wait_time += 1
+            
+            if not bot.is_ready():
+                app_logger.error("Bot not ready for first-time bonus awards")
+                return
+            
+            # Get the guild
+            guild = None
+            guild_id = os.getenv('GUILD_ID')
+            if guild_id:
+                guild = bot.get_guild(int(guild_id))
+            elif bot.guilds:
+                guild = bot.guilds[0]  # Use first guild if no specific guild ID
+            
+            if not guild:
+                app_logger.error("No guild found for first-time bonus awards")
+                return
+            
+            bonus_awarded_count = 0
+            
+            # Award verified role bonuses
+            if settings.verified_role_id:
+                verified_role = guild.get_role(int(settings.verified_role_id))
+                if verified_role:
+                    app_logger.info(f"Awarding verified bonuses for role: {verified_role.name}")
+                    
+                    for member in verified_role.members:
+                        if not member.bot:  # Skip bots
+                            user = User.query.filter_by(id=str(member.id)).first()
+                            if not user:
+                                # Create user if they don't exist
+                                user = User(
+                                    id=str(member.id),
+                                    username=member.display_name,
+                                    discord_id=str(member.id),
+                                    avatar_url=get_discord_avatar_url(member.id, member.avatar.key if member.avatar else None)
+                                )
+                                db.session.add(user)
+                            
+                            if not user.verification_bonus_received:
+                                # Ensure balance and points are not None
+                                if user.balance is None:
+                                    user.balance = 0
+                                if user.points is None:
+                                    user.points = 0
+                                
+                                user.balance += settings.verified_bonus_points
+                                user.points += settings.verified_bonus_points
+                                user.verification_bonus_received = True
+                                bonus_awarded_count += 1
+                                app_logger.info(f"Awarded {settings.verified_bonus_points} points to {user.username} for verified role")
+            
+            # Award onboarding role bonuses
+            onboarding_role_ids = settings.onboarding_roles_list
+            if onboarding_role_ids:
+                for role_id in onboarding_role_ids:
+                    onboarding_role = guild.get_role(int(role_id))
+                    if onboarding_role:
+                        app_logger.info(f"Awarding onboarding bonuses for role: {onboarding_role.name}")
+                        
+                        for member in onboarding_role.members:
+                            if not member.bot:  # Skip bots
+                                user = User.query.filter_by(id=str(member.id)).first()
+                                if not user:
+                                    # Create user if they don't exist
+                                    user = User(
+                                        id=str(member.id),
+                                        username=member.display_name,
+                                        discord_id=str(member.id),
+                                        avatar_url=get_discord_avatar_url(member.id, member.avatar.key if member.avatar else None)
+                                    )
+                                    db.session.add(user)
+                                
+                                if not user.onboarding_bonus_received:
+                                    # Ensure balance and points are not None
+                                    if user.balance is None:
+                                        user.balance = 0
+                                    if user.points is None:
+                                        user.points = 0
+                                    
+                                    user.balance += settings.onboarding_bonus_points
+                                    user.points += settings.onboarding_bonus_points
+                                    user.onboarding_bonus_received = True
+                                    bonus_awarded_count += 1
+                                    app_logger.info(f"Awarded {settings.onboarding_bonus_points} points to {user.username} for onboarding role")
+            
+            # Commit all changes
+            db.session.commit()
+            app_logger.info(f"First-time bonus awards completed. Total bonuses awarded: {bonus_awarded_count}")
+            
+    except Exception as e:
+        app_logger.error(f"Error awarding first-time bonuses: {e}")
+        # Only rollback if we're still in the app context
+        try:
+            db.session.rollback()
+        except RuntimeError:
+            # If we're outside app context, we can't rollback
+            pass
+
 @app.route('/admin/create-role-product', methods=['POST'])
 @login_required
 def create_role_product():
@@ -1461,6 +1842,7 @@ def create_role_product():
         product_name = request.form.get('product_name', '').strip()
         description = request.form.get('description', '').strip()
         price = request.form.get('price', '').strip()
+        stock = request.form.get('stock', '').strip()
         
         # Validate required fields
         if not role_id:
@@ -1484,6 +1866,19 @@ def create_role_product():
             flash('Invalid price format')
             return redirect(url_for('digital_templates'))
         
+        # Handle stock - empty means unlimited (None), otherwise convert to int
+        if stock == '':
+            stock = None  # Unlimited stock
+        else:
+            try:
+                stock = int(stock)
+                if stock < 0:
+                    flash('Stock cannot be negative')
+                    return redirect(url_for('digital_templates'))
+            except ValueError:
+                flash('Invalid stock format')
+                return redirect(url_for('digital_templates'))
+        
         # Check if a product with this role already exists
         existing_product = Product.query.filter(
             Product.product_type == 'role',
@@ -1494,6 +1889,17 @@ def create_role_product():
             flash(f'A product for this role already exists: {existing_product.name}')
             return redirect(url_for('digital_templates'))
         
+        # Handle role image upload
+        image_url = None
+        if 'role_image' in request.files:
+            file = request.files['role_image']
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    image_url = save_uploaded_file(file, 'image')
+                except Exception as e:
+                    flash(f'Error uploading image: {str(e)}')
+                    return redirect(url_for('digital_templates'))
+        
         # Create the delivery data
         delivery_data = json.dumps({"role_id": role_id})
         
@@ -1502,7 +1908,8 @@ def create_role_product():
             name=product_name,
             description=description or f"Gain access to the {product_name} role with special perks and privileges!",
             price=price,
-            stock=0,  # Unlimited stock for digital role products
+            stock=stock,
+            image_url=image_url,
             category="roles",
             product_type="role",
             delivery_method="auto_role",
@@ -1728,7 +2135,7 @@ def download_file(token):
             return redirect(url_for('my_purchases'))
         
         # Check if token has expired
-        if datetime.utcnow() > download_token.expires_at:
+        if datetime.now(dt.timezone.utc) > download_token.expires_at:
             flash('Download link has expired')
             return redirect(url_for('my_purchases'))
         
@@ -1800,13 +2207,13 @@ if __name__ == '__main__':
         
         # Start Flask application
         app_logger.info("Starting Flask web application...")
-        app_logger.info("🌐 Web interface available at: http://localhost:5000")
+        app_logger.info("🌐 Web interface available at: http://localhost:6000")
         if discord_configured:
             app_logger.info("🤖 Discord bot is running")
         else:
             app_logger.info("⚠️  Discord bot disabled - configure .env file to enable")
         
-        app.run(host='0.0.0.0', port=5000, threaded=True)
+        app.run(host='0.0.0.0', port=6000, threaded=True)
         
     except KeyboardInterrupt:
         signal_handler(None, None)

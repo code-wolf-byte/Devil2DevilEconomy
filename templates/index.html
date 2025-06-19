@@ -48,11 +48,20 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {% for product in products %}
                     <div class="card overflow-hidden group animate-scale-in" style="animation-delay: {{ loop.index0 * 0.1 }}s">
-                        {% if product.image_url %}
+                        {% if product.display_image %}
                             <div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
-                                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
-                                     alt="{{ product.name }}" 
-                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                {% set file_ext = product.display_image.split('.')[-1].lower() %}
+                                {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
+                                    <video src="{{ url_for('static', filename='uploads/' + product.display_image) }}" 
+                                           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                           autoplay muted loop playsinline>
+                                        Your browser does not support the video tag.
+                                    </video>
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='uploads/' + product.display_image) }}" 
+                                         alt="{{ product.name }}" 
+                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                {% endif %}
                                 <div class="absolute top-2 right-2 sm:top-4 sm:right-4">
                                     {% if product.stock == 0 %}
                                         <span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold animate-pulse-subtle">
@@ -88,16 +97,20 @@
                                     {{ product.price }}
                                 </div>
                                 <div class="text-xs sm:text-sm text-muted">
-                                    Stock: {% if product.stock == 0 %}Unlimited{% else %}{{ product.stock }}{% endif %}
+                                    Stock: {% if product.stock is none %}Unlimited{% elif product.stock == 0 %}Out of Stock{% else %}{{ product.stock }}{% endif %}
                                 </div>
                             </div>
                             
                             {% if current_user.is_authenticated %}
                                 {% if (product.stock == 0 or product.stock > 0) and current_user.balance >= product.price %}
-                                    <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}" onsubmit="return confirmPurchase(event, '{{ product.name }}', {{ product.price }})">
+                                    <form method="POST" action="{{ url_for('purchase', product_id=product.id) }}" onsubmit="return confirmPurchase(event, '{{ product.name }}', {{ product.price }}, '{{ product.product_type }}')">
                                         <button type="submit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
                                             <i class="fas fa-shopping-cart mr-2"></i>
-                                            Purchase Now
+                                            {% if product.product_type == 'minecraft_skin' %}
+                                                Purchase & Download
+                                            {% else %}
+                                                Purchase Now
+                                            {% endif %}
                                         </button>
                                     </form>
                                 {% elif product.stock < 0 %}
@@ -163,8 +176,11 @@
     <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
         <h3 class="text-xl font-bold mb-4">Confirm Purchase</h3>
         <p class="mb-4">Are you sure you want to purchase <span id="productName" class="font-semibold"></span> for <span id="productPrice" class="font-semibold asu-gold"></span> points?</p>
-        <div class="text-sm text-gray-400 mb-4">
+        <div class="text-sm text-gray-400 mb-4" id="purchaseInfo">
             <p><i class="fas fa-info-circle mr-2"></i>All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</p>
+        </div>
+        <div class="text-sm text-green-400 mb-4 hidden" id="downloadInfo">
+            <p><i class="fas fa-download mr-2"></i>This Minecraft skin will be downloaded automatically after purchase!</p>
         </div>
         <div class="flex justify-end space-x-4">
             <button onclick="closePurchaseConfirmation()" class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
@@ -176,11 +192,24 @@
 <script>
     let currentForm = null;
 
-    function confirmPurchase(event, productName, price) {
+    function confirmPurchase(event, productName, price, productType) {
         event.preventDefault();
         currentForm = event.target;
         document.getElementById('productName').textContent = productName;
         document.getElementById('productPrice').textContent = price;
+        
+        // Show/hide appropriate info based on product type
+        const purchaseInfo = document.getElementById('purchaseInfo');
+        const downloadInfo = document.getElementById('downloadInfo');
+        
+        if (productType === 'minecraft_skin') {
+            purchaseInfo.classList.add('hidden');
+            downloadInfo.classList.remove('hidden');
+        } else {
+            purchaseInfo.classList.remove('hidden');
+            downloadInfo.classList.add('hidden');
+        }
+        
         document.getElementById('purchaseConfirmationModal').classList.remove('hidden');
         document.getElementById('purchaseConfirmationModal').classList.add('flex');
     }

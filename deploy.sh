@@ -43,7 +43,7 @@ print_status "Docker and Docker Compose are installed."
 
 # Create necessary directories
 print_status "Creating necessary directories..."
-mkdir -p data logs uploads ssl
+mkdir -p data logs uploads
 
 # Check if .env file exists
 if [ ! -f .env ]; then
@@ -54,7 +54,7 @@ if [ ! -f .env ]; then
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
 DISCORD_CLIENT_SECRET=your_discord_client_secret_here
-DISCORD_REDIRECT_URI=http://localhost:5000/callback
+DISCORD_REDIRECT_URI=http://localhost:6000/callback
 
 # Flask Configuration
 SECRET_KEY=$(openssl rand -hex 32)
@@ -100,8 +100,8 @@ if docker-compose ps | grep -q "Up"; then
     print_status "✅ Economy Bot is running!"
     echo
     echo "🌐 Application URLs:"
-    echo "   - Main Application: http://localhost:5000"
-    echo "   - Admin Panel: http://localhost:5000/admin"
+    echo "   - Main Application: http://localhost:6000"
+    echo "   - Admin Panel: http://localhost:6000/admin"
     echo
     echo "📊 Useful Commands:"
     echo "   - View logs: docker-compose logs -f"
@@ -119,31 +119,4 @@ else
     print_error "❌ Failed to start Economy Bot. Check the logs:"
     docker-compose logs
     exit 1
-fi
-
-# Optional: Set up production mode
-echo
-read -p "Do you want to set up production mode with Nginx? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_status "Setting up production mode..."
-    
-    # Check if SSL certificates exist
-    if [ ! -f ssl/cert.pem ] || [ ! -f ssl/key.pem ]; then
-        print_warning "SSL certificates not found. Creating self-signed certificates for testing..."
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout ssl/key.pem -out ssl/cert.pem \
-            -subj "/C=US/ST=State/L=City/O=Organization/OU=OrgUnit/CN=localhost"
-        print_warning "⚠️  Using self-signed certificates. For production, use proper SSL certificates."
-    fi
-    
-    print_status "Starting with Nginx reverse proxy..."
-    docker-compose --profile production up -d
-    
-    echo
-    echo "🌐 Production URLs:"
-    echo "   - HTTP (redirects to HTTPS): http://localhost"
-    echo "   - HTTPS: https://localhost"
-    echo
-    print_status "Production setup complete!"
 fi 

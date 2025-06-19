@@ -2,6 +2,7 @@ import nextcord
 from nextcord.ext import commands, tasks
 from nextcord import Interaction
 from datetime import datetime, timedelta, date
+import datetime as dt
 import os
 import asyncio
 import logging
@@ -648,7 +649,7 @@ class EconomyCog(commands.Cog):
                                     UPDATE role_assignment 
                                     SET status = 'failed', error_message = 'User not found on Discord', completed_at = ?
                                     WHERE id = ?
-                                """, (datetime.utcnow().isoformat(), assignment_id))
+                                """, (datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                                 continue
                         
                         # Get the guild (server)
@@ -663,7 +664,7 @@ class EconomyCog(commands.Cog):
                                 UPDATE role_assignment 
                                 SET status = 'failed', error_message = 'Bot not in any Discord server', completed_at = ?
                                 WHERE id = ?
-                            """, (datetime.utcnow().isoformat(), assignment_id))
+                            """, (datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                             continue
                         
                         # Get the member from the guild
@@ -676,7 +677,7 @@ class EconomyCog(commands.Cog):
                                     UPDATE role_assignment 
                                     SET status = 'failed', error_message = 'Member not found in server', completed_at = ?
                                     WHERE id = ?
-                                """, (datetime.utcnow().isoformat(), assignment_id))
+                                """, (datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                                 continue
                         
                         # Get the role
@@ -686,7 +687,7 @@ class EconomyCog(commands.Cog):
                                 UPDATE role_assignment 
                                 SET status = 'failed', error_message = ?, completed_at = ?
                                 WHERE id = ?
-                            """, (f'Role {role_id} not found', datetime.utcnow().isoformat(), assignment_id))
+                            """, (f'Role {role_id} not found', datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                             continue
                         
                         # Assign the role
@@ -697,7 +698,7 @@ class EconomyCog(commands.Cog):
                             UPDATE role_assignment 
                             SET status = 'completed', completed_at = ?
                             WHERE id = ?
-                        """, (datetime.utcnow().isoformat(), assignment_id))
+                        """, (datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                         
                         # Send confirmation DM to user
                         try:
@@ -717,7 +718,7 @@ class EconomyCog(commands.Cog):
                             UPDATE role_assignment 
                             SET status = 'failed', error_message = ?, completed_at = ?
                             WHERE id = ?
-                        """, (str(e), datetime.utcnow().isoformat(), assignment_id))
+                        """, (str(e), datetime.now(dt.timezone.utc).isoformat(), assignment_id))
                         cog_logger.error(f"Failed to assign role to user {user_id}: {e}")
                 
                 # Commit all changes
@@ -1128,20 +1129,111 @@ class EconomyCog(commands.Cog):
 
     def on_first_economy_enable(self, interaction):
         # This function runs only the first time the economy is enabled
-        # Award the 'Verified' achievement to all users with the verified role
+        # Award first-time bonuses based on configured roles
+        print("🔧 DEBUG: on_first_economy_enable function called")
+        cog_logger.info("🔧 DEBUG: on_first_economy_enable function called")
+        
         guild = interaction.guild
-        verified_role = guild.get_role(VERIFIED_ROLE_ID)
-        if verified_role:
-            for member in verified_role.members:
-                with self.app.app_context():
+        print(f"🔧 DEBUG: Guild: {guild.name if guild else 'None'}")
+        cog_logger.info(f"🔧 DEBUG: Guild: {guild.name if guild else 'None'}")
+        
+        # Get economy settings from database
+        settings = self.EconomySettings.query.first()
+        if not settings:
+            print("❌ DEBUG: No economy settings found")
+            cog_logger.error("❌ DEBUG: No economy settings found")
+            return
+        
+        bonus_awarded_count = 0
+        
+        # Award verified role bonuses
+        if settings.verified_role_id:
+            verified_role = guild.get_role(int(settings.verified_role_id))
+            print(f"🔧 DEBUG: Verified role found: {verified_role.name if verified_role else 'None'}")
+            cog_logger.info(f"🔧 DEBUG: Verified role found: {verified_role.name if verified_role else 'None'}")
+            
+            if verified_role:
+                member_count = len(verified_role.members)
+                print(f"🔧 DEBUG: Found {member_count} members with verified role")
+                cog_logger.info(f"🔧 DEBUG: Found {member_count} members with verified role")
+                
+                for i, member in enumerate(verified_role.members):
+                    if member.bot:
+                        continue  # Skip bots
+                        
+                    print(f"🔧 DEBUG: Processing verified member {i+1}/{member_count}: {member.display_name}")
+                    cog_logger.info(f"🔧 DEBUG: Processing verified member {i+1}/{member_count}: {member.display_name}")
+                    
                     user = self.User.query.filter_by(id=str(member.id)).first()
-                    if user:
-                        achievement = self.Achievement.query.filter_by(name="Verified").first()
-                        if achievement:
-                            user_achievement = self.UserAchievement(user_id=user.id, achievement_id=achievement.id)
-                            self.db.session.add(user_achievement)
-                            self.db.session.commit()
-                            cog_logger.info(f"Awarded \'Verified\' achievement to {member.display_name}")
+                    if not user:
+                        # Create user if they don't exist
+                        user = self.User(
+                            id=str(member.id),
+                            username=member.display_name,
+                            discord_id=str(member.id)
+                        )
+                        self.db.session.add(user)
+                    
+                    if not user.verification_bonus_received:
+                        # Ensure balance and points are not None
+                        if user.balance is None:
+                            user.balance = 0
+                        if user.points is None:
+                            user.points = 0
+                        
+                        user.balance += settings.verified_bonus_points
+                        user.points += settings.verified_bonus_points
+                        user.verification_bonus_received = True
+                        bonus_awarded_count += 1
+                        print(f"✅ DEBUG: Awarded {settings.verified_bonus_points} points to {user.username} for verified role")
+                        cog_logger.info(f"✅ DEBUG: Awarded {settings.verified_bonus_points} points to {user.username} for verified role")
+        
+        # Award onboarding role bonuses
+        onboarding_role_ids = settings.onboarding_roles_list
+        if onboarding_role_ids:
+            for role_id in onboarding_role_ids:
+                onboarding_role = guild.get_role(int(role_id))
+                if onboarding_role:
+                    member_count = len(onboarding_role.members)
+                    print(f"🔧 DEBUG: Processing onboarding role: {onboarding_role.name} ({member_count} members)")
+                    cog_logger.info(f"🔧 DEBUG: Processing onboarding role: {onboarding_role.name} ({member_count} members)")
+                    
+                    for i, member in enumerate(onboarding_role.members):
+                        if member.bot:
+                            continue  # Skip bots
+                            
+                        print(f"🔧 DEBUG: Processing onboarding member {i+1}/{member_count}: {member.display_name}")
+                        cog_logger.info(f"🔧 DEBUG: Processing onboarding member {i+1}/{member_count}: {member.display_name}")
+                        
+                        user = self.User.query.filter_by(id=str(member.id)).first()
+                        if not user:
+                            # Create user if they don't exist
+                            user = self.User(
+                                id=str(member.id),
+                                username=member.display_name,
+                                discord_id=str(member.id)
+                            )
+                            self.db.session.add(user)
+                        
+                        if not user.onboarding_bonus_received:
+                            # Ensure balance and points are not None
+                            if user.balance is None:
+                                user.balance = 0
+                            if user.points is None:
+                                user.points = 0
+                            
+                            user.balance += settings.onboarding_bonus_points
+                            user.points += settings.onboarding_bonus_points
+                            user.onboarding_bonus_received = True
+                            bonus_awarded_count += 1
+                            print(f"✅ DEBUG: Awarded {settings.onboarding_bonus_points} points to {user.username} for onboarding role")
+                            cog_logger.info(f"✅ DEBUG: Awarded {settings.onboarding_bonus_points} points to {user.username} for onboarding role")
+        
+        # Commit all changes
+        self.db.session.commit()
+        
+        print(f"✅ DEBUG: First-time bonus awards completed. Total bonuses awarded: {bonus_awarded_count}")
+        cog_logger.info(f"✅ DEBUG: First-time bonus awards completed. Total bonuses awarded: {bonus_awarded_count}")
 
     @nextcord.slash_command(name="economy", description="Enable or disable the economy system (Admin only)")
     async def economy_toggle(self, interaction: Interaction, action: str):
@@ -1154,17 +1246,63 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_message("Economy settings not found.", ephemeral=True)
                 return
             if action.lower() == "enable":
+                # Check if roles are configured before enabling for the first time
                 first_time = not getattr(settings, 'first_time_enabled', False)
+                if first_time and not getattr(settings, 'roles_configured', False):
+                    await interaction.response.send_message(
+                        "⚠️ **Economy Configuration Required**\n\n"
+                        "Before enabling the economy for the first time, please configure the roles and bonuses using the web interface:\n"
+                        "Go to **Admin Panel → Economy Config** to set up verified and onboarding roles.\n\n"
+                        "This ensures users with existing roles get their bonus points when the economy is enabled.",
+                        ephemeral=True
+                    )
+                    return
+                
+                print(f"🔧 DEBUG: Economy enable - first_time: {first_time}")
+                print(f"🔧 DEBUG: Economy enable - settings.first_time_enabled: {getattr(settings, 'first_time_enabled', 'Not set')}")
+                cog_logger.info(f"🔧 DEBUG: Economy enable - first_time: {first_time}")
+                
                 settings.economy_enabled = True
                 settings.first_time_enabled = True
                 self.db.session.commit()
-                await interaction.response.send_message("Economy enabled.")
+                
+                embed = nextcord.Embed(
+                    title="✅ Economy System Enabled",
+                    description="The economy system is now active!",
+                    color=nextcord.Color.green()
+                )
+                
                 if first_time:
+                    print("🔧 DEBUG: Calling on_first_economy_enable because this is the first time")
+                    cog_logger.info("🔧 DEBUG: Calling on_first_economy_enable because this is the first time")
                     self.on_first_economy_enable(interaction)
+                    embed.add_field(
+                        name="🎁 First-Time Bonuses",
+                        value="Bonus points are being awarded to users with configured roles!",
+                        inline=False
+                    )
+                else:
+                    print("🔧 DEBUG: NOT calling on_first_economy_enable - not first time")
+                    cog_logger.info("🔧 DEBUG: NOT calling on_first_economy_enable - not first time")
+                
+                await interaction.response.send_message(embed=embed)
+                
             elif action.lower() == "disable":
                 settings.economy_enabled = False
                 self.db.session.commit()
-                await interaction.response.send_message("Economy disabled.")
+                
+                embed = nextcord.Embed(
+                    title="🔒 Economy System Disabled",
+                    description="The economy system has been turned off.",
+                    color=nextcord.Color.red()
+                )
+                embed.add_field(
+                    name="ℹ️ Note",
+                    value="User balances and data are preserved. Re-enable anytime.",
+                    inline=False
+                )
+                
+                await interaction.response.send_message(embed=embed)
             else:
                 await interaction.response.send_message("Invalid action. Use 'enable' or 'disable'.", ephemeral=True)
 

@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Economy Configuration - Devil2Devil Store{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-fade-in">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-cog text-yellow-400 mr-3"></i>
+            Economy System Configuration
+        </h1>
+        <p class="text-xl text-muted">Configure roles and bonuses before enabling the economy system for the first time</p>
+    </div>
+
+    <!-- Warning Box -->
+    <div class="card p-6 border-yellow-500 bg-yellow-900 bg-opacity-20 animate-fade-in-1">
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl mr-4 mt-1"></i>
+            <div>
+                <h3 class="text-lg font-semibold text-yellow-400 mb-2">Important Configuration</h3>
+                <p class="text-yellow-100">
+                    Configure these settings before enabling the economy system for the first time. 
+                    Users with the selected roles will automatically receive bonus points when the economy is enabled.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="card p-8 text-center animate-fade-in-2">
+        <div class="flex flex-col items-center space-y-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+            <p class="text-lg text-muted">Loading Discord roles...</p>
+        </div>
+    </div>
+
+    <!-- Configuration Form -->
+    <form id="economyConfigForm" method="POST" class="space-y-6" style="display: none;">
+        <!-- Verified Role Section -->
+        <div class="card p-6 animate-fade-in-3">
+            <h3 class="text-2xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-shield-alt text-green-400 mr-3"></i>
+                Verified Role Configuration
+            </h3>
+            <div class="bg-blue-900 bg-opacity-30 border border-blue-600 rounded-lg p-4 mb-6">
+                <p class="text-blue-100">
+                    <strong>What is this?</strong> Select the Discord role that represents verified members. 
+                    Users with this role will receive bonus points when the economy is first enabled.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <label for="verified_role_id" class="block text-sm font-medium text-gray-300 mb-2">Select Verified Role</label>
+                    <select class="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-yellow-400 focus:outline-none" 
+                            id="verified_role_id" name="verified_role_id">
+                        <option value="">Select a role...</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="verified_bonus_points" class="block text-sm font-medium text-gray-300 mb-2">Bonus Points</label>
+                    <input type="number" 
+                           class="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-yellow-400 focus:outline-none" 
+                           id="verified_bonus_points" name="verified_bonus_points" 
+                           value="{{ settings.verified_bonus_points or 200 }}" min="0" max="10000">
+                </div>
+            </div>
+        </div>
+
+        <!-- Onboarding Roles Section -->
+        <div class="card p-6">
+            <h3 class="text-2xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-users text-blue-400 mr-3"></i>
+                Onboarding Roles Configuration
+            </h3>
+            <div class="bg-blue-900 bg-opacity-30 border border-blue-600 rounded-lg p-4 mb-6">
+                <p class="text-blue-100">
+                    <strong>What is this?</strong> Select Discord roles that represent users who completed onboarding. 
+                    Users with any of these roles will receive bonus points when the economy is first enabled.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Select Onboarding Roles (Multiple Allowed)</label>
+                    <div id="onboarding_roles_container" 
+                         class="max-h-80 overflow-y-auto bg-gray-800 border border-gray-600 rounded-lg p-4 space-y-2">
+                        <!-- Roles will be loaded here -->
+                    </div>
+                </div>
+                <div>
+                    <label for="onboarding_bonus_points" class="block text-sm font-medium text-gray-300 mb-2">Bonus Points</label>
+                    <input type="number" 
+                           class="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-yellow-400 focus:outline-none" 
+                           id="onboarding_bonus_points" name="onboarding_bonus_points" 
+                           value="{{ settings.onboarding_bonus_points or 500 }}" min="0" max="10000">
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="card p-6">
+            <h3 class="text-2xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-eye text-purple-400 mr-3"></i>
+                Configuration Preview
+            </h3>
+            <div id="config_preview" class="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                <p class="text-muted">Configure roles above to see preview...</p>
+            </div>
+        </div>
+
+        <!-- Submit Section -->
+        <div class="card p-6 text-center">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <button type="submit" class="btn-secondary" name="action" value="save_config">
+                    <i class="fas fa-save mr-2"></i>
+                    Save Configuration
+                </button>
+                <button type="submit" class="btn-primary" name="action" value="enable_economy" 
+                        {% if not settings.roles_configured %}disabled{% endif %}>
+                    <i class="fas fa-play mr-2"></i>
+                    Enable Economy Now
+                </button>
+            </div>
+            <p class="text-sm text-muted">
+                <i class="fas fa-info-circle mr-1"></i>
+                You can save configuration without enabling the economy, or enable it immediately after configuration.
+            </p>
+        </div>
+    </form>
+
+    <!-- Error State -->
+    <div id="errorState" class="card p-6 border-red-500 bg-red-900 bg-opacity-20" style="display: none;">
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-circle text-red-400 text-2xl mr-4 mt-1"></i>
+            <div>
+                <h3 class="text-lg font-semibold text-red-400 mb-2">Failed to Load Discord Roles</h3>
+                <p class="text-red-100 mb-4" id="errorMessage">Unable to connect to Discord. Please check your bot configuration.</p>
+                <button onclick="window.location.reload()" class="btn-primary">
+                    <i class="fas fa-redo mr-2"></i>
+                    Retry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back to Admin -->
+    <div class="text-center">
+        <a href="{{ url_for('admin_panel') }}" class="btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to Admin Panel
+        </a>
+    </div>
+</div>
+
+<!-- Server Data for JavaScript -->
+<script type="application/json" id="server-data">
+{
+    "verifiedRoleId": {% if settings.verified_role_id %}"{{ settings.verified_role_id }}"{% else %}null{% endif %},
+    "onboardingRoles": {% if settings.onboarding_roles_list %}{{ settings.onboarding_roles_list | tojson }}{% else %}[]{% endif %}
+}
+</script>
+
+<script>
+    let selectedOnboardingRoles = [];
+    let allRoles = [];
+    
+    // Get server data
+    const serverData = JSON.parse(document.getElementById('server-data').textContent);
+
+    // Load Discord roles on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDiscordRoles();
+        
+        // Update preview when form changes
+        document.getElementById('economyConfigForm').addEventListener('change', updatePreview);
+        document.getElementById('economyConfigForm').addEventListener('input', updatePreview);
+    });
+
+    async function loadDiscordRoles() {
+        try {
+            console.log('Loading Discord roles...');
+            
+            const response = await fetch('/admin/get-discord-roles');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            console.log('Loaded roles:', data.roles);
+            allRoles = data.roles;
+            populateRoleSelects();
+            loadExistingConfig();
+            
+            // Hide loading, show form
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('economyConfigForm').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error loading Discord roles:', error);
+            
+            // Hide loading, show error
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('errorMessage').textContent = error.message;
+        }
+    }
+
+    function populateRoleSelects() {
+        const verifiedSelect = document.getElementById('verified_role_id');
+        const onboardingContainer = document.getElementById('onboarding_roles_container');
+        
+        // Clear existing options
+        verifiedSelect.innerHTML = '<option value="">Select a role...</option>';
+        onboardingContainer.innerHTML = '';
+        
+        if (allRoles.length === 0) {
+            onboardingContainer.innerHTML = '<p class="text-muted">No roles available</p>';
+            return;
+        }
+        
+        // Populate verified role select
+        allRoles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.id;
+            option.textContent = role.name;
+            verifiedSelect.appendChild(option);
+        });
+        
+        // Populate onboarding roles checkboxes
+        allRoles.forEach(role => {
+            const roleItem = document.createElement('div');
+            roleItem.className = 'flex items-center justify-between p-3 bg-gray-700 border border-gray-600 rounded-lg hover:border-yellow-400 transition-colors cursor-pointer';
+            roleItem.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-3 h-3 rounded-full mr-3" style="background-color: ${role.color || '#ffffff'}"></div>
+                    <div>
+                        <div class="font-medium text-white">${role.name}</div>
+                        <div class="text-sm text-gray-400">Position: ${role.position}</div>
+                    </div>
+                </div>
+                <input type="checkbox" value="${role.id}" 
+                       id="onboarding_${role.id}" 
+                       onchange="toggleOnboardingRole('${role.id}')"
+                       class="w-4 h-4 text-yellow-400 bg-gray-800 border-gray-600 rounded focus:ring-yellow-400">
+            `;
+            
+            // Make the whole item clickable
+            roleItem.addEventListener('click', function(e) {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = roleItem.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                    toggleOnboardingRole(role.id);
+                }
+            });
+            
+            onboardingContainer.appendChild(roleItem);
+        });
+    }
+
+    function toggleOnboardingRole(roleId) {
+        const checkbox = document.getElementById(`onboarding_${roleId}`);
+        const roleItem = checkbox.closest('div.flex');
+        
+        if (checkbox.checked) {
+            if (!selectedOnboardingRoles.includes(roleId)) {
+                selectedOnboardingRoles.push(roleId);
+            }
+            roleItem.classList.add('border-yellow-400', 'bg-yellow-900', 'bg-opacity-20');
+        } else {
+            selectedOnboardingRoles = selectedOnboardingRoles.filter(id => id !== roleId);
+            roleItem.classList.remove('border-yellow-400', 'bg-yellow-900', 'bg-opacity-20');
+        }
+        
+        updatePreview();
+    }
+
+    function loadExistingConfig() {
+        // Load existing configuration from server
+        if (serverData.verifiedRoleId) {
+            document.getElementById('verified_role_id').value = serverData.verifiedRoleId;
+        }
+        
+        if (serverData.onboardingRoles && serverData.onboardingRoles.length > 0) {
+            selectedOnboardingRoles = serverData.onboardingRoles;
+            selectedOnboardingRoles.forEach(roleId => {
+                const checkbox = document.getElementById(`onboarding_${roleId}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    const roleItem = checkbox.closest('div.flex');
+                    roleItem.classList.add('border-yellow-400', 'bg-yellow-900', 'bg-opacity-20');
+                }
+            });
+        }
+        
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const verifiedRoleId = document.getElementById('verified_role_id').value;
+        const verifiedPoints = document.getElementById('verified_bonus_points').value;
+        const onboardingPoints = document.getElementById('onboarding_bonus_points').value;
+        
+        const previewDiv = document.getElementById('config_preview');
+        
+        let previewHTML = '<h4 class="text-lg font-semibold mb-4 text-yellow-400">Configuration Summary</h4>';
+        
+        // Verified role preview
+        if (verifiedRoleId) {
+            const verifiedRole = allRoles.find(r => r.id === verifiedRoleId);
+            previewHTML += `
+                <div class="mb-4 p-3 bg-green-900 bg-opacity-30 border border-green-600 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas fa-shield-alt text-green-400 mr-2"></i>
+                            <span class="font-medium">Verified Role:</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-green-600 text-white rounded-full text-sm mr-2">${verifiedRole ? verifiedRole.name : 'Unknown Role'}</span>
+                            <span class="text-yellow-400 font-bold">${verifiedPoints} points</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            previewHTML += '<div class="mb-4 p-3 bg-gray-800 border border-gray-600 rounded-lg text-gray-400">No verified role selected</div>';
+        }
+        
+        // Onboarding roles preview
+        if (selectedOnboardingRoles.length > 0) {
+            previewHTML += `
+                <div class="mb-4 p-3 bg-blue-900 bg-opacity-30 border border-blue-600 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <i class="fas fa-users text-blue-400 mr-2"></i>
+                            <span class="font-medium">Onboarding Roles:</span>
+                        </div>
+                        <span class="text-yellow-400 font-bold">${onboardingPoints} points each</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+            `;
+            selectedOnboardingRoles.forEach(roleId => {
+                const role = allRoles.find(r => r.id === roleId);
+                if (role) {
+                    previewHTML += `<span class="px-2 py-1 bg-blue-600 text-white rounded text-sm">${role.name}</span>`;
+                }
+            });
+            previewHTML += '</div></div>';
+        } else {
+            previewHTML += '<div class="mb-4 p-3 bg-gray-800 border border-gray-600 rounded-lg text-gray-400">No onboarding roles selected</div>';
+        }
+        
+        // Info message
+        previewHTML += '<div class="text-sm text-gray-400 border-t border-gray-600 pt-3"><i class="fas fa-info-circle mr-1"></i>When the economy is enabled, users with these roles will automatically receive the configured bonus points.</div>';
+        
+        previewDiv.innerHTML = previewHTML;
+    }
+
+    // Handle form submission
+    document.getElementById('economyConfigForm').addEventListener('submit', function(e) {
+        // Add selected onboarding roles to form
+        const form = e.target;
+        
+        // Remove existing hidden inputs
+        const existingInputs = form.querySelectorAll('input[name="onboarding_role_ids"]');
+        existingInputs.forEach(input => input.remove());
+        
+        // Add selected onboarding roles as hidden inputs
+        selectedOnboardingRoles.forEach(roleId => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'onboarding_role_ids';
+            hiddenInput.value = roleId;
+            form.appendChild(hiddenInput);
+        });
+    });
+</script>
+{% endblock %} 

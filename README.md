@@ -8,7 +8,7 @@ Quick tests to verify the economy system works for users:
 
 ### 🚀 **Quick Setup Check**
 - [ ] Bot is online in Discord
-- [ ] Web app loads at `http://localhost:5000`
+- [ ] Web app loads at `http://localhost:6000`
 - [ ] Admin runs `/economy enable` to start the system
 
 ### 💰 **Basic User Commands**
@@ -252,7 +252,7 @@ Create a `.env` file:
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
 DISCORD_CLIENT_SECRET=your_discord_client_secret_here
-DISCORD_REDIRECT_URI=http://localhost:5000/callback
+DISCORD_REDIRECT_URI=http://localhost:6000/callback
 GENERAL_CHANNEL_ID=your_general_channel_id_here
 SECRET_KEY=your_secret_key_here
 DATABASE_URL=sqlite:///store.db
@@ -266,7 +266,7 @@ ONBOARDING_ROLE_IDS=role_id_1,role_id_2,role_id_3
 python app.py
 ```
 
-The web interface will be available at `http://localhost:5000`
+The web interface will be available at `http://localhost:6000`
 
 ## ⚙️ Configuration
 

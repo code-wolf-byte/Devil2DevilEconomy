@@ -1,77 +1,77 @@
-# Git files
-.git
-.gitignore
-*.md
-LICENSE
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 
-# Python cache and virtual environments
-__pycache__
-*.pyc
-*.pyo
-*.pyd
+# Distribution / packaging
 .Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.pytest_cache/
-.coverage
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# IDE files
+# Development files
+.env.local
+.env.development
+.env.test
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Local development files
-.env.local
-.env.development
-.env.test
-
-# Database files (will be created in container)
-*.db
-instance/
-
-# Log files (will be created in container)
+# Logs
 logs/
 *.log
 
-# Docker files
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads (will be mounted as volume)
+uploads/
+static/uploads/
+
+# Git
+.git/
+.gitignore
+
+# Docker
 Dockerfile
-docker-compose*.yml
+docker-compose.yml
 .dockerignore
 
 # Documentation
-docs/
 *.md
-QUICKSTART.md
-DIGITAL_PRODUCTS_GUIDE.md
+LICENSE
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# SSL certificates (removed for production)
+ssl/
 
-# Node.js (if any)
-node_modules/
-npm-debug.log
+# Migration cache
+migrations/__pycache__/
+migrations/versions/__pycache__/
 
-# Build artifacts
-build/
-dist/
-*.egg-info/
+# Environment files
+env/
+.env.example
 
-# Test files
-test_*
-*_test.py
-tests/
-
-# Local uploads (will be mounted as volume)
+# Instance data (will be mounted as volume)
+instance/
 data/
-uploads/ 
+
+# Deployment scripts
+deploy.sh 

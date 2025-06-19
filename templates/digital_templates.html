@@ -3,34 +3,42 @@
 {% block title %}Digital Product Templates{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="header-section text-center">
-        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+<div class="space-y-8">
+    <!-- Hero Section -->
+    <div class="text-center py-8 px-4 sm:py-12">
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 animate-fade-in">
             <i class="fas fa-magic text-yellow-400 mr-3"></i>
             Digital Product Creator
         </h1>
-        <p class="text-xl text-muted mb-2">Create digital products that deliver automatically</p>
-        <p class="text-sm text-muted">Set up role products, minecraft skins, or create custom digital items</p>
+        <p class="text-lg sm:text-xl text-muted max-w-2xl mx-auto animate-fade-in-delay">
+            Create digital products that deliver automatically to your customers
+        </p>
     </div>
 
     <!-- Quick Info Banner -->
-    <div class="card bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/30 mb-6">
-        <div class="card-body text-center">
-            <h3 class="text-lg font-semibold mb-2">
-                <i class="fas fa-info-circle text-blue-400 mr-2"></i>
-                How Digital Products Work
-            </h3>
-            <p class="text-sm text-muted">
-                Digital products are automatically delivered to users after purchase. 
-                Discord roles are assigned instantly, files are made available for download, 
-                and codes are generated automatically.
-            </p>
-        </div>
+    <div class="card p-6 sm:p-8 text-center animate-slide-up">
+        <i class="fas fa-info-circle text-4xl sm:text-6xl text-blue-400 mb-4 animate-bounce-subtle"></i>
+        <h3 class="text-xl sm:text-2xl font-semibold mb-4">How Digital Products Work</h3>
+        <p class="text-muted max-w-3xl mx-auto text-sm sm:text-base">
+            Digital products are automatically delivered to users after purchase. 
+            Discord roles are assigned instantly, files are made available for download, 
+            and codes are generated automatically.
+        </p>
     </div>
 
     <!-- Category Tabs -->
-    <div class="card mb-6">
-        <div class="card-body p-0">
+    <div class="animate-slide-up-delay">
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-2 sm:space-y-0">
+            <h2 class="text-2xl sm:text-3xl font-bold flex items-center">
+                <i class="fas fa-cogs text-yellow-400 mr-3"></i>
+                Product Categories
+            </h2>
+            <div class="text-muted text-sm sm:text-base">
+                Choose a category to get started
+            </div>
+        </div>
+        
+        <div class="card p-0 overflow-hidden">
             <div class="flex border-b border-gray-600">
                 <button class="category-tab active" data-category="discord-roles">
                     <i class="fas fa-user-tag text-purple-400 mr-2"></i>
@@ -40,25 +48,20 @@
                     <i class="fas fa-cube text-green-400 mr-2"></i>
                     Minecraft Skins
                 </button>
-                <button class="category-tab" data-category="other-digital">
-                    <i class="fas fa-cogs text-indigo-400 mr-2"></i>
-                    Other Digital
-                </button>
             </div>
         </div>
     </div>
 
     <!-- Discord Roles Section -->
     <div id="discord-roles-section" class="category-section">
-        <div class="card mb-6 animate-slide-up">
-            <div class="card-header">
-                <h3 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-user-tag text-purple-400 mr-3"></i>
-                    Discord Role Products
-                </h3>
-                <p class="text-muted mb-0">Create purchasable products that automatically assign Discord roles to users</p>
+        <div class="card p-6 sm:p-8 mb-6">
+            <div class="text-center mb-8">
+                <i class="fas fa-user-tag text-4xl sm:text-6xl text-purple-400 mb-4 animate-bounce-subtle"></i>
+                <h3 class="text-2xl sm:text-3xl font-bold mb-4">Discord Role Products</h3>
+                <p class="text-muted max-w-2xl mx-auto text-sm sm:text-base">
+                    Create purchasable products that automatically assign Discord roles to users
+                </p>
             </div>
-            <div class="card-body">
                 <!-- Loading State -->
                 <div id="roles-loading" class="text-center py-8">
                     <div class="spinner-border text-primary mb-3" role="status">
@@ -80,385 +83,264 @@
 
                 <!-- Role Creation Form -->
                 <div id="role-creation-form" style="display: none;">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-purple-500/30">
-                                <div class="card-body">
-                                    <h5 class="card-title text-lg font-semibold mb-4">
-                                        <i class="fas fa-plus mr-2"></i>Create Role Product
-                                    </h5>
+                    <div class="card p-6 sm:p-8 bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-purple-500/30">
+                        <div class="text-center mb-6">
+                            <i class="fas fa-plus text-3xl text-purple-400 mb-3"></i>
+                            <h5 class="text-xl sm:text-2xl font-semibold">Create Role Product</h5>
+                        </div>
                                     
-                                    <form id="roleProductForm" action="{{ url_for('create_role_product') }}" method="POST" class="space-y-4">
-                                        <div class="form-group">
-                                            <label class="form-label text-sm font-medium mb-2">
-                                                <i class="fas fa-crown mr-1"></i>Select Discord Role *
-                                            </label>
-                                            
-                                            <!-- Hidden input for form submission -->
-                                            <input type="hidden" name="role_id" id="selected_role_id" required>
-                                            
-                                            <!-- Custom Discord-style dropdown -->
-                                            <div class="discord-dropdown" id="role_dropdown">
-                                                <div class="discord-dropdown-trigger" id="dropdown_trigger">
-                                                    <div class="discord-dropdown-content">
-                                                        <span class="discord-dropdown-placeholder">Choose a role...</span>
-                                                    </div>
-                                                    <div class="discord-dropdown-arrow">
-                                                        <i class="fas fa-chevron-down"></i>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="discord-dropdown-menu" id="dropdown_menu">
-                                                    <div class="discord-dropdown-search">
-                                                        <input type="text" placeholder="Search roles..." id="role_search" class="discord-search-input">
-                                                    </div>
-                                                    <div class="discord-dropdown-options" id="dropdown_options">
-                                                        <div class="discord-dropdown-loading">
-                                                            <i class="fas fa-spinner fa-spin mr-2"></i>Loading roles...
+                        <form id="roleProductForm" action="{{ url_for('create_role_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                <div class="form-group">
+                                                    <label class="form-label text-sm font-medium mb-2">
+                                                        <i class="fas fa-crown mr-1"></i>Select Discord Role *
+                                                    </label>
+                                                    
+                                                    <!-- Hidden input for form submission -->
+                                                    <input type="hidden" name="role_id" id="selected_role_id" required>
+                                                    
+                                                    <!-- Custom Discord-style dropdown -->
+                                                    <div class="discord-dropdown" id="role_dropdown">
+                                                        <div class="discord-dropdown-trigger" id="dropdown_trigger">
+                                                            <div class="discord-dropdown-content">
+                                                                <span class="discord-dropdown-placeholder">Choose a role...</span>
+                                                            </div>
+                                                            <div class="discord-dropdown-arrow">
+                                                                <i class="fas fa-chevron-down"></i>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="discord-dropdown-menu" id="dropdown_menu">
+                                                            <div class="discord-dropdown-search">
+                                                                <input type="text" placeholder="Search roles..." id="role_search" class="discord-search-input">
+                                                            </div>
+                                                            <div class="discord-dropdown-options" id="dropdown_options">
+                                                                <div class="discord-dropdown-loading">
+                                                                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading roles...
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    
+                                                    <small class="text-muted mt-1">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        Only roles that can be managed by the bot are shown
+                                                    </small>
                                                 </div>
-                                            </div>
-                                            
-                                            <small class="text-muted mt-1">
-                                                <i class="fas fa-info-circle mr-1"></i>
-                                                Only roles that can be managed by the bot are shown
-                                            </small>
-                                        </div>
 
-                                        <div class="form-group">
-                                            <label for="product_name" class="form-label text-sm font-medium">
-                                                <i class="fas fa-tag mr-1"></i>Product Name *
-                                            </label>
-                                            <input type="text" name="product_name" id="product_name" 
-                                                   class="form-control" placeholder="e.g., VIP Member Access" required>
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle mr-1"></i>
-                                                This will appear in the store
-                                            </small>
-                                        </div>
+                                                <div class="form-group">
+                                                    <label for="product_name" class="form-label text-sm font-medium">
+                                                        <i class="fas fa-tag mr-1"></i>Product Name *
+                                                    </label>
+                                                    <input type="text" name="product_name" id="product_name" 
+                                                           class="form-control" placeholder="e.g., VIP Member Access" required>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        This will appear in the store
+                                                    </small>
+                                                </div>
 
-                                        <div class="form-group">
-                                            <label for="description" class="form-label text-sm font-medium">
-                                                <i class="fas fa-align-left mr-1"></i>Description
-                                            </label>
-                                            <textarea name="description" id="description" 
-                                                      class="form-control" rows="3" 
-                                                      placeholder="Describe what this role provides..."></textarea>
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle mr-1"></i>
-                                                Leave empty for auto-generated description
-                                            </small>
-                                        </div>
+                                                <div class="form-group">
+                                                    <label for="description" class="form-label text-sm font-medium">
+                                                        <i class="fas fa-align-left mr-1"></i>Description
+                                                    </label>
+                                                    <textarea name="description" id="description" 
+                                                              class="form-control" rows="3" 
+                                                              placeholder="Describe what this role provides..."></textarea>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        Leave empty for auto-generated description
+                                                    </small>
+                                                </div>
 
-                                        <div class="form-group">
-                                            <label for="price" class="form-label text-sm font-medium">
-                                                <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
-                                            </label>
-                                            <input type="number" name="price" id="price" 
-                                                   class="form-control" min="1" placeholder="100" required>
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle mr-1"></i>
-                                                How many pitchforks will this role cost?
-                                            </small>
-                                        </div>
-
-                                        <button type="submit" class="btn btn-primary w-full">
-                                            <i class="fas fa-plus mr-2"></i>Create Role Product
-                                        </button>
-                                    </form>
+                                                <div class="form-group">
+                                                    <label for="price" class="form-label text-sm font-medium">
+                                                        <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
+                                                    </label>
+                                                    <input type="number" name="price" id="price" 
+                                                           class="form-control" min="1" placeholder="100" required>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        How many pitchforks will this role cost?
+                                                    </small>
+                                                </div>
+                                </div>
+                                
+                                <div>
+                                                <div class="form-group">
+                                                    <label class="form-label text-sm font-medium">
+                                                        <i class="fas fa-image mr-1"></i>Role Image (Optional)
+                                                    </label>
+                                                    <div class="file-upload-area">
+                                                        <input type="file" name="role_image" id="roleImageFile" accept="image/*" style="display: none;">
+                                                        <div class="file-upload-content" onclick="document.getElementById('roleImageFile').click()">
+                                                            <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                                                            <p class="mb-1">Click to upload role image</p>
+                                                            <p class="text-sm text-muted">PNG, JPG, GIF up to 16MB</p>
+                                                        </div>
+                                                    </div>
+                                                    <p class="text-xs text-muted mt-2">Optional image to display with the role product</p>
+                                                </div>
+                                                
+                                                                                <div class="form-group">
+                                    <label for="stock" class="form-label text-sm font-medium">
+                                        <i class="fas fa-boxes mr-1"></i>Stock Quantity
+                                    </label>
+                                    <input type="number" name="stock" id="stock" 
+                                           class="form-control" min="1" placeholder="Leave empty for unlimited">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Leave empty for unlimited stock, or enter a number for limited stock
+                                    </small>
+                                </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-md-6">
-                            <div class="card bg-gradient-to-br from-blue-900/20 to-indigo-900/20 border-blue-500/30">
-                                <div class="card-body">
-                                    <h5 class="card-title text-lg font-semibold mb-4">
-                                        <i class="fas fa-eye mr-2"></i>Role Preview
-                                    </h5>
-                                    <div id="role-preview" class="text-center py-8">
-                                        <i class="fas fa-user-tag text-6xl text-gray-600 mb-3"></i>
-                                        <p class="text-muted">Select a role to see preview</p>
-                                    </div>
-                                </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn-primary w-full sm:w-auto px-8 py-3 text-lg transform hover:scale-105 transition-transform duration-200">
+                                    <i class="fas fa-plus mr-2"></i>Create Role Product
+                                </button>
                             </div>
-                        </div>
+                        </form>
+                    </div>
                     </div>
                 </div>
 
                 <!-- Existing Role Products -->
                 <div id="existing-role-products" style="display: none;">
-                    <hr class="my-6">
-                    <h5 class="text-lg font-semibold mb-4">
-                        <i class="fas fa-store mr-2"></i>Existing Role Products
-                    </h5>
-                    <div id="existing-products-list" class="row">
+                    <div class="border-t border-gray-600 my-8"></div>
+                    <div class="text-center mb-6">
+                        <i class="fas fa-store text-3xl text-purple-400 mb-3"></i>
+                        <h5 class="text-xl sm:text-2xl font-semibold">Existing Role Products</h5>
+                    </div>
+                    <div id="existing-products-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         <!-- Products will be loaded here -->
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 
     <!-- Minecraft Skins Section -->
-    <div id="minecraft-skins-section" class="category-section" style="display: none;">
-        <div class="card mb-6 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
-            <div class="card-header">
-                <h3 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-cube text-green-400 mr-3"></i>
-                    Minecraft Skin Products
-                </h3>
-                <p class="text-muted mb-0">Create downloadable Minecraft skin products with instant file delivery</p>
+    <div id="minecraft-skins-section" class="category-section animate-slide-up-delay-2" style="display: none;">
+        <div class="card p-6 sm:p-8 mb-6 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+            <div class="text-center mb-8">
+                <i class="fas fa-cube text-4xl sm:text-6xl text-green-400 mb-4 animate-bounce-subtle"></i>
+                <h3 class="text-2xl sm:text-3xl font-bold mb-4">Minecraft Skin Products</h3>
+                <p class="text-muted max-w-2xl mx-auto text-sm sm:text-base">
+                    Create downloadable Minecraft skin products with instant file delivery
+                </p>
             </div>
-            <div class="card-body">
-                <!-- Skin Templates -->
-                <div class="row mb-6">
-                    <div class="col-md-12">
-                        <h5 class="text-lg font-semibold mb-4">
-                            <i class="fas fa-palette mr-2"></i>Featured Skin Templates
-                        </h5>
-                        <div class="row">
-                            <!-- Premium Skin Pack -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/4CAF50/FFFFFF?text=SKIN" alt="Premium Skin Pack">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('premium_pack')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🎮 Premium Skin Pack</h6>
-                                        <p class="text-sm text-muted">5 exclusive custom skins</p>
-                                        <div class="text-xs text-green-400">
-                                            <i class="fas fa-download mr-1"></i>ZIP Download
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Medieval Knight -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/795548/FFFFFF?text=KNIGHT" alt="Medieval Knight">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('knight')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🗡️ Medieval Knight</h6>
-                                        <p class="text-sm text-muted">Epic knight armor skin</p>
-                                        <div class="text-xs text-green-400">
-                                            <i class="fas fa-download mr-1"></i>PNG Download
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Wizard Collection -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/9C27B0/FFFFFF?text=WIZARD" alt="Wizard Skin">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('wizard')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🧙‍♂️ Wizard Collection</h6>
-                                        <p class="text-sm text-muted">Magical wizard skins</p>
-                                        <div class="text-xs text-green-400">
-                                            <i class="fas fa-download mr-1"></i>ZIP Download
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Superhero Pack -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/F44336/FFFFFF?text=HERO" alt="Superhero Pack">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('superhero')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🦸‍♀️ Superhero Pack</h6>
-                                        <p class="text-sm text-muted">Hero skins with capes</p>
-                                        <div class="text-xs text-green-400">
-                                            <i class="fas fa-download mr-1"></i>ZIP Download
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Custom Commission -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/FF9800/FFFFFF?text=CUSTOM" alt="Custom Skin">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('custom')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🎨 Custom Commission</h6>
-                                        <p class="text-sm text-muted">Personalized skin design</p>
-                                        <div class="text-xs text-yellow-400">
-                                            <i class="fas fa-user mr-1"></i>Manual Delivery
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Animal Pack -->
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="skin-template-card">
-                                    <div class="skin-preview">
-                                        <img src="https://via.placeholder.com/64x64/8BC34A/FFFFFF?text=ANIMAL" alt="Animal Pack">
-                                        <div class="skin-overlay">
-                                            <button class="btn btn-sm btn-primary" onclick="createSkinProduct('animal')">
-                                                <i class="fas fa-plus mr-1"></i>Create
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="skin-info">
-                                        <h6 class="font-semibold">🐺 Animal Pack</h6>
-                                        <p class="text-sm text-muted">Cute animal-themed skins</p>
-                                        <div class="text-xs text-green-400">
-                                            <i class="fas fa-download mr-1"></i>ZIP Download
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Existing Minecraft Skin Products -->
+                <div class="mb-8">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-cube text-3xl text-green-400 mb-3"></i>
+                        <h5 class="text-xl sm:text-2xl font-semibold">Existing Minecraft Skin Products</h5>
+                    </div>
+                    <div id="existing-skins-container">
+                        <!-- This will be populated by JavaScript -->
+                        <div class="text-center py-8" id="loading-skins">
+                            <i class="fas fa-spinner fa-spin text-4xl text-muted mb-4 animate-spin-slow"></i>
+                            <p class="text-muted">Loading existing skin products...</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Upload Custom Skin Section -->
-                <div class="card bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border-blue-500/30">
-                    <div class="card-body">
-                        <h5 class="text-lg font-semibold mb-4">
-                            <i class="fas fa-upload mr-2"></i>Upload Custom Skin
-                        </h5>
-                        <p class="text-muted mb-4">Upload your own Minecraft skin files (.png or .zip) to create custom products.</p>
+                <!-- Create New Minecraft Skin Product -->
+                <div class="card p-6 sm:p-8 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border-blue-500/30">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-plus text-3xl text-blue-400 mb-3"></i>
+                        <h5 class="text-xl sm:text-2xl font-semibold mb-4">Create New Minecraft Skin Product</h5>
+                        <p class="text-muted max-w-2xl mx-auto text-sm sm:text-base">
+                            Create a new Minecraft skin product with preview media and downloadable files.
+                        </p>
+                    </div>
                         
-                        <form id="customSkinForm" class="space-y-4">
-                            <div class="row">
-                                <div class="col-md-6">
+                    <form action="{{ url_for('new_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <input type="hidden" name="product_type" value="minecraft_skin">
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div class="form-group">
                                         <label class="form-label text-sm font-medium">
                                             <i class="fas fa-tag mr-1"></i>Product Name *
                                         </label>
-                                        <input type="text" class="form-control" placeholder="e.g., My Epic Skin">
+                                        <input type="text" name="name" class="form-control" placeholder="e.g., Epic Knight Skin" required>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="form-label text-sm font-medium">
-                                            <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
-                                        </label>
-                                        <input type="number" class="form-control" placeholder="150" min="1">
-                                    </div>
+                            </div>
+                            <div>
+                                <div class="form-group">
+                                    <label class="form-label text-sm font-medium">
+                                        <i class="fas fa-coins mr-1"></i>Price (Pitchforks) *
+                                    </label>
+                                    <input type="number" name="price" class="form-control" placeholder="150" min="1" required>
                                 </div>
                             </div>
+                        </div>
                             
                             <div class="form-group">
                                 <label class="form-label text-sm font-medium">
                                     <i class="fas fa-align-left mr-1"></i>Description
                                 </label>
-                                <textarea class="form-control" rows="3" placeholder="Describe your skin..."></textarea>
+                                <textarea name="description" class="form-control" rows="3" placeholder="Describe your skin..."></textarea>
+                            </div>
+                            
+                            <!-- Preview Media Upload -->
+                            <div class="form-group">
+                                <label class="form-label text-sm font-medium">
+                                    <i class="fas fa-eye mr-1"></i>Preview Media (Image or Video) *
+                                </label>
+                                <div class="file-upload-area">
+                                    <input type="file" name="preview_image" id="previewFile" accept="image/*,video/*" style="display: none;" required>
+                                    <div class="file-upload-content" onclick="document.getElementById('previewFile').click()">
+                                        <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                                        <p class="mb-1">Click to upload preview media</p>
+                                        <p class="text-sm text-muted">Images (PNG, JPG, GIF) or Videos (MP4, WebM) up to 16MB</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-muted mt-2">This will be shown to customers as a preview of the skin</p>
+                            </div>
+                            
+                            <!-- Download File Upload -->
+                            <div class="form-group">
+                                <label class="form-label text-sm font-medium">
+                                    <i class="fas fa-download mr-1"></i>Downloadable Skin File *
+                                </label>
+                                <div class="file-upload-area">
+                                    <input type="file" name="download_file" id="downloadFile" accept=".png,.zip,.rar,.7z,.mcpack,.mcworld,.mctemplate,.mcaddon" style="display: none;" required>
+                                    <div class="file-upload-content" onclick="document.getElementById('downloadFile').click()">
+                                        <i class="fas fa-file-archive text-3xl mb-2"></i>
+                                        <p class="mb-1">Click to upload skin file</p>
+                                        <p class="text-sm text-muted">PNG, ZIP, RAR, 7Z, MCPACK files</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-muted mt-2">This file will be downloaded by customers after purchase</p>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label text-sm font-medium">
-                                    <i class="fas fa-file mr-1"></i>Skin File *
+                                    <i class="fas fa-boxes mr-1"></i>Stock Quantity
                                 </label>
-                                <div class="file-upload-area">
-                                    <input type="file" id="skinFile" accept=".png,.zip" style="display: none;">
-                                    <div class="file-upload-content" onclick="document.getElementById('skinFile').click()">
-                                        <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
-                                        <p class="mb-1">Click to upload skin file</p>
-                                        <p class="text-sm text-muted">PNG or ZIP files only</p>
-                                    </div>
-                                </div>
+                                <input type="number" name="stock" class="form-control" placeholder="Leave empty for unlimited" min="1">
+                                <p class="text-xs text-muted mt-1">Leave empty for unlimited stock, or enter a number for limited stock</p>
                             </div>
                             
-                            <button type="button" class="btn btn-primary">
+                        <div class="text-center">
+                            <button type="submit" class="btn-primary w-full sm:w-auto px-8 py-3 text-lg transform hover:scale-105 transition-transform duration-200">
                                 <i class="fas fa-plus mr-2"></i>Create Skin Product
                             </button>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
-            </div>
         </div>
     </div>
 
-    <!-- Other Digital Products Section -->
-    <div id="other-digital-section" class="category-section" style="display: none;">
-        <div class="card mb-6 bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border-indigo-500/30">
-            <div class="card-header">
-                <h3 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-cogs text-indigo-400 mr-3"></i>
-                    Other Digital Products
-                </h3>
-                <p class="text-muted mb-0">Create custom digital products beyond Discord roles and Minecraft skins</p>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 text-center mb-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-download text-cyan-400" style="font-size: 2rem;"></i>
-                        </div>
-                        <h5 class="font-semibold mb-2">File Downloads</h5>
-                        <p class="text-sm text-muted">Content packs, documents, and digital assets</p>
-                    </div>
-                    <div class="col-md-4 text-center mb-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-gift text-red-400" style="font-size: 2rem;"></i>
-                        </div>
-                        <h5 class="font-semibold mb-2">Generated Codes</h5>
-                        <p class="text-sm text-muted">Game codes, gift cards, and unique access codes</p>
-                    </div>
-                    <div class="col-md-4 text-center mb-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-tools text-orange-400" style="font-size: 2rem;"></i>
-                        </div>
-                        <h5 class="font-semibold mb-2">Custom Delivery</h5>
-                        <p class="text-sm text-muted">Manual delivery, special instructions, or unique setups</p>
-                    </div>
-                </div>
-                <div class="text-center mt-4">
-                    <p class="text-muted mb-4">
-                        Need something beyond Discord roles and Minecraft skins? Use the full product creation form for advanced configurations and custom delivery methods.
-                    </p>
-                    <a href="{{ url_for('new_product') }}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-plus mr-2"></i>Create Custom Digital Product
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Navigation -->
-    <div class="text-center mt-6 space-x-4">
-        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+    <div class="text-center space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center animate-fade-in">
+        <a href="{{ url_for('admin_panel') }}" class="btn-secondary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
         </a>
-        <a href="{{ url_for('new_product') }}" class="btn btn-outline-primary">
+        <a href="{{ url_for('new_product') }}" class="btn-primary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-plus mr-2"></i>Advanced Product Creator
         </a>
     </div>
@@ -495,26 +377,7 @@
     border-width: 0.3em;
 }
 
-#role-preview {
-    min-height: 200px;
-}
 
-.role-preview-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    padding: 20px;
-    color: white;
-    text-align: center;
-}
-
-.role-color-badge {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    margin-right: 8px;
-    border: 2px solid white;
-}
 
 .feature-icon {
     height: 60px;
@@ -645,6 +508,32 @@
     padding: 30px;
     text-align: center;
     cursor: pointer;
+}
+
+/* Form Controls */
+.form-control {
+    background: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    color: #f9fafb !important;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: border-color 0.15s ease;
+}
+
+.form-control:focus {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2) !important;
+    outline: none !important;
+}
+
+.form-control::placeholder {
+    color: #9ca3af !important;
+}
+
+.form-control:disabled {
+    background: #111827 !important;
+    color: #6b7280 !important;
 }
 
 /* Discord-style dropdown styles */
@@ -817,9 +706,10 @@ let existingRoleProducts = [];
 
 // Load Discord roles when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    initializeCategoryTabs();
     loadDiscordRoles();
     loadExistingRoleProducts();
-    initializeCategoryTabs();
+    loadExistingMinecraftSkins();
     initializeFileUpload();
 });
 
@@ -989,9 +879,6 @@ function selectRole(role) {
         </div>
     `;
     
-    // Update role preview
-    updateRolePreview(role);
-    
     // Auto-fill product name if empty
     const productNameInput = document.getElementById('product_name');
     if (!productNameInput.value) {
@@ -1012,21 +899,7 @@ function selectRole(role) {
     }
 }
 
-function updateRolePreview(role) {
-    const rolePreview = document.getElementById('role-preview');
-    const roleColor = role.color !== '#000000' ? role.color : '#7289da';
-    
-    rolePreview.innerHTML = `
-        <div class="role-preview-card" style="background: linear-gradient(135deg, ${roleColor}aa, ${roleColor}ff);">
-            <div class="mb-3">
-                <span class="role-color-badge" style="background-color: ${roleColor};"></span>
-                <strong>${role.name}</strong>
-            </div>
-            <p class="mb-2"><i class="fas fa-layer-group mr-2"></i>Position: ${role.position}</p>
-            <p class="mb-0"><i class="fas fa-palette mr-2"></i>Color: ${roleColor}</p>
-        </div>
-    `;
-}
+
 
 async function loadExistingRoleProducts() {
     try {
@@ -1047,6 +920,7 @@ function initializeCategoryTabs() {
     const tabs = document.querySelectorAll('.category-tab');
     const sections = document.querySelectorAll('.category-section');
     
+    // Set up click handlers
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const targetCategory = this.dataset.category;
@@ -1066,123 +940,178 @@ function initializeCategoryTabs() {
             }
         });
     });
-}
-
-// Minecraft Skin Product Creation
-const skinTemplates = {
-    premium_pack: {
-        name: "🎮 Premium Minecraft Skin Pack",
-        description: "Collection of 5 exclusive custom skins designed by professional artists",
-        price: 300,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "download",
-        auto_delivery: true,
-        file_path: "skins/premium_pack.zip"
-    },
-    knight: {
-        name: "🗡️ Medieval Knight Skin",
-        description: "Epic knight skin with detailed armor and medieval aesthetics",
-        price: 150,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "download",
-        auto_delivery: true,
-        file_path: "skins/knight.png"
-    },
-    wizard: {
-        name: "🧙‍♂️ Wizard Skin Collection",
-        description: "Magical wizard skins with robes, staffs, and mystical details",
-        price: 200,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "download",
-        auto_delivery: true,
-        file_path: "skins/wizard_collection.zip"
-    },
-    superhero: {
-        name: "🦸‍♀️ Superhero Skin Pack",
-        description: "Collection of superhero skins with capes and unique powers theme",
-        price: 250,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "download",
-        auto_delivery: true,
-        file_path: "skins/superhero_pack.zip"
-    },
-    custom: {
-        name: "🎨 Custom Skin Commission",
-        description: "Personalized skin created just for you by our artists",
-        price: 400,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "manual",
-        auto_delivery: false,
-        file_path: "skins/custom/"
-    },
-    animal: {
-        name: "🐺 Animal Pack",
-        description: "Cute animal-themed skins including wolves, cats, pandas and more",
-        price: 175,
-        category: "minecraft",
-        product_type: "minecraft_skin",
-        delivery_method: "download",
-        auto_delivery: true,
-        file_path: "skins/animal_pack.zip"
-    }
-};
-
-async function createSkinProduct(templateKey) {
-    const template = skinTemplates[templateKey];
-    if (!template) {
-        alert('Template not found');
-        return;
-    }
     
-    const confirmed = confirm(`Create "${template.name}" for ${template.price} pitchforks?`);
-    if (!confirmed) return;
-    
-    try {
-        const formData = new FormData();
-        formData.append('name', template.name);
-        formData.append('description', template.description);
-        formData.append('price', template.price);
-        formData.append('category', template.category);
-        formData.append('product_type', template.product_type);
-        formData.append('delivery_method', template.delivery_method);
-        formData.append('auto_delivery', template.auto_delivery);
-        formData.append('file_path', template.file_path);
+    // Initialize first tab as active
+    if (tabs.length > 0) {
+        const firstTab = tabs[0];
+        const firstCategory = firstTab.dataset.category;
         
-        const response = await fetch('/admin/create-from-template', {
-            method: 'POST',
-            body: formData
+        // Set first tab as active
+        firstTab.classList.add('active');
+        
+        // Show first section, hide others
+        sections.forEach(section => {
+            section.style.display = 'none';
         });
         
-        if (response.ok) {
-            alert('Skin product created successfully!');
-            window.location.reload();
-        } else {
-            const data = await response.json();
-            alert('Error creating product: ' + (data.error || 'Unknown error'));
+        const firstSection = document.getElementById(firstCategory + '-section');
+        if (firstSection) {
+            firstSection.style.display = 'block';
         }
-    } catch (error) {
-        console.error('Error creating skin product:', error);
-        alert('Error creating product. Please try again.');
     }
 }
 
-// File upload handling for custom skins
+// Load existing Minecraft skin products
+async function loadExistingMinecraftSkins() {
+    try {
+        const response = await fetch('/admin/get-minecraft-skin-products');
+        const data = await response.json();
+        
+        const container = document.getElementById('existing-skins-container');
+        const loadingDiv = document.getElementById('loading-skins');
+        
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+        
+        if (response.ok) {
+            if (data.products.length > 0) {
+                displayMinecraftSkins(data.products);
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-cube text-4xl text-muted mb-3"></i>
+                        <h6 class="text-lg font-semibold mb-2">No Minecraft Skin Products Yet</h6>
+                        <p class="text-muted">Create your first Minecraft skin product using the form below.</p>
+                    </div>
+                `;
+            }
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-3"></i>
+                    <p class="text-red-400">Error loading skin products: ${data.error}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading Minecraft skin products:', error);
+        const container = document.getElementById('existing-skins-container');
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-3"></i>
+                <p class="text-red-400">Error loading skin products. Please try again.</p>
+            </div>
+        `;
+    }
+}
+
+function displayMinecraftSkins(products) {
+    const container = document.getElementById('existing-skins-container');
+    
+    const productsHtml = products.map((product, index) => {
+        const previewHtml = product.preview_image_url ? 
+            (product.preview_type === 'video' ? 
+                `<div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
+                    <video src="/static/uploads/${product.preview_image_url}" 
+                           class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                           muted loop autoplay playsinline>
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>` :
+                `<div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
+                    <img src="/static/uploads/${product.preview_image_url}" alt="${product.name}" 
+                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>`) :
+            `<div class="h-40 sm:h-48 bg-gray-700 flex items-center justify-center group-hover:bg-gray-600 transition-colors duration-300">
+                <i class="fas fa-cube text-3xl sm:text-4xl text-gray-500"></i>
+            </div>`;
+        
+        return `
+            <div class="card overflow-hidden group animate-scale-in" style="animation-delay: ${index * 0.1}s">
+                ${previewHtml}
+                <div class="p-4 sm:p-6">
+                    <h3 class="text-lg sm:text-xl font-semibold mb-2 group-hover:text-yellow-400 transition-colors duration-300">
+                        ${product.name}
+                    </h3>
+                    <p class="text-muted mb-4 text-sm leading-relaxed">${product.description || 'No description'}</p>
+                    
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+                        <div class="text-xl sm:text-2xl font-bold asu-gold flex items-center">
+                            <i class="fas fa-coins mr-1"></i>
+                            ${product.price}
+                        </div>
+                        <div class="text-xs sm:text-sm text-muted">
+                            Stock: ${product.stock === null || product.stock === undefined ? 'Unlimited' : (product.stock === 0 ? 'Out of Stock' : product.stock)}
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${product.has_dual_files ? '<span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold"><i class="fas fa-check mr-1"></i>Dual-file</span>' : ''}
+                        ${product.download_file_url ? '<span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold"><i class="fas fa-download mr-1"></i>Download</span>' : ''}
+                    </div>
+                    
+                    <div class="text-xs text-muted mb-4">
+                        <div><i class="fas fa-calendar mr-1"></i>Created: ${product.created_at}</div>
+                    </div>
+                    
+                    <a href="/admin/product/${product.id}/edit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
+                        <i class="fas fa-edit mr-2"></i>Edit Product
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">${productsHtml}</div>`;
+}
+
+// File upload handling for custom skins and role images
 function initializeFileUpload() {
-    const skinFileInput = document.getElementById('skinFile');
-    if (skinFileInput) {
-        skinFileInput.addEventListener('change', function(e) {
+    const previewFileInput = document.getElementById('previewFile');
+    const downloadFileInput = document.getElementById('downloadFile');
+    const roleImageInput = document.getElementById('roleImageFile');
+    
+    if (previewFileInput) {
+        previewFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const uploadContent = document.querySelector('.file-upload-content');
+                const uploadContent = this.parentElement.querySelector('.file-upload-content');
+                const isVideo = file.type.startsWith('video/');
                 uploadContent.innerHTML = `
-                    <i class="fas fa-file-image text-3xl mb-2 text-green-400"></i>
+                    <i class="fas fa-${isVideo ? 'video' : 'image'} text-3xl mb-2 text-blue-400"></i>
                     <p class="mb-1">${file.name}</p>
                     <p class="text-sm text-muted">Click to change file</p>
+                `;
+            }
+        });
+    }
+    
+    if (downloadFileInput) {
+        downloadFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const uploadContent = this.parentElement.querySelector('.file-upload-content');
+                uploadContent.innerHTML = `
+                    <i class="fas fa-file-archive text-3xl mb-2 text-green-400"></i>
+                    <p class="mb-1">${file.name}</p>
+                    <p class="text-sm text-muted">Click to change file</p>
+                `;
+            }
+        });
+    }
+    
+    if (roleImageInput) {
+        roleImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const uploadContent = this.parentElement.querySelector('.file-upload-content');
+                uploadContent.innerHTML = `
+                    <i class="fas fa-image text-3xl mb-2 text-purple-400"></i>
+                    <p class="mb-1">${file.name}</p>
+                    <p class="text-sm text-muted">Click to change image</p>
                 `;
             }
         });
@@ -1193,25 +1122,52 @@ function displayExistingProducts(products) {
     const productsList = document.getElementById('existing-products-list');
     productsList.innerHTML = '';
     
-    products.forEach(product => {
+    products.forEach((product, index) => {
         const productCard = document.createElement('div');
-        productCard.className = 'col-md-6 col-lg-4 mb-4';
+        productCard.className = 'card overflow-hidden group animate-scale-in';
+        productCard.style.animationDelay = `${index * 0.1}s`;
+        
+        const imageHtml = product.image_url ? 
+            `<div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
+                <img src="/static/uploads/${product.image_url}" alt="${product.name}" 
+                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>` : 
+            `<div class="h-40 sm:h-48 bg-gray-700 flex items-center justify-center group-hover:bg-gray-600 transition-colors duration-300">
+                <i class="fas fa-user-tag text-3xl sm:text-4xl text-gray-500"></i>
+            </div>`;
+        
         productCard.innerHTML = `
-            <div class="card h-100 bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-purple-500/30">
-                <div class="card-body">
-                    <h6 class="card-title font-semibold mb-2">${product.name}</h6>
-                    <p class="card-text text-sm text-muted mb-2">${product.description || 'No description'}</p>
-                    <div class="mb-3">
-                        <span class="inline-block bg-yellow-600 text-white px-2 py-1 rounded text-xs">
-                            <i class="fas fa-coins mr-1"></i>${product.price} pitchforks
-                        </span>
-                        ${product.auto_delivery ? '<span class="inline-block bg-green-600 text-white px-2 py-1 rounded text-xs ml-2"><i class="fas fa-bolt mr-1"></i>Auto</span>' : ''}
+            ${imageHtml}
+            <div class="p-4 sm:p-6">
+                <h3 class="text-lg sm:text-xl font-semibold mb-2 group-hover:text-yellow-400 transition-colors duration-300">
+                    ${product.name}
+                </h3>
+                <p class="text-muted mb-4 text-sm leading-relaxed">${product.description || 'No description'}</p>
+                
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+                    <div class="text-xl sm:text-2xl font-bold asu-gold flex items-center">
+                        <i class="fas fa-coins mr-1"></i>
+                        ${product.price}
                     </div>
-                    <div class="text-xs text-muted">
-                        <div><i class="fas fa-id-badge mr-1"></i>Role ID: ${product.role_id}</div>
-                        <div><i class="fas fa-calendar mr-1"></i>Created: ${product.created_at}</div>
+                    <div class="text-xs sm:text-sm text-muted">
+                        Stock: ${product.stock === null || product.stock === undefined ? 'Unlimited' : (product.stock === 0 ? 'Out of Stock' : product.stock)}
                     </div>
                 </div>
+                
+                <div class="flex flex-wrap gap-2 mb-4">
+                    ${product.auto_delivery ? '<span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold"><i class="fas fa-bolt mr-1"></i>Auto</span>' : ''}
+                    ${product.image_url ? '<span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold"><i class="fas fa-image mr-1"></i>Image</span>' : ''}
+                </div>
+                
+                <div class="text-xs text-muted mb-4">
+                    <div><i class="fas fa-id-badge mr-1"></i>Role ID: ${product.role_id}</div>
+                    <div><i class="fas fa-calendar mr-1"></i>Created: ${product.created_at}</div>
+                </div>
+                
+                <a href="/admin/product/${product.id}/edit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
+                    <i class="fas fa-edit mr-2"></i>Edit Product
+                </a>
             </div>
         `;
         productsList.appendChild(productCard);

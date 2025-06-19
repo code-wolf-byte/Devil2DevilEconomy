@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+ENV DOCKER_ENV=1
 
 # Set work directory
 WORKDIR /app
@@ -37,7 +38,8 @@ RUN mkdir -p static/uploads/skins \
     logs \
     instance \
     migrations/versions && \
-    chown -R app:app /app
+    chown -R app:app /app && \
+    chmod -R 755 logs
 
 # Copy application code
 COPY --chown=app:app . .
@@ -55,7 +57,7 @@ RUN if [ ! -f .env ]; then \
     echo "DISCORD_TOKEN=your_discord_bot_token_here" >> .env && \
     echo "DISCORD_CLIENT_ID=your_discord_client_id_here" >> .env && \
     echo "DISCORD_CLIENT_SECRET=your_discord_client_secret_here" >> .env && \
-    echo "DISCORD_REDIRECT_URI=http://localhost:5000/callback" >> .env && \
+    echo "DISCORD_REDIRECT_URI=http://localhost:6000/callback" >> .env && \
     echo "SECRET_KEY=docker_secret_key_change_in_production" >> .env && \
     echo "DATABASE_URL=sqlite:///store.db" >> .env && \
     echo "GUILD_ID=your_guild_id_here" >> .env && \
@@ -68,11 +70,11 @@ RUN if [ ! -f .env ]; then \
 USER app
 
 # Expose the port the app runs on
-EXPOSE 5000
+EXPOSE 6000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/ || exit 1
+    CMD curl -f http://localhost:6000/ || exit 1
 
 # Run the application
 CMD ["python", "app.py"] 

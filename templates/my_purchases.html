@@ -39,10 +39,19 @@
                                 <tr class="hover:bg-gray-800 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            {% if purchase.product.image_url %}
-                                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
-                                                     alt="{{ purchase.product.name }}" 
-                                                     class="w-10 h-10 rounded object-cover mr-3">
+                                            {% if purchase.product.display_image %}
+                                                {% set file_ext = purchase.product.display_image.split('.')[-1].lower() %}
+                                                {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
+                                                    <video src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
+                                                           class="w-10 h-10 rounded object-cover mr-3"
+                                                           muted loop playsinline>
+                                                        Your browser does not support the video tag.
+                                                    </video>
+                                                {% else %}
+                                                    <img src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
+                                                         alt="{{ purchase.product.name }}" 
+                                                         class="w-10 h-10 rounded object-cover mr-3">
+                                                {% endif %}
                                             {% else %}
                                                 <div class="w-10 h-10 bg-gray-700 rounded flex items-center justify-center mr-3">
                                                     <i class="fas fa-box text-gray-400"></i>
@@ -93,10 +102,19 @@
             {% for purchase in purchases %}
                 <div class="card p-4">
                     <div class="flex items-center mb-3">
-                        {% if purchase.product.image_url %}
-                            <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
-                                 alt="{{ purchase.product.name }}" 
-                                 class="w-12 h-12 rounded object-cover mr-3">
+                        {% if purchase.product.display_image %}
+                            {% set file_ext = purchase.product.display_image.split('.')[-1].lower() %}
+                            {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
+                                <video src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
+                                       class="w-12 h-12 rounded object-cover mr-3"
+                                       muted loop playsinline>
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% else %}
+                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
+                                     alt="{{ purchase.product.name }}" 
+                                     class="w-12 h-12 rounded object-cover mr-3">
+                            {% endif %}
                         {% else %}
                             <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center mr-3">
                                 <i class="fas fa-box text-gray-400"></i>

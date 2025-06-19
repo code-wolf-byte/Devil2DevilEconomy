@@ -49,7 +49,7 @@ docker-compose up -d
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
 DISCORD_CLIENT_SECRET=your_discord_client_secret_here
-DISCORD_REDIRECT_URI=http://localhost:5000/callback
+DISCORD_REDIRECT_URI=http://localhost:6000/callback
 
 # Flask Configuration
 SECRET_KEY=your_secret_key_here
@@ -78,7 +78,7 @@ ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id
 ```bash
 docker-compose up -d
 ```
-- Runs on port 5000
+- Runs on port 6000
 - Direct access to Flask application
 - Suitable for development and testing
 
@@ -224,7 +224,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 ### Health Checks
 ```bash
 # Check application health
-curl http://localhost:5000/
+curl http://localhost:6000/
 
 # Check container health
 docker-compose ps

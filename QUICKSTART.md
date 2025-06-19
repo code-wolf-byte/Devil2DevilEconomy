@@ -33,7 +33,7 @@ That's it! The application will automatically:
 
 ## What You Get
 
-- **Web Interface**: http://localhost:5000
+- **Web Interface**: http://localhost:6000
 - **Admin Panel**: Login with Discord to access admin features
 - **Discord Bot**: Economy system with slash commands
 - **Database**: Automatically created SQLite database
@@ -53,7 +53,7 @@ Configure Discord later to enable full functionality.
 
 **"Permission denied"**: Make sure you have write permissions in the current directory.
 
-**"Port already in use"**: Another application is using port 5000. Stop it or modify the port in `app.py`.
+**"Port already in use"**: Another application is using port 6000. Stop it or modify the port in `app.py`.
 
 ---
 
