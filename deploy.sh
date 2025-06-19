@@ -68,7 +68,7 @@ GENERAL_CHANNEL_ID=your_general_channel_id_here
 
 # Role Configuration for Economy System (Optional)
 VERIFIED_ROLE_ID=your_verified_role_id_here
-ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id
+# ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id  # Now configured via webapp admin panel
 EOF
     print_warning "Please edit the .env file with your Discord bot credentials before continuing."
     print_warning "You can get Discord credentials from: https://discord.com/developers/applications"
@@ -86,17 +86,17 @@ print_status ".env file configured."
 
 # Build and start the application
 print_status "Building Docker image..."
-docker-compose build
+docker compose build
 
 print_status "Starting Economy Bot..."
-docker-compose up -d
+docker compose up -d
 
 # Wait for the application to start
 print_status "Waiting for application to start..."
 sleep 10
 
 # Check if the application is running
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
     print_status "✅ Economy Bot is running!"
     echo
     echo "🌐 Application URLs:"
@@ -104,10 +104,10 @@ if docker-compose ps | grep -q "Up"; then
     echo "   - Admin Panel: http://localhost:6000/admin"
     echo
     echo "📊 Useful Commands:"
-    echo "   - View logs: docker-compose logs -f"
-    echo "   - Stop application: docker-compose down"
-    echo "   - Restart application: docker-compose restart"
-    echo "   - Update application: docker-compose pull && docker-compose up -d"
+    echo "   - View logs: docker compose logs -f"
+    echo "   - Stop application: docker compose down"
+    echo "   - Restart application: docker compose restart"
+    echo "   - Update application: docker compose pull && docker compose up -d"
     echo
     echo "📁 Data Locations:"
     echo "   - Database: ./data/"
@@ -117,6 +117,6 @@ if docker-compose ps | grep -q "Up"; then
     print_status "Setup complete! Check the logs if you encounter any issues."
 else
     print_error "❌ Failed to start Economy Bot. Check the logs:"
-    docker-compose logs
+    docker compose logs
     exit 1
 fi 

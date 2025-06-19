@@ -16,7 +16,7 @@ cog_logger = logging.getLogger('economy.cogs')
 
 VERIFIED_ROLE_ID = int(os.getenv('VERIFIED_ROLE_ID', 0))
 GENERAL_CHANNEL_ID = int(os.getenv('GENERAL_CHANNEL_ID')) if os.getenv('GENERAL_CHANNEL_ID') else None
-ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.getenv('ONBOARDING_ROLE_IDS') else []
+# ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.getenv('ONBOARDING_ROLE_IDS') else []  # Removed - now uses database config
 
 # Custom emoji reward system - Replace with your server's custom emoji names
 CAMPUS_PICTURE_EMOJI = "campus_photo"        # Your custom campus picture emoji name
@@ -186,9 +186,10 @@ class EconomyCog(commands.Cog):
                 if VERIFIED_ROLE_ID and any(role.id == int(VERIFIED_ROLE_ID) for role in added_roles):
                     await self.handle_verification_bonus(after)
                 
-                # Check for onboarding roles
-                if ONBOARDING_ROLE_IDS:
-                    onboarding_role_ids = [int(role_id.strip()) for role_id in ONBOARDING_ROLE_IDS if role_id.strip()]
+                # Check for onboarding roles using database config
+                settings = self.EconomySettings.query.first()
+                if settings and settings.onboarding_roles_list:
+                    onboarding_role_ids = [int(role_id) for role_id in settings.onboarding_roles_list if role_id.strip()]
                     if any(role.id in onboarding_role_ids for role in added_roles):
                         await self.handle_onboarding_bonus(after)
 
@@ -284,11 +285,15 @@ class EconomyCog(commands.Cog):
                     cog_logger.info(f"Onboarding bonus already received by {member.display_name}")
                     return
                 
+                # Get onboarding bonus amount from settings
+                settings = self.EconomySettings.query.first()
+                bonus_amount = settings.onboarding_bonus_points if settings else 500
+                
                 # Award onboarding bonus atomically
-                user.balance += 500
+                user.balance += bonus_amount
                 user.onboarding_bonus_received = True
                 self.db.session.commit()
-                cog_logger.info(f"Onboarding bonus awarded to {member.display_name}: 500 points")
+                cog_logger.info(f"Onboarding bonus awarded to {member.display_name}: {bonus_amount} points")
                 
             except Exception as e:
                 self.db.session.rollback()
@@ -301,7 +306,7 @@ class EconomyCog(commands.Cog):
             try:
                 embed = nextcord.Embed(
                     title="🎊 Onboarding Complete!",
-                    description=f"Congratulations! You've received **500 points** for completing your onboarding!",
+                    description=f"Congratulations! You've received **{bonus_amount} points** for completing your onboarding!",
                     color=nextcord.Color.gold()
                 )
                 

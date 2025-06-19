@@ -63,7 +63,7 @@ RUN if [ ! -f .env ]; then \
     echo "GUILD_ID=your_guild_id_here" >> .env && \
     echo "GENERAL_CHANNEL_ID=your_general_channel_id_here" >> .env && \
     echo "VERIFIED_ROLE_ID=your_verified_role_id_here" >> .env && \
-    echo "ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id" >> .env; \
+    # echo "ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id" >> .env; \  # Now configured via webapp
     fi
 
 # Switch to non-root user

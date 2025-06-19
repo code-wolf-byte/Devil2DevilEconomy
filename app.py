@@ -58,7 +58,7 @@ GENERAL_CHANNEL_ID=your_general_channel_id_here
 
 # Role Configuration for Economy System (Optional)
 VERIFIED_ROLE_ID=your_verified_role_id_here
-ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id
+# ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id  # Now configured via webapp admin panel
 """
         try:
             with open('.env', 'w') as f:
