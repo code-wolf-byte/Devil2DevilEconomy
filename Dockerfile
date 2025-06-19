@@ -44,12 +44,8 @@ RUN mkdir -p static/uploads/skins \
 # Copy application code
 COPY --chown=app:app . .
 
-# Copy sample skin files if they exist
-COPY --chown=app:app static/uploads/skins/ static/uploads/skins/
-
 # Set proper permissions for upload directories
-RUN chmod -R 755 static/uploads/ && \
-    chmod -R 644 static/uploads/skins/* || true
+RUN chmod -R 755 static/uploads/ || true
 
 # Create .env file template if it doesn't exist
 RUN if [ ! -f .env ]; then \
