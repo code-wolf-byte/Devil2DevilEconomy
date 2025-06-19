@@ -1001,10 +1001,16 @@ def callback():
                     raise e  # Re-raise if we still can't find the user
                 app_logger.info(f"Race condition resolved, found existing user: {user.username}")
         
-        # Update user information
+        # Update user information and fix any null balance issues
         user.is_admin = is_admin
         user.username = user_data['username']  # Update username in case it changed
         user.avatar_url = avatar_url
+        
+        # Fix any None balance or points (for existing users)
+        if user.balance is None:
+            user.balance = 0
+        if user.points is None:
+            user.points = 0
         try:
             db.session.commit()
             app_logger.info(f"Updated existing user: {user.username} (Admin: {is_admin})")
