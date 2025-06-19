@@ -47,20 +47,7 @@ COPY --chown=app:app . .
 # Set proper permissions for upload directories
 RUN chmod -R 755 static/uploads/ || true
 
-# Create .env file template if it doesn't exist
-RUN if [ ! -f .env ]; then \
-    echo "# Docker Environment Configuration" > .env && \
-    echo "DISCORD_TOKEN=your_discord_bot_token_here" >> .env && \
-    echo "DISCORD_CLIENT_ID=your_discord_client_id_here" >> .env && \
-    echo "DISCORD_CLIENT_SECRET=your_discord_client_secret_here" >> .env && \
-    echo "DISCORD_REDIRECT_URI=http://localhost:6000/callback" >> .env && \
-    echo "SECRET_KEY=docker_secret_key_change_in_production" >> .env && \
-    echo "DATABASE_URL=sqlite:///store.db" >> .env && \
-    echo "GUILD_ID=your_guild_id_here" >> .env && \
-    echo "GENERAL_CHANNEL_ID=your_general_channel_id_here" >> .env && \
-    echo "VERIFIED_ROLE_ID=your_verified_role_id_here" >> .env && \
-    # echo "ONBOARDING_ROLE_IDS=role1_id,role2_id,role3_id" >> .env; \  # Now configured via webapp
-    fi
+# Note: .env file should be provided by the user before building
 
 # Switch to non-root user
 USER app
