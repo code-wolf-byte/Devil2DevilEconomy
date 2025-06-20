@@ -212,45 +212,95 @@
                 in the general channel. Use <code>/achievements</code> to see your progress.
             </p>
             
-            <div class="grid md:grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <!-- Message Achievements -->
                 <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                    <h4 class="font-semibold text-lg mb-4 flex items-center">
                         <i class="fas fa-comment text-blue-400 mr-2"></i>
                         Message Milestones
                     </h4>
-                    <p class="text-sm text-muted">
-                        Earn achievements for sending messages in the server. The more you chat, the more milestones you unlock!
-                    </p>
+                    <div class="grid md:grid-cols-3 gap-4 ml-6">
+                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
+                            <h5 class="font-semibold text-blue-300 mb-1">🎯 First Message</h5>
+                            <p class="text-xs text-muted">Send your first message</p>
+                            <p class="text-yellow-400 font-bold text-sm">425 points</p>
+                        </div>
+                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
+                            <h5 class="font-semibold text-blue-300 mb-1">💬 Chatty</h5>
+                            <p class="text-xs text-muted">Send 100 messages</p>
+                            <p class="text-yellow-400 font-bold text-sm">50 points</p>
+                        </div>
+                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
+                            <h5 class="font-semibold text-blue-300 mb-1">🗣️ Conversationalist</h5>
+                            <p class="text-xs text-muted">Send 1,000 messages</p>
+                            <p class="text-yellow-400 font-bold text-sm">100 points</p>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- Reaction Achievements -->
                 <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                    <h4 class="font-semibold text-lg mb-4 flex items-center">
                         <i class="fas fa-heart text-red-400 mr-2"></i>
                         Reaction Milestones
                     </h4>
-                    <p class="text-sm text-muted">
-                        React to messages to show engagement and unlock reaction-based achievements.
-                    </p>
+                    <div class="grid md:grid-cols-2 gap-4 ml-6">
+                        <div class="achievement-item bg-red-900/20 p-3 rounded border border-red-500/30">
+                            <h5 class="font-semibold text-red-300 mb-1">👍 Reactor</h5>
+                            <p class="text-xs text-muted">React to 50 messages</p>
+                            <p class="text-yellow-400 font-bold text-sm">50 points</p>
+                        </div>
+                        <div class="achievement-item bg-red-900/20 p-3 rounded border border-red-500/30">
+                            <h5 class="font-semibold text-red-300 mb-1">⭐ Super Reactor</h5>
+                            <p class="text-xs text-muted">React to 500 messages</p>
+                            <p class="text-yellow-400 font-bold text-sm">100 points</p>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- Special Achievements -->
                 <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-microphone text-purple-400 mr-2"></i>
-                        Voice Activity
-                    </h4>
-                    <p class="text-sm text-muted">
-                        Spend time in voice channels to unlock voice activity achievements.
-                    </p>
-                </div>
-                
-                <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-rocket text-pink-400 mr-2"></i>
+                    <h4 class="font-semibold text-lg mb-4 flex items-center">
+                        <i class="fas fa-star text-yellow-400 mr-2"></i>
                         Special Achievements
                     </h4>
-                    <p class="text-sm text-muted">
-                        Server boosting, community participation, and other special activities have their own achievements.
-                    </p>
+                    <div class="grid md:grid-cols-3 gap-4 ml-6">
+                        <div class="achievement-item bg-yellow-900/20 p-3 rounded border border-yellow-500/30">
+                            <h5 class="font-semibold text-yellow-300 mb-1">🎉 Join Server</h5>
+                            <p class="text-xs text-muted">Join the server</p>
+                            <p class="text-yellow-400 font-bold text-sm">213 points</p>
+                        </div>
+                        <div class="achievement-item bg-green-900/20 p-3 rounded border border-green-500/30">
+                            <h5 class="font-semibold text-green-300 mb-1">✅ Verified</h5>
+                            <p class="text-xs text-muted">Get verified in server</p>
+                            <p class="text-yellow-400 font-bold text-sm">200 points</p>
+                        </div>
+                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
+                            <h5 class="font-semibold text-blue-300 mb-1">📅 Daily Reward</h5>
+                            <p class="text-xs text-muted">Claim daily reward</p>
+                            <p class="text-yellow-400 font-bold text-sm">85 points</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Future Achievements -->
+                <div class="achievement-category">
+                    <h4 class="font-semibold text-lg mb-4 flex items-center">
+                        <i class="fas fa-clock text-purple-400 mr-2"></i>
+                        Coming Soon
+                    </h4>
+                    <div class="grid md:grid-cols-2 gap-4 ml-6">
+                        <div class="achievement-item bg-purple-900/20 p-3 rounded border border-purple-500/30 opacity-60">
+                            <h5 class="font-semibold text-purple-300 mb-1">🎤 Voice Activity</h5>
+                            <p class="text-xs text-muted">Voice channel achievements coming soon</p>
+                            <p class="text-gray-400 font-bold text-sm">TBD points</p>
+                        </div>
+                        <div class="achievement-item bg-pink-900/20 p-3 rounded border border-pink-500/30 opacity-60">
+                            <h5 class="font-semibold text-pink-300 mb-1">🚀 Server Boost</h5>
+                            <p class="text-xs text-muted">Server boosting achievements coming soon</p>
+                            <p class="text-gray-400 font-bold text-sm">TBD points</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -363,7 +413,7 @@
             <div class="theoretical-max bg-gradient-to-r from-yellow-900/30 to-red-900/30 p-6 rounded-lg border border-yellow-500/30">
                 <h3 class="text-xl font-bold mb-4 flex items-center">
                     <i class="fas fa-trophy text-yellow-400 mr-3"></i>
-                    Theoretical Maximum: 20,525 Pitchforks
+                    Theoretical Maximum: 20,825 Pitchforks
                 </h3>
                 <div class="grid md:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -373,8 +423,25 @@
                     </div>
                     <div>
                         <p class="mb-1"><strong>One-Time Bonuses:</strong> 1,250 pitchforks</p>
-                        <p class="mb-1"><strong>Achievements:</strong> ~2,000 pitchforks</p>
-                        <p class="mb-1"><strong>Enrollment Deposit:</strong> Included above</p>
+                        <p class="mb-1"><strong>Achievements:</strong> 1,223 pitchforks</p>
+                        <p class="mb-1"><strong>Activity Bonuses:</strong> 1,077 pitchforks</p>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-yellow-900/20 rounded border border-yellow-600/30">
+                    <h4 class="font-semibold text-yellow-300 mb-2">🏆 Achievement Breakdown</h4>
+                    <div class="grid md:grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <p>• Daily Reward: 85 points</p>
+                            <p>• Join Server: 213 points</p>
+                            <p>• First Message: 425 points</p>
+                            <p>• Verified: 200 points</p>
+                        </div>
+                        <div>
+                            <p>• Chatty (100 msgs): 50 points</p>
+                            <p>• Conversationalist (1K msgs): 100 points</p>
+                            <p>• Reactor (50 reactions): 50 points</p>
+                            <p>• Super Reactor (500 reactions): 100 points</p>
+                        </div>
                     </div>
                 </div>
                 <p class="text-xs text-muted mt-4">

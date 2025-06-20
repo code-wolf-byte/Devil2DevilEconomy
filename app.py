@@ -628,6 +628,36 @@ def setup_achievements():
                 'points': 200,
                 'type': 'verification',
                 'requirement': 1
+            },
+            # Message milestones
+            {
+                'name': 'Chatty',
+                'description': 'Send 100 messages in the server',
+                'points': 50,
+                'type': 'message',
+                'requirement': 100
+            },
+            {
+                'name': 'Conversationalist',
+                'description': 'Send 1000 messages in the server',
+                'points': 100,
+                'type': 'message',
+                'requirement': 1000
+            },
+            # Reaction milestones
+            {
+                'name': 'Reactor',
+                'description': 'React to 50 messages',
+                'points': 50,
+                'type': 'reaction',
+                'requirement': 50
+            },
+            {
+                'name': 'Super Reactor',
+                'description': 'React to 500 messages',
+                'points': 100,
+                'type': 'reaction',
+                'requirement': 500
             }
             # Add more achievements as needed
         ]
