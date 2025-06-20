@@ -49,24 +49,24 @@
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-gray-800 p-4 rounded-lg text-center">
-                <div class="text-2xl font-bold asu-gold">{{ products|length }}</div>
-                <div class="text-sm text-muted">Total Products</div>
-            </div>
-            <div class="bg-gray-800 p-4 rounded-lg text-center">
-                <div class="text-2xl font-bold text-green-400">
-                    {{ (products|selectattr('stock', 'greaterthan', 0)|list|length) + (products|selectattr('stock', 'equalto', -1)|list|length) }}
-                </div>
-                <div class="text-sm text-muted">In Stock</div>
+                <div class="text-2xl font-bold asu-gold">{{ products|selectattr('is_active', 'equalto', true)|list|length }}</div>
+                <div class="text-sm text-muted">Active Products</div>
             </div>
             <div class="bg-gray-800 p-4 rounded-lg text-center">
                 <div class="text-2xl font-bold text-red-400">
-                    {{ products|selectattr('stock', 'equalto', 0)|list|length }}
+                    {{ products|selectattr('is_active', 'equalto', false)|list|length }}
                 </div>
-                <div class="text-sm text-muted">Out of Stock</div>
+                <div class="text-sm text-muted">Archived Products</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-green-400">
+                    {{ (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'greaterthan', 0)|list|length) + (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'equalto', -1)|list|length) }}
+                </div>
+                <div class="text-sm text-muted">In Stock (Active)</div>
             </div>
             <div class="bg-gray-800 p-4 rounded-lg text-center">
                 <div class="text-2xl font-bold text-blue-400">
-                    {{ products|selectattr('stock', 'greaterthan', 0)|sum(attribute='stock') if products else 0 }}
+                    {{ products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'greaterthan', 0)|sum(attribute='stock') if products else 0 }}
                 </div>
                 <div class="text-sm text-muted">Total Stock</div>
             </div>
@@ -101,12 +101,12 @@
                     </thead>
                     <tbody>
                         {% for product in products %}
-                            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors {% if not product.is_active %}opacity-60 bg-gray-850{% endif %}">
                                 <td class="py-4 px-2">
                                     {% if product.image_url %}
                                         <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
                                              alt="{{ product.name }}" 
-                                             class="w-16 h-16 object-cover rounded-lg">
+                                             class="w-16 h-16 object-cover rounded-lg {% if not product.is_active %}grayscale{% endif %}">
                                     {% else %}
                                         <div class="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
                                             <i class="fas fa-image text-gray-500"></i>
@@ -114,7 +114,14 @@
                                     {% endif %}
                                 </td>
                                 <td class="py-4 px-2">
-                                    <div class="font-semibold">{{ product.name }}</div>
+                                    <div class="font-semibold flex items-center">
+                                        {{ product.name }}
+                                        {% if not product.is_active %}
+                                            <span class="ml-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                                <i class="fas fa-archive mr-1"></i>ARCHIVED
+                                            </span>
+                                        {% endif %}
+                                    </div>
                                     <div class="text-sm text-muted">{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</div>
                                 </td>
                                 <td class="py-4 px-2">
@@ -146,14 +153,25 @@
                                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
                                             <i class="fas fa-edit mr-1"></i>Edit
                                         </a>
-                                        <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
-                                              style="display: inline;" 
-                                              onsubmit="return confirm('Are you sure you want to delete {{ product.name }}?')">
-                                            <button type="submit" 
-                                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
-                                                <i class="fas fa-trash mr-1"></i>Delete
-                                            </button>
-                                        </form>
+                                        {% if product.is_active %}
+                                            <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('Are you sure you want to remove {{ product.name }} from the store?')">
+                                                <button type="submit" 
+                                                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                    <i class="fas fa-archive mr-1"></i>Remove
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <form method="POST" action="{{ url_for('restore_product', product_id=product.id) }}" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('Are you sure you want to restore {{ product.name }} to the store?')">
+                                                <button type="submit" 
+                                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                    <i class="fas fa-undo mr-1"></i>Restore
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -165,12 +183,12 @@
             <!-- Mobile Card View -->
             <div class="lg:hidden space-y-4">
                 {% for product in products %}
-                    <div class="card p-4">
+                    <div class="card p-4 {% if not product.is_active %}opacity-60 bg-gray-850{% endif %}">
                         <div class="flex items-start space-x-4">
                             {% if product.image_url %}
                                 <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
                                      alt="{{ product.name }}" 
-                                     class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
+                                     class="w-16 h-16 object-cover rounded-lg flex-shrink-0 {% if not product.is_active %}grayscale{% endif %}">
                             {% else %}
                                 <div class="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
                                     <i class="fas fa-image text-gray-500"></i>
@@ -178,7 +196,14 @@
                             {% endif %}
                             
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-lg">{{ product.name }}</h3>
+                                <h3 class="font-semibold text-lg flex items-center">
+                                    {{ product.name }}
+                                    {% if not product.is_active %}
+                                        <span class="ml-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                            <i class="fas fa-archive mr-1"></i>ARCHIVED
+                                        </span>
+                                    {% endif %}
+                                </h3>
                                 <p class="text-sm text-muted mb-2">{{ product.description }}</p>
                                 
                                 <div class="flex items-center justify-between mb-3">
@@ -205,14 +230,25 @@
                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
                                         <i class="fas fa-edit mr-1"></i>Edit
                                     </a>
-                                    <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
-                                          style="display: inline;" 
-                                          onsubmit="return confirm('Are you sure you want to delete {{ product.name }}?')">
-                                        <button type="submit" 
-                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
-                                            <i class="fas fa-trash mr-1"></i>Delete
-                                        </button>
-                                    </form>
+                                    {% if product.is_active %}
+                                        <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('Are you sure you want to remove {{ product.name }} from the store?')">
+                                            <button type="submit" 
+                                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                <i class="fas fa-archive mr-1"></i>Remove
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('restore_product', product_id=product.id) }}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('Are you sure you want to restore {{ product.name }} to the store?')">
+                                            <button type="submit" 
+                                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                                <i class="fas fa-undo mr-1"></i>Restore
+                                            </button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

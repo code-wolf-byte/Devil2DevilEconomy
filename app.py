@@ -424,6 +424,8 @@ class Product(db.Model):
     stock = db.Column(db.Integer, nullable=True, default=None)  # None = unlimited, 0 = out of stock, >0 = limited stock
     image_url = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)  # True = visible in store, False = archived/hidden
+    archived_at = db.Column(db.DateTime)  # When the product was archived
     
     # Digital product fields
     product_type = db.Column(db.String(50), default='physical')  # physical, role, minecraft_skin, game_code, custom
@@ -684,6 +686,32 @@ def update_minecraft_skin_delivery_methods():
 # Run the update function
 update_minecraft_skin_delivery_methods()
 
+def migrate_product_active_status():
+    """Ensure all existing products are marked as active"""
+    try:
+        with app.app_context():
+            # Find products with NULL is_active status (from before the column was added)
+            products_to_update = Product.query.filter(Product.is_active.is_(None)).all()
+            
+            if products_to_update:
+                for product in products_to_update:
+                    product.is_active = True
+                
+                db.session.commit()
+                app_logger.info(f"Migrated {len(products_to_update)} products to active status")
+            else:
+                app_logger.info("All products already have active status set")
+                
+    except Exception as e:
+        app_logger.error(f"Error migrating product active status: {e}")
+        try:
+            db.session.rollback()
+        except RuntimeError:
+            pass
+
+# Run the migration
+migrate_product_active_status()
+
 # Initialize login manager
 @login_manager.user_loader
 def load_user(user_id):
@@ -793,7 +821,8 @@ class DigitalDeliveryService:
 
 @app.route('/')
 def index():
-    products = Product.query.all()
+    # Only show active products in the storefront
+    products = Product.query.filter_by(is_active=True).all()
     
     # Fix any None values in products before sending to template
     for product in products:
@@ -1154,7 +1183,8 @@ def admin_panel():
         flash('Access denied. Admin privileges required.')
         return redirect(url_for('index'))
     
-    products = Product.query.all()
+    # Show all products in admin panel (active and archived), ordered by status and creation date
+    products = Product.query.order_by(Product.is_active.desc(), Product.created_at.desc()).all()
     
     # Fix any None values in products before sending to template
     for product in products:
@@ -1415,22 +1445,96 @@ def delete_product(product_id):
     product_name = product.name
     
     try:
-        # Delete associated image file if it exists
-        if product.image_url:
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], product.image_url)
-            if os.path.exists(image_path):
-                try:
-                    os.remove(image_path)
-                    app_logger.info(f"Deleted image file: {product.image_url}")
-                except Exception as e:
-                    app_logger.error(f"Error deleting image file: {e}")
+        # Check if there are any purchases for this product
+        purchase_count = Purchase.query.filter_by(product_id=product_id).count()
         
+        if purchase_count > 0:
+            # Archive the product instead of deleting it to preserve purchase history
+            product.is_active = False
+            product.archived_at = datetime.now(dt.timezone.utc)
+            db.session.commit()
+            
+            flash(f'Product "{product_name}" has been removed from the store (archived). '
+                  f'Purchase history for {purchase_count} purchase(s) has been preserved.')
+            app_logger.info(f"Product {product_name} archived by admin {current_user.username} due to existing purchases")
+            return redirect(url_for('admin_panel'))
+        
+        # Check for any role assignments or download tokens associated with this product
+        role_assignment_count = db.session.query(RoleAssignment).join(Purchase).filter(Purchase.product_id == product_id).count()
+        download_token_count = db.session.query(DownloadToken).join(Purchase).filter(Purchase.product_id == product_id).count()
+        
+        if role_assignment_count > 0 or download_token_count > 0:
+            # Archive the product instead of deleting it to preserve digital delivery integrity
+            product.is_active = False
+            product.archived_at = datetime.now(dt.timezone.utc)
+            db.session.commit()
+            
+            flash(f'Product "{product_name}" has been removed from the store (archived). '
+                  f'Digital delivery records have been preserved.')
+            app_logger.info(f"Product {product_name} archived by admin {current_user.username} due to delivery records")
+            return redirect(url_for('admin_panel'))
+        
+        # No purchases or delivery records - safe to actually delete
+        # Delete associated image files if they exist
+        files_to_delete = []
+        if product.image_url:
+            files_to_delete.append(product.image_url)
+        if hasattr(product, 'preview_image_url') and product.preview_image_url:
+            files_to_delete.append(product.preview_image_url)
+        if hasattr(product, 'download_file_url') and product.download_file_url:
+            files_to_delete.append(product.download_file_url)
+        
+        for filename in files_to_delete:
+            if filename:
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.exists(image_path):
+                    try:
+                        os.remove(image_path)
+                        app_logger.info(f"Deleted file: {filename}")
+                    except Exception as e:
+                        app_logger.error(f"Error deleting file {filename}: {e}")
+        
+        # Actually delete the product (no purchase history to preserve)
         db.session.delete(product)
         db.session.commit()
         flash(f'Product "{product_name}" deleted successfully!')
+        app_logger.info(f"Product {product_name} permanently deleted by admin {current_user.username}")
+        
     except Exception as e:
+        db.session.rollback()
         flash(f'Error deleting product: {str(e)}')
         app_logger.error(f"Error in delete_product: {e}")
+    
+    return redirect(url_for('admin_panel'))
+
+@app.route('/admin/product/<int:product_id>/restore', methods=['POST'])
+@login_required
+def restore_product(product_id):
+    """Restore an archived product back to the store"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.')
+        return redirect(url_for('index'))
+
+    product = Product.query.get_or_404(product_id)
+    product_name = product.name
+    
+    try:
+        if product.is_active:
+            flash(f'Product "{product_name}" is already active in the store.')
+            return redirect(url_for('admin_panel'))
+        
+        # Restore the product to active status
+        product.is_active = True
+        product.archived_at = None
+        db.session.commit()
+        
+        flash(f'Product "{product_name}" has been restored to the store!')
+        app_logger.info(f"Product {product_name} restored by admin {current_user.username}")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error restoring product: {str(e)}')
+        app_logger.error(f"Error in restore_product: {e}")
     
     return redirect(url_for('admin_panel'))
 
