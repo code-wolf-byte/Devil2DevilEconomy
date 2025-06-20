@@ -197,7 +197,11 @@
             console.log('Loaded roles:', data.roles);
             allRoles = data.roles;
             populateRoleSelects();
-            loadExistingConfig();
+            
+            // Wait a brief moment for DOM updates before loading existing config
+            setTimeout(() => {
+                loadExistingConfig();
+            }, 100);
             
             // Hide loading, show form
             document.getElementById('loadingState').style.display = 'none';
@@ -283,19 +287,28 @@
     }
 
     function loadExistingConfig() {
+        console.log('Loading existing config...', serverData);
+        
         // Load existing configuration from server
         if (serverData.verifiedRoleId) {
             document.getElementById('verified_role_id').value = serverData.verifiedRoleId;
+            console.log('Set verified role ID:', serverData.verifiedRoleId);
         }
         
         if (serverData.onboardingRoles && serverData.onboardingRoles.length > 0) {
-            selectedOnboardingRoles = serverData.onboardingRoles;
+            console.log('Loading onboarding roles:', serverData.onboardingRoles);
+            selectedOnboardingRoles = [...serverData.onboardingRoles];
             selectedOnboardingRoles.forEach(roleId => {
                 const checkbox = document.getElementById(`onboarding_${roleId}`);
                 if (checkbox) {
                     checkbox.checked = true;
-                    const roleItem = checkbox.closest('div.flex');
-                    roleItem.classList.add('border-yellow-400', 'bg-yellow-900', 'bg-opacity-20');
+                    const roleItem = checkbox.closest('.flex');
+                    if (roleItem) {
+                        roleItem.classList.add('border-yellow-400', 'bg-yellow-900', 'bg-opacity-20');
+                    }
+                    console.log(`Configured onboarding role: ${roleId}`);
+                } else {
+                    console.warn(`Checkbox for role ${roleId} not found`);
                 }
             });
         }
