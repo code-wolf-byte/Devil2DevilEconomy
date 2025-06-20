@@ -193,6 +193,22 @@
                     This is a one-time reward per user.
                 </p>
             </div>
+
+            <div class="earning-method">
+                <div class="flex items-center mb-3">
+                    <div class="earning-icon bg-pink-600">
+                        <i class="fab fa-instagram"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold">400 Likes on FSD IG</h3>
+                        <p class="text-yellow-400 font-bold">Points Awarded</p>
+                    </div>
+                </div>
+                <p class="text-muted ml-16">
+                    Help a FutureSunDevils Instagram post reach 400 likes! When you contribute to getting a single post 
+                    to 400 likes and get admin approval, you earn pitchforks. Tag admins when the milestone is reached!
+                </p>
+            </div>
         </div>
     </div>
 
@@ -383,6 +399,74 @@
         </div>
     </div>
 
+    <!-- Item Pickup Information -->
+    <div class="card bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border-indigo-500/30">
+        <div class="card-header">
+            <h2 class="text-2xl font-bold flex items-center">
+                <i class="fas fa-box text-indigo-400 mr-3"></i>
+                Item Pickup Information
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 p-6 rounded-lg border border-yellow-500/30 mb-6">
+                <h3 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-calendar-check text-yellow-400 mr-3"></i>
+                    When to Pick Up Your Items
+                </h3>
+                <div class="text-lg text-center">
+                    <p class="mb-4">
+                        <strong class="text-yellow-400 text-xl">All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</strong>
+                    </p>
+                    <p class="text-muted">
+                        After purchasing items with your pitchforks, you'll receive confirmation that your items will be ready for pickup during the Welcome Week Devil2Devil event.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="pickup-info-card">
+                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                        <i class="fas fa-map-marker-alt text-red-400 mr-2"></i>
+                        Event Location
+                    </h4>
+                    <p class="text-sm text-muted">
+                        Devil2Devil in-person event during ASU Welcome Week
+                    </p>
+                </div>
+                
+                <div class="pickup-info-card">
+                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                        <i class="fas fa-clock text-blue-400 mr-2"></i>
+                        When to Attend
+                    </h4>
+                    <p class="text-sm text-muted">
+                        Fall semester Welcome Week (exact dates will be announced)
+                    </p>
+                </div>
+                
+                <div class="pickup-info-card">
+                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                        <i class="fas fa-id-card text-green-400 mr-2"></i>
+                        What to Bring
+                    </h4>
+                    <p class="text-sm text-muted">
+                        Your student ID and Discord username for item verification
+                    </p>
+                </div>
+                
+                <div class="pickup-info-card">
+                    <h4 class="font-semibold text-lg mb-3 flex items-center">
+                        <i class="fas fa-question-circle text-purple-400 mr-2"></i>
+                        Need Help?
+                    </h4>
+                    <p class="text-sm text-muted">
+                        Contact admins in Discord if you have questions about your purchases
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tips -->
     <div class="card bg-gradient-to-r from-yellow-900/20 to-red-900/20 border-yellow-500/30">
         <div class="card-body">
@@ -410,6 +494,10 @@
                 <li class="flex items-start">
                     <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
                     <span>Set your birthday to earn bonus pitchforks and get celebrated!</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-box text-indigo-400 mr-3 mt-1"></i>
+                    <span><strong>Remember:</strong> All purchased items can be collected during the Devil2Devil Welcome Week event!</span>
                 </li>
             </ul>
         </div>
@@ -461,6 +549,19 @@
     background: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pickup-info-card {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.pickup-info-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(102, 126, 234, 0.3);
 }
 </style>
 {% endblock %} 

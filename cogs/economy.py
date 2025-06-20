@@ -1419,5 +1419,51 @@ class EconomyCog(commands.Cog):
             embed.set_footer(text="Limits help maintain balance and prevent exploitation")
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @nextcord.slash_command(name="help", description="Learn how to earn pitchforks in the Devil2Devil economy")
+    async def help_command(self, interaction: Interaction):
+        """Direct users to the website to learn how to earn pitchforks"""
+        embed = nextcord.Embed(
+            title="🔱 Devil2Devil Economy Help",
+            description="Welcome to the Devil2Devil pitchfork economy system!",
+            color=nextcord.Color.gold()
+        )
+        
+        embed.add_field(
+            name="📚 How to Earn Pitchforks",
+            value="Visit our comprehensive guide to discover all the ways you can earn pitchforks:\n"
+                  "**🌐 [shop.devil2devil.asu.edu/how-to-earn](https://shop.devil2devil.asu.edu/how-to-earn)**",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🎯 Quick Ways to Earn",
+            value="• `/daily` - Get 85 pitchforks every 24 hours\n"
+                  "• Stay active in chat and voice channels\n"
+                  "• Share campus photos for admin approval\n"
+                  "• Complete verification and onboarding\n"
+                  "• Set your birthday with `/birthday`",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🛒 Spend Your Pitchforks",
+            value="Use your earned pitchforks in the store:\n"
+                  "**🌐 [shop.devil2devil.asu.edu](https://shop.devil2devil.asu.edu)**",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 Useful Commands",
+            value="• `/balance` - Check your current balance\n"
+                  "• `/limits` - View your earning progress\n"
+                  "• `/achievements` - See unlocked achievements\n"
+                  "• `/leaderboard` - Top pitchfork earners",
+            inline=False
+        )
+        
+        embed.set_footer(text="Visit the website for detailed earning methods and limits!")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 def setup(bot, app, db, User, EconomySettings, Achievement, UserAchievement):
     bot.add_cog(EconomyCog(bot, app, db, User, EconomySettings, Achievement, UserAchievement)) 
