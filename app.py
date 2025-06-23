@@ -1227,24 +1227,16 @@ def admin_panel():
 @login_required
 def admin_purchases():
     if not current_user.is_admin:
-        flash('Access denied. Admin privileges required.')
+        flash('You do not have permission to access this page.', 'error')
         return redirect(url_for('index'))
     
-    page = request.args.get('page', 1, type=int)
-    per_page = 20  # Number of purchases per page
+    # Get all purchases with related user and product data
+    purchases = Purchase.query.options(
+        db.joinedload(Purchase.user),
+        db.joinedload(Purchase.product)
+    ).order_by(Purchase.timestamp.desc()).all()
     
-    # Get purchases with user and product information, ordered by most recent first
-    purchases_pagination = db.session.query(Purchase)\
-        .join(User, Purchase.user_id == User.id)\
-        .join(Product, Purchase.product_id == Product.id)\
-        .order_by(Purchase.timestamp.desc())\
-        .paginate(page=page, per_page=per_page, error_out=False)
-    
-    purchases = purchases_pagination.items
-    
-    return render_template('admin_purchases.html', 
-                         purchases=purchases,
-                         pagination=purchases_pagination)
+    return render_template('admin_purchases.html', purchases=purchases)
 
 @app.route('/admin/product/new', methods=['GET', 'POST'])
 @login_required
@@ -2330,6 +2322,73 @@ def download_file(token):
         app_logger.error(f"Download error: {e}")
         flash('Download failed. Please try again.')
         return redirect(url_for('my_purchases'))
+
+@app.route('/admin/leaderboard')
+@login_required
+def admin_leaderboard():
+    if not current_user.is_admin:
+        flash('You do not have permission to access this page.', 'error')
+        return redirect(url_for('index'))
+    
+    # Get all users with their statistics, ordered by balance (descending)
+    users = User.query.order_by(User.balance.desc()).all()
+    
+    # Calculate additional statistics
+    leaderboard_stats = []
+    for user in users:
+        # Calculate total points spent (sum of all purchases)
+        total_spent = db.session.query(db.func.sum(Purchase.points_spent)).filter_by(user_id=user.id).scalar() or 0
+        
+        # Get number of achievements
+        achievement_count = UserAchievement.query.filter_by(user_id=user.id).count()
+        
+        # Get number of purchases
+        purchase_count = Purchase.query.filter_by(user_id=user.id).count()
+        
+        # Calculate activity score (composite metric)
+        activity_score = (
+            (user.message_count or 0) * 0.1 +
+            (user.reaction_count or 0) * 0.2 +
+            (user.voice_minutes or 0) * 0.3 +
+            achievement_count * 5 +
+            (user.daily_claims_count or 0) * 1
+        )
+        
+        leaderboard_stats.append({
+            'user': user,
+            'total_spent': total_spent,
+            'achievement_count': achievement_count,
+            'purchase_count': purchase_count,
+            'activity_score': round(activity_score, 1)
+        })
+    
+    # Get top performers in different categories
+    top_spenders = sorted(leaderboard_stats, key=lambda x: x['total_spent'], reverse=True)[:10]
+    top_achievers = sorted(leaderboard_stats, key=lambda x: x['achievement_count'], reverse=True)[:10]
+    most_active = sorted(leaderboard_stats, key=lambda x: x['activity_score'], reverse=True)[:10]
+    
+    # Calculate overall economy statistics
+    total_users = len(users)
+    total_balance = sum(user.balance or 0 for user in users)
+    total_spent = sum(stat['total_spent'] for stat in leaderboard_stats)
+    total_purchases = sum(stat['purchase_count'] for stat in leaderboard_stats)
+    total_achievements = sum(stat['achievement_count'] for stat in leaderboard_stats)
+    
+    economy_stats = {
+        'total_users': total_users,
+        'total_balance': total_balance,
+        'total_spent': total_spent,
+        'total_purchases': total_purchases,
+        'total_achievements': total_achievements,
+        'average_balance': round(total_balance / total_users, 1) if total_users > 0 else 0
+    }
+    
+    return render_template('admin_leaderboard.html', 
+                         leaderboard_stats=leaderboard_stats,
+                         top_spenders=top_spenders,
+                         top_achievers=top_achievers,
+                         most_active=most_active,
+                         economy_stats=economy_stats)
 
 if __name__ == '__main__':
     import signal

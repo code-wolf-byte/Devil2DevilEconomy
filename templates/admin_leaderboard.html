@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Leaderboard - Devil2Devil Store{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-trophy text-yellow-400 mr-3"></i>
+            Economy Leaderboard
+        </h1>
+        <p class="text-xl text-muted">View community statistics and top performers</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="card p-4">
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('admin_panel') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <!-- Economy Overview Statistics -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-chart-line text-yellow-400 mr-3"></i>
+            Economy Overview
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold asu-gold">{{ economy_stats.total_users }}</div>
+                <div class="text-sm text-muted">Total Users</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-green-400">{{ economy_stats.total_balance }}</div>
+                <div class="text-sm text-muted">Total Balance</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-red-400">{{ economy_stats.total_spent }}</div>
+                <div class="text-sm text-muted">Total Spent</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-blue-400">{{ economy_stats.total_purchases }}</div>
+                <div class="text-sm text-muted">Total Purchases</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-purple-400">{{ economy_stats.total_achievements }}</div>
+                <div class="text-sm text-muted">Total Achievements</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-orange-400">{{ economy_stats.average_balance }}</div>
+                <div class="text-sm text-muted">Average Balance</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Categories -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Top Balances -->
+        <div class="card p-6">
+            <h3 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-coins text-yellow-400 mr-2"></i>
+                Top Balances
+            </h3>
+            <div class="space-y-3">
+                {% for stat in leaderboard_stats[:10] %}
+                <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-lg font-bold text-yellow-400">{{ loop.index }}</div>
+                        <div>
+                            <div class="font-semibold">{{ stat.user.username }}</div>
+                            <div class="text-sm text-muted">{{ stat.achievement_count }} achievements</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold asu-gold">{{ stat.user.balance or 0 }}</div>
+                        <div class="text-xs text-muted">pitchforks</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Top Spenders -->
+        <div class="card p-6">
+            <h3 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-shopping-cart text-red-400 mr-2"></i>
+                Top Spenders
+            </h3>
+            <div class="space-y-3">
+                {% for stat in top_spenders %}
+                <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-lg font-bold text-red-400">{{ loop.index }}</div>
+                        <div>
+                            <div class="font-semibold">{{ stat.user.username }}</div>
+                            <div class="text-sm text-muted">{{ stat.purchase_count }} purchases</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-red-400">{{ stat.total_spent }}</div>
+                        <div class="text-xs text-muted">spent</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Most Active -->
+        <div class="card p-6">
+            <h3 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-fire text-orange-400 mr-2"></i>
+                Most Active
+            </h3>
+            <div class="space-y-3">
+                {% for stat in most_active %}
+                <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-lg font-bold text-orange-400">{{ loop.index }}</div>
+                        <div>
+                            <div class="font-semibold">{{ stat.user.username }}</div>
+                            <div class="text-sm text-muted">{{ stat.user.message_count or 0 }} messages</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-orange-400">{{ stat.activity_score }}</div>
+                        <div class="text-xs text-muted">activity</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Leaderboard -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-list text-yellow-400 mr-3"></i>
+            Detailed Leaderboard
+        </h2>
+        
+        <!-- Desktop Table View -->
+        <div class="hidden lg:block overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-600">
+                        <th class="text-left py-4 px-2 text-yellow-400">Rank</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">User</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Balance</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Spent</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Purchases</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Achievements</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Messages</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Voice Time</th>
+                        <th class="text-left py-4 px-2 text-yellow-400">Activity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in leaderboard_stats %}
+                    <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                        <td class="py-4 px-2">
+                            <div class="flex items-center">
+                                {% if loop.index <= 3 %}
+                                    <i class="fas fa-medal text-yellow-400 mr-2"></i>
+                                {% endif %}
+                                <span class="font-bold text-lg">{{ loop.index }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-2">
+                            <div class="flex items-center space-x-3">
+                                <div>
+                                    <div class="font-semibold">{{ stat.user.username }}</div>
+                                    <div class="text-sm text-muted">
+                                        {% if stat.user.is_admin %}
+                                            <i class="fas fa-crown text-yellow-400 mr-1"></i>Admin
+                                        {% endif %}
+                                        {% if stat.user.has_boosted %}
+                                            <i class="fas fa-star text-purple-400 mr-1"></i>Booster
+                                        {% endif %}
+                                        {% if stat.user.created_at %}
+                                            Joined {{ stat.user.created_at.strftime('%m/%d/%Y') }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold asu-gold text-lg">
+                                <i class="fas fa-coins mr-1"></i>{{ stat.user.balance or 0 }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-red-400">{{ stat.total_spent }}</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-blue-400">{{ stat.purchase_count }}</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-purple-400">{{ stat.achievement_count }}</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-green-400">{{ stat.user.message_count or 0 }}</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-cyan-400">{{ stat.user.voice_minutes or 0 }}m</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="font-bold text-orange-400">{{ stat.activity_score }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="lg:hidden space-y-4">
+            {% for stat in leaderboard_stats %}
+            <div class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-2xl font-bold asu-gold">{{ loop.index }}</div>
+                        <div>
+                            <div class="font-semibold text-lg">{{ stat.user.username }}</div>
+                            <div class="text-sm text-muted">
+                                {% if stat.user.is_admin %}
+                                    <i class="fas fa-crown text-yellow-400 mr-1"></i>Admin
+                                {% endif %}
+                                {% if stat.user.has_boosted %}
+                                    <i class="fas fa-star text-purple-400 mr-1"></i>Booster
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold asu-gold text-xl">
+                            <i class="fas fa-coins mr-1"></i>{{ stat.user.balance or 0 }}
+                        </div>
+                        <div class="text-xs text-muted">pitchforks</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="text-muted">Spent</div>
+                        <div class="font-bold text-red-400">{{ stat.total_spent }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted">Purchases</div>
+                        <div class="font-bold text-blue-400">{{ stat.purchase_count }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted">Achievements</div>
+                        <div class="font-bold text-purple-400">{{ stat.achievement_count }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted">Activity Score</div>
+                        <div class="font-bold text-orange-400">{{ stat.activity_score }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
