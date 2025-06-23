@@ -162,10 +162,10 @@
                     <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
                         <td class="py-4 px-2">
                             <div class="flex items-center">
-                                {% if loop.index <= 3 %}
+                                {% if stat.rank <= 3 %}
                                     <i class="fas fa-medal text-yellow-400 mr-2"></i>
                                 {% endif %}
-                                <span class="font-bold text-lg">{{ loop.index }}</span>
+                                <span class="font-bold text-lg">{{ stat.rank }}</span>
                             </div>
                         </td>
                         <td class="py-4 px-2">
@@ -221,7 +221,7 @@
             <div class="card p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
-                        <div class="text-2xl font-bold asu-gold">{{ loop.index }}</div>
+                        <div class="text-2xl font-bold asu-gold">{{ stat.rank }}</div>
                         <div>
                             <div class="font-semibold text-lg">{{ stat.user.username }}</div>
                             <div class="text-sm text-muted">
@@ -263,6 +263,60 @@
             </div>
             {% endfor %}
         </div>
+        
+        <!-- Pagination Controls -->
+        {% if pagination.pages > 1 %}
+        <div class="flex justify-center items-center space-x-2 mt-8">
+            <!-- Previous Page -->
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_leaderboard', page=pagination.prev_num) }}" 
+                   class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                    <i class="fas fa-chevron-left mr-1"></i>Previous
+                </a>
+            {% else %}
+                <span class="px-4 py-2 bg-gray-800 text-gray-500 rounded-lg cursor-not-allowed">
+                    <i class="fas fa-chevron-left mr-1"></i>Previous
+                </span>
+            {% endif %}
+            
+            <!-- Page Numbers -->
+            {% for page_num in pagination.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != pagination.page %}
+                        <a href="{{ url_for('admin_leaderboard', page=page_num) }}" 
+                           class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                            {{ page_num }}
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 bg-yellow-600 text-white rounded-lg font-bold">
+                            {{ page_num }}
+                        </span>
+                    {% endif %}
+                {% else %}
+                    <span class="px-3 py-2 text-gray-500">…</span>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Next Page -->
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_leaderboard', page=pagination.next_num) }}" 
+                   class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                    Next<i class="fas fa-chevron-right ml-1"></i>
+                </a>
+            {% else %}
+                <span class="px-4 py-2 bg-gray-800 text-gray-500 rounded-lg cursor-not-allowed">
+                    Next<i class="fas fa-chevron-right ml-1"></i>
+                </span>
+            {% endif %}
+        </div>
+        
+        <!-- Pagination Info -->
+        <div class="text-center mt-4 text-muted">
+            Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} - 
+            {{ pagination.page * pagination.per_page if pagination.page * pagination.per_page <= pagination.total else pagination.total }} 
+            of {{ pagination.total }} users
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %} 

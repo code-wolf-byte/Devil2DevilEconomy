@@ -2330,21 +2330,49 @@ def admin_leaderboard():
         flash('You do not have permission to access this page.', 'error')
         return redirect(url_for('index'))
     
-    # Get all users with their statistics, ordered by balance (descending)
-    users = User.query.order_by(User.balance.desc()).all()
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 25  # Users per page
     
-    # Calculate additional statistics
+    # Optimized query using joins and subqueries to avoid N+1 problem
+    from sqlalchemy import func, case
+    
+    # Create subqueries for aggregated data (excluding admin users)
+    purchase_stats = db.session.query(
+        Purchase.user_id,
+        func.sum(Purchase.points_spent).label('total_spent'),
+        func.count(Purchase.id).label('purchase_count')
+    ).join(User, Purchase.user_id == User.id).filter(
+        User.is_admin == False
+    ).group_by(Purchase.user_id).subquery()
+    
+    achievement_stats = db.session.query(
+        UserAchievement.user_id,
+        func.count(UserAchievement.id).label('achievement_count')
+    ).join(User, UserAchievement.user_id == User.id).filter(
+        User.is_admin == False
+    ).group_by(UserAchievement.user_id).subquery()
+    
+    # Main query with pagination (excluding admin users)
+    users_pagination = db.session.query(
+        User,
+        func.coalesce(purchase_stats.c.total_spent, 0).label('total_spent'),
+        func.coalesce(purchase_stats.c.purchase_count, 0).label('purchase_count'),
+        func.coalesce(achievement_stats.c.achievement_count, 0).label('achievement_count')
+    ).filter(
+        User.is_admin == False
+    ).outerjoin(
+        purchase_stats, User.id == purchase_stats.c.user_id
+    ).outerjoin(
+        achievement_stats, User.id == achievement_stats.c.user_id
+    ).order_by(User.balance.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Process results and calculate activity scores for current page
     leaderboard_stats = []
-    for user in users:
-        # Calculate total points spent (sum of all purchases)
-        total_spent = db.session.query(db.func.sum(Purchase.points_spent)).filter_by(user_id=user.id).scalar() or 0
-        
-        # Get number of achievements
-        achievement_count = UserAchievement.query.filter_by(user_id=user.id).count()
-        
-        # Get number of purchases
-        purchase_count = Purchase.query.filter_by(user_id=user.id).count()
-        
+    start_rank = (page - 1) * per_page + 1
+    for idx, (user, total_spent, purchase_count, achievement_count) in enumerate(users_pagination.items):
         # Calculate activity score (composite metric)
         activity_score = (
             (user.message_count or 0) * 0.1 +
@@ -2356,23 +2384,71 @@ def admin_leaderboard():
         
         leaderboard_stats.append({
             'user': user,
-            'total_spent': total_spent,
-            'achievement_count': achievement_count,
-            'purchase_count': purchase_count,
+            'total_spent': int(total_spent),
+            'achievement_count': int(achievement_count),
+            'purchase_count': int(purchase_count),
+            'activity_score': round(activity_score, 1),
+            'rank': start_rank + idx
+        })
+    
+    # Get top performers in different categories (top 10, excluding admins)
+    top_performers_query = db.session.query(
+        User,
+        func.coalesce(purchase_stats.c.total_spent, 0).label('total_spent'),
+        func.coalesce(purchase_stats.c.purchase_count, 0).label('purchase_count'),
+        func.coalesce(achievement_stats.c.achievement_count, 0).label('achievement_count')
+    ).filter(
+        User.is_admin == False
+    ).outerjoin(
+        purchase_stats, User.id == purchase_stats.c.user_id
+    ).outerjoin(
+        achievement_stats, User.id == achievement_stats.c.user_id
+    ).all()
+    
+    # Process all users for top categories
+    all_user_stats = []
+    for user, total_spent, purchase_count, achievement_count in top_performers_query:
+        activity_score = (
+            (user.message_count or 0) * 0.1 +
+            (user.reaction_count or 0) * 0.2 +
+            (user.voice_minutes or 0) * 0.3 +
+            achievement_count * 5 +
+            (user.daily_claims_count or 0) * 1
+        )
+        
+        all_user_stats.append({
+            'user': user,
+            'total_spent': int(total_spent),
+            'achievement_count': int(achievement_count),
+            'purchase_count': int(purchase_count),
             'activity_score': round(activity_score, 1)
         })
     
-    # Get top performers in different categories
-    top_spenders = sorted(leaderboard_stats, key=lambda x: x['total_spent'], reverse=True)[:10]
-    top_achievers = sorted(leaderboard_stats, key=lambda x: x['achievement_count'], reverse=True)[:10]
-    most_active = sorted(leaderboard_stats, key=lambda x: x['activity_score'], reverse=True)[:10]
+    # Get top performers in different categories (already sorted by balance)
+    top_spenders = sorted(all_user_stats, key=lambda x: x['total_spent'], reverse=True)[:10]
+    top_achievers = sorted(all_user_stats, key=lambda x: x['achievement_count'], reverse=True)[:10]
+    most_active = sorted(all_user_stats, key=lambda x: x['activity_score'], reverse=True)[:10]
     
-    # Calculate overall economy statistics
-    total_users = len(users)
-    total_balance = sum(user.balance or 0 for user in users)
-    total_spent = sum(stat['total_spent'] for stat in leaderboard_stats)
-    total_purchases = sum(stat['purchase_count'] for stat in leaderboard_stats)
-    total_achievements = sum(stat['achievement_count'] for stat in leaderboard_stats)
+    # Calculate overall economy statistics efficiently (excluding admins for user-focused stats)
+    economy_stats_query = db.session.query(
+        func.count(User.id).label('total_users'),
+        func.sum(func.coalesce(User.balance, 0)).label('total_balance'),
+        func.sum(func.coalesce(purchase_stats.c.total_spent, 0)).label('total_spent'),
+        func.sum(func.coalesce(purchase_stats.c.purchase_count, 0)).label('total_purchases'),
+        func.sum(func.coalesce(achievement_stats.c.achievement_count, 0)).label('total_achievements')
+    ).filter(
+        User.is_admin == False
+    ).outerjoin(
+        purchase_stats, User.id == purchase_stats.c.user_id
+    ).outerjoin(
+        achievement_stats, User.id == achievement_stats.c.user_id
+    ).first()
+    
+    total_users = economy_stats_query.total_users or 0
+    total_balance = int(economy_stats_query.total_balance or 0)
+    total_spent = int(economy_stats_query.total_spent or 0)
+    total_purchases = int(economy_stats_query.total_purchases or 0)
+    total_achievements = int(economy_stats_query.total_achievements or 0)
     
     economy_stats = {
         'total_users': total_users,
@@ -2388,7 +2464,8 @@ def admin_leaderboard():
                          top_spenders=top_spenders,
                          top_achievers=top_achievers,
                          most_active=most_active,
-                         economy_stats=economy_stats)
+                         economy_stats=economy_stats,
+                         pagination=users_pagination)
 
 if __name__ == '__main__':
     import signal
