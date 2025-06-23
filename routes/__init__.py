@@ -8,15 +8,19 @@ def register_routes(app):
     
     from .auth import auth_bp
     from .shop import shop_bp
-    from .admin import admin_bp
     from .user import user_bp
     from .api import api_bp
     
-    # Register all blueprints
+    # Import categorized admin routes
+    from .admin import register_admin_routes
+    
+    # Register main blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(shop_bp)
-    app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(user_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Register categorized admin routes
+    register_admin_routes(app)
     
     print("✅ All route blueprints registered successfully") 

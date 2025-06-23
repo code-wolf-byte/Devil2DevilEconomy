@@ -13,7 +13,7 @@
             </h1>
             <p class="text-muted mt-2">View all user purchases and transactions</p>
         </div>
-        <a href="{{ url_for('admin_panel') }}" class="btn-secondary">
+        <a href="{{ url_for('dashboard.admin_panel') }}" class="btn-secondary">
             <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
         </a>
     </div>
@@ -188,7 +188,7 @@
                     <div class="flex items-center space-x-2">
                         <!-- First Page -->
                         {% if pagination.has_prev %}
-                            <a href="{{ url_for('admin_purchases', page=1) }}" 
+                            <a href="{{ url_for('dashboard.admin_purchases', page=1) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-double-left"></i>
                             </a>
@@ -196,7 +196,7 @@
                         
                         <!-- Previous Page -->
                         {% if pagination.has_prev %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.prev_num) }}" 
+                            <a href="{{ url_for('dashboard.admin_purchases', page=pagination.prev_num) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-left"></i>
                             </a>
@@ -206,7 +206,7 @@
                         {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                             {% if page_num %}
                                 {% if page_num != pagination.page %}
-                                    <a href="{{ url_for('admin_purchases', page=page_num) }}" 
+                                                                            <a href="{{ url_for('dashboard.admin_purchases', page=page_num) }}" 
                                        class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                         {{ page_num }}
                                     </a>
@@ -222,7 +222,7 @@
                         
                         <!-- Next Page -->
                         {% if pagination.has_next %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.next_num) }}" 
+                            <a href="{{ url_for('dashboard.admin_purchases', page=pagination.next_num) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-right"></i>
                             </a>
@@ -230,7 +230,7 @@
                         
                         <!-- Last Page -->
                         {% if pagination.has_next %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.pages) }}" 
+                            <a href="{{ url_for('dashboard.admin_purchases', page=pagination.pages) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-double-right"></i>
                             </a>

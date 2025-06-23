@@ -559,6 +559,379 @@ class EconomyCog(commands.Cog):
         # For now, just a placeholder
         pass
 
+    # Additional Slash Commands
+    @discord.slash_command(name="achievements", description="View your achievements")
+    async def achievements(self, ctx):
+        """View your achievements."""
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+        
+        with self.app.app_context():
+            try:
+                user = self._get_or_create_user(ctx.user)
+                if not user:
+                    await ctx.respond("❌ Error accessing your account.", ephemeral=True)
+                    return
+                
+                # Get user's achievements
+                user_achievements = self.UserAchievement.query.filter_by(user_id=user.id).all()
+                
+                embed = discord.Embed(
+                    title="🏆 Your Achievements",
+                    color=discord.Color.gold()
+                )
+                
+                if not user_achievements:
+                    embed.description = "You haven't unlocked any achievements yet!"
+                else:
+                    for ua in user_achievements:
+                        achievement = self.Achievement.query.filter_by(id=ua.achievement_id).first()
+                        embed.add_field(
+                            name=f"🎖️ {achievement.name}",
+                            value=f"{achievement.description}\n**Points:** {achievement.points}",
+                            inline=False
+                        )
+                
+                embed.set_footer(text=f"Total Points Earned: {user.points}")
+                await ctx.respond(embed=embed, ephemeral=True)
+                
+            except Exception as e:
+                cog_logger.error(f"Error showing achievements for {ctx.user.id}: {e}")
+                await ctx.respond("❌ Error retrieving your achievements.", ephemeral=True)
+
+    @discord.slash_command(name="daily", description="Claim your daily pitchfork reward")
+    async def daily(self, ctx):
+        """Claim your daily pitchfork reward."""
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+
+        with self.app.app_context():
+            try:
+                user = self._get_or_create_user(ctx.user)
+                if not user:
+                    await ctx.respond("❌ Error accessing your account.", ephemeral=True)
+                    return
+                
+                # Check if user has reached maximum daily claims
+                daily_claims = getattr(user, 'daily_claims_count', 0) or 0
+                if daily_claims >= ActivityLimits.MAX_DAILY_CLAIMS:
+                    embed = discord.Embed(
+                        title="🚫 Daily Limit Reached",
+                        description=f"You have reached the maximum of {ActivityLimits.MAX_DAILY_CLAIMS} daily claims. No more daily rewards available!",
+                        color=discord.Color.red()
+                    )
+                    await ctx.respond(embed=embed, ephemeral=True)
+                    return
+                
+                current_time = datetime.utcnow()
+                if user.last_daily and (current_time - user.last_daily) < timedelta(days=1):
+                    time_left = user.last_daily + timedelta(days=1) - current_time
+                    hours = int(time_left.total_seconds() // 3600)
+                    minutes = int((time_left.total_seconds() % 3600) // 60)
+                    embed = discord.Embed(
+                        title="⏰ Daily Reward Not Ready",
+                        description=f"You can claim your daily pitchforks again in {hours} hours and {minutes} minutes.",
+                        color=discord.Color.red()
+                    )
+                    await ctx.respond(embed=embed, ephemeral=True)
+                    return
+                
+                # Award daily reward and increment counter
+                user.balance += 85
+                user.last_daily = current_time
+                if not hasattr(user, 'daily_claims_count') or user.daily_claims_count is None:
+                    user.daily_claims_count = 0
+                user.daily_claims_count += 1
+                
+                self.db.session.commit()
+                
+                remaining_claims = ActivityLimits.MAX_DAILY_CLAIMS - user.daily_claims_count
+                embed = discord.Embed(
+                    title="🎉 Daily Reward Claimed!",
+                    description=f"You have received 85 pitchforks. Your new balance is {user.balance:,} pitchforks.",
+                    color=discord.Color.green()
+                )
+                embed.add_field(
+                    name="Daily Claims Remaining",
+                    value=f"{remaining_claims} out of {ActivityLimits.MAX_DAILY_CLAIMS}",
+                    inline=True
+                )
+                await ctx.respond(embed=embed)
+                
+            except Exception as e:
+                cog_logger.error(f"Error processing daily reward for {ctx.user.id}: {e}")
+                self.db.session.rollback()
+                await ctx.respond("❌ Error processing your daily reward.", ephemeral=True)
+
+    @discord.slash_command(name="leaderboard", description="Show the top 10 users by pitchfork balance")
+    async def leaderboard(self, ctx):
+        """Show the pitchfork leaderboard."""
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+
+        with self.app.app_context():
+            try:
+                # Exclude admin users from leaderboard
+                users = self.User.query.filter(self.User.is_admin == False).order_by(self.User.balance.desc()).limit(10).all()
+                desc = "\n".join([
+                    f"**{idx+1}. {user.username}** — {user.balance:,} pitchforks" 
+                    for idx, user in enumerate(users)
+                ])
+                embed = discord.Embed(
+                    title="🏆 Pitchfork Leaderboard",
+                    description=desc or "No users found.",
+                    color=discord.Color.gold()
+                )
+                await ctx.respond(embed=embed)
+                
+            except Exception as e:
+                cog_logger.error(f"Error showing leaderboard: {e}")
+                await ctx.respond("❌ Error retrieving leaderboard.", ephemeral=True)
+
+    @discord.slash_command(name="give_all", description="Give pitchforks to all users (Admin only)")
+    async def give_all(self, ctx, amount: int):
+        """Give pitchforks to all users (Admin only)."""
+        if not ctx.user.guild_permissions.administrator:
+            await ctx.respond("❌ You do not have permission to use this command.", ephemeral=True)
+            return
+
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+
+        if amount <= 0:
+            await ctx.respond("❌ Amount must be greater than 0.", ephemeral=True)
+            return
+
+        with self.app.app_context():
+            try:
+                users = self.User.query.all()
+                for user in users:
+                    user.balance += amount
+                self.db.session.commit()
+                
+                embed = discord.Embed(
+                    title="💰 Mass Pitchfork Distribution",
+                    description=f"Successfully gave **{amount:,} pitchforks** to all {len(users)} users!",
+                    color=discord.Color.green()
+                )
+                embed.add_field(
+                    name="Distributed by",
+                    value=ctx.user.mention,
+                    inline=True
+                )
+                await ctx.respond(embed=embed)
+                
+            except Exception as e:
+                cog_logger.error(f"Error giving pitchforks to all users: {e}")
+                self.db.session.rollback()
+                await ctx.respond("❌ Error distributing pitchforks.", ephemeral=True)
+
+    @discord.slash_command(name="give", description="Give pitchforks to a specific user (Admin only)")
+    async def give(self, ctx, user: discord.Member, amount: int):
+        """Give pitchforks to a specific user (Admin only)."""
+        if not ctx.user.guild_permissions.administrator:
+            await ctx.respond("❌ You do not have permission to use this command.", ephemeral=True)
+            return
+
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+
+        if amount <= 0:
+            await ctx.respond("❌ Amount must be greater than 0.", ephemeral=True)
+            return
+
+        with self.app.app_context():
+            try:
+                # Get or create the target user
+                target_user = self.User.query.filter_by(id=str(user.id)).first()
+                if not target_user:
+                    target_user = self.User(
+                        id=str(user.id), 
+                        username=user.display_name, 
+                        discord_id=str(user.id)
+                    )
+                    self.db.session.add(target_user)
+                    self.db.session.flush()
+                
+                # Add points to the user's balance
+                target_user.balance += amount
+                self.db.session.commit()
+                
+                # Send confirmation message
+                embed = discord.Embed(
+                    title="💰 Pitchforks Awarded",
+                    description=f"Successfully gave **{amount:,} pitchforks** to {user.mention}",
+                    color=discord.Color.green()
+                )
+                embed.add_field(
+                    name="New Balance",
+                    value=f"{target_user.balance:,} pitchforks",
+                    inline=True
+                )
+                embed.add_field(
+                    name="Awarded by",
+                    value=ctx.user.mention,
+                    inline=True
+                )
+                
+                await ctx.respond(embed=embed)
+                
+                # Try to notify the user via DM
+                try:
+                    dm_embed = discord.Embed(
+                        title="🎉 Pitchforks Received!",
+                        description=f"You've received **{amount:,} pitchforks** from an admin!",
+                        color=discord.Color.gold()
+                    )
+                    dm_embed.add_field(
+                        name="New Balance",
+                        value=f"{target_user.balance:,} pitchforks",
+                        inline=True
+                    )
+                    await user.send(embed=dm_embed)
+                except discord.Forbidden:
+                    # User has DMs disabled
+                    pass
+                
+            except Exception as e:
+                cog_logger.error(f"Error giving pitchforks to {user.id}: {e}")
+                self.db.session.rollback()
+                await ctx.respond("❌ Error awarding pitchforks.", ephemeral=True)
+
+    @discord.slash_command(name="limits", description="View your earning limits and theoretical maximum pitchforks")
+    async def limits(self, ctx):
+        """View earning limits and theoretical maximum pitchforks."""
+        if not self._is_economy_enabled():
+            await ctx.respond("❌ Economy system is currently disabled.", ephemeral=True)
+            return
+
+        with self.app.app_context():
+            try:
+                user = self._get_or_create_user(ctx.user)
+                if not user:
+                    await ctx.respond("❌ Error accessing your account.", ephemeral=True)
+                    return
+                
+                # Get current usage
+                daily_claims_used = getattr(user, 'daily_claims_count', 0) or 0
+                campus_photos_used = getattr(user, 'campus_photos_count', 0) or 0
+                daily_engagement_used = getattr(user, 'daily_engagement_count', 0) or 0
+                
+                # Calculate remaining
+                daily_claims_remaining = max(0, ActivityLimits.MAX_DAILY_CLAIMS - daily_claims_used)
+                campus_photos_remaining = max(0, ActivityLimits.MAX_CAMPUS_PHOTOS - campus_photos_used)
+                daily_engagement_remaining = max(0, ActivityLimits.MAX_DAILY_ENGAGEMENT - daily_engagement_used)
+                
+                # Calculate theoretical maximum pitchforks
+                max_from_daily = ActivityLimits.MAX_DAILY_CLAIMS * 85
+                max_from_campus = ActivityLimits.MAX_CAMPUS_PHOTOS * EconomyPoints.CAMPUS_PICTURE
+                max_from_engagement = ActivityLimits.MAX_DAILY_ENGAGEMENT * EconomyPoints.DAILY_ENGAGEMENT
+                max_from_deposit = EconomyPoints.ENROLLMENT_DEPOSIT
+                max_from_birthday = EconomyPoints.BIRTHDAY_SETUP
+                
+                # Achievement points (approximate)
+                total_achievement_points = sum(achievement.points for achievement in self.Achievement.query.all())
+                
+                theoretical_max = (max_from_daily + max_from_campus + max_from_engagement + 
+                                 max_from_deposit + max_from_birthday + total_achievement_points)
+                
+                embed = discord.Embed(
+                    title="📊 Your Earning Limits",
+                    color=discord.Color.blue()
+                )
+                
+                embed.add_field(
+                    name="🎯 Daily Claims",
+                    value=f"Used: {daily_claims_used}/{ActivityLimits.MAX_DAILY_CLAIMS}\nRemaining: {daily_claims_remaining}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="📸 Campus Photos",
+                    value=f"Used: {campus_photos_used}/{ActivityLimits.MAX_CAMPUS_PHOTOS}\nRemaining: {campus_photos_remaining}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="💬 Daily Engagement",
+                    value=f"Used: {daily_engagement_used}/{ActivityLimits.MAX_DAILY_ENGAGEMENT}\nRemaining: {daily_engagement_remaining}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🏆 Theoretical Maximum",
+                    value=f"{theoretical_max:,} pitchforks",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="💰 Current Balance",
+                    value=f"{user.balance:,} pitchforks",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="📈 Progress",
+                    value=f"{(user.balance / theoretical_max * 100):.1f}% of maximum",
+                    inline=True
+                )
+                
+                embed.set_footer(text="Limits reset when the economy is enabled for the first time")
+                
+                await ctx.respond(embed=embed, ephemeral=True)
+                
+            except Exception as e:
+                cog_logger.error(f"Error showing limits for {ctx.user.id}: {e}")
+                await ctx.respond("❌ Error retrieving your limits.", ephemeral=True)
+
+    @discord.slash_command(name="help", description="Learn how to earn pitchforks in the Devil2Devil economy")
+    async def help_command(self, ctx):
+        """Show help information about earning pitchforks."""
+        embed = discord.Embed(
+            title="🔱 Devil2Devil Economy Help",
+            description="Learn how to earn pitchforks in our economy system!",
+            color=discord.Color.red()
+        )
+        
+        embed.add_field(
+            name="💰 Daily Rewards",
+            value="Use `/daily` to claim 85 pitchforks once per day",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🎯 Activity Bonuses",
+            value="• Send messages in channels\n• React to messages\n• Join voice channels\n• Get verified and complete onboarding",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🏆 Achievements",
+            value="Unlock achievements by being active! Use `/achievements` to see your progress.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 Other Commands",
+            value="• `/balance` - Check your pitchfork balance\n• `/leaderboard` - See top users\n• `/limits` - View your earning limits",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🛒 Spending Pitchforks",
+            value="Visit the web store to spend your pitchforks on roles, skins, and other items!",
+            inline=False
+        )
+        
+        embed.set_footer(text="Economy system managed by Devil2Devil staff")
+        
+        await ctx.respond(embed=embed, ephemeral=True)
+
 
 def setup(bot, app, db, User, EconomySettings, Achievement, UserAchievement):
     """Setup function for the cog."""

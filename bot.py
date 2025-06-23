@@ -1,11 +1,17 @@
-import nextcord
-from nextcord.ext import commands, tasks
-from nextcord import Interaction
-from datetime import datetime, timedelta
+"""
+Discord bot entry point using the new Discord service.
+Migrated from nextcord to py-cord with improved service architecture.
+Includes fallback mode for Python 3.13 compatibility issues.
+"""
+
 import os
 import logging
+import threading
+import signal
+import sys
 from dotenv import load_dotenv
-import asyncio
+
+from config import Settings
 
 # Load environment variables
 load_dotenv()
@@ -13,148 +19,201 @@ load_dotenv()
 # Set up logging for bot
 bot_logger = logging.getLogger('economy.bot')
 
-# Bot setup
-intents = nextcord.Intents.default()
-intents.members = True
-intents.message_content = True
+# Global Discord service instance - will be None if Discord imports fail
+discord_service = None
+discord_import_error = None
 
-bot = commands.Bot(
-    command_prefix='!',  # Add a command prefix even though we're using slash commands
-    intents=intents
-)
+# Try to import Discord service, fallback gracefully if it fails
+try:
+    from services.discord import DiscordService
+    discord_service = DiscordService()
+    bot_logger.info("Discord service imported successfully")
+except ImportError as e:
+    discord_import_error = str(e)
+    bot_logger.warning(f"Discord service unavailable due to import error: {e}")
+    bot_logger.warning("Running in web-only mode. Discord bot functionality disabled.")
+    
+    # Create a dummy Discord service for compatibility
+    class DummyDiscordService:
+        def __init__(self):
+            self.is_ready = False
+            
+        def initialize(self, app, db):
+            bot_logger.info("Dummy Discord service initialized (Discord disabled)")
+            
+        def start_bot(self, token):
+            bot_logger.warning("Discord bot start requested but Discord is disabled")
+            return False
+            
+        def stop_bot(self):
+            bot_logger.info("Discord bot stop requested but Discord is disabled")
+            
+        def get_status(self):
+            return {
+                'running': False,
+                'ready': False,
+                'guild_count': 0,
+                'bot_user': 'Disabled (Python 3.13 compatibility issue)',
+                'error': discord_import_error
+            }
+    
+    discord_service = DummyDiscordService()
 
 # Global variables to store app and db instances
 app_instance = None
 db_instance = None
-User = None
-Achievement = None
-UserAchievement = None
-EconomySettings = None
 
-# Rate limiting helper functions
-async def safe_send_message(destination, *args, **kwargs):
-    """Safely send a message with rate limit handling and retries."""
-    max_retries = 3
-    base_delay = 1
-    
-    for attempt in range(max_retries):
-        try:
-            if hasattr(destination, 'send'):
-                return await destination.send(*args, **kwargs)
-            elif hasattr(destination, 'response'):
-                return await destination.response.send_message(*args, **kwargs)
-            else:
-                bot_logger.warning(f"Unknown destination type: {type(destination)}")
-                return None
-                
-        except nextcord.errors.HTTPException as e:
-            if e.status == 429:  # Rate limited
-                retry_after = float(e.response.headers.get('Retry-After', base_delay))
-                bot_logger.warning(f"Rate limited. Waiting {retry_after} seconds before retry {attempt + 1}/{max_retries}")
-                await asyncio.sleep(retry_after)
-                continue
-            elif e.status in [403, 404]:  # Forbidden or Not Found
-                bot_logger.warning(f"Cannot send message: {e}")
-                return None
-            else:
-                bot_logger.error(f"HTTP error sending message: {e}")
-                if attempt == max_retries - 1:
-                    return None
-                await asyncio.sleep(base_delay * (2 ** attempt))
-                continue
-        except Exception as e:
-            bot_logger.error(f"Unexpected error sending message: {e}")
-            if attempt == max_retries - 1:
-                return None
-            await asyncio.sleep(base_delay * (2 ** attempt))
-            continue
-    
-    return None
 
-async def safe_dm_user(user, *args, **kwargs):
-    """Safely send a DM to a user with fallback to general channel."""
-    try:
-        return await safe_send_message(user, *args, **kwargs)
-    except nextcord.Forbidden:
-        # DM failed, try general channel as fallback
-        if os.getenv('GENERAL_CHANNEL_ID'):
-            try:
-                channel = bot.get_channel(int(os.getenv('GENERAL_CHANNEL_ID')))
-                if channel and 'embed' in kwargs:
-                    # Modify embed to mention user
-                    embed = kwargs['embed']
-                    embed.description = f"{user.mention}\n\n{embed.description}"
-                    return await safe_send_message(channel, embed=embed)
-            except Exception as e:
-                bot_logger.error(f"Failed to send fallback message to general channel: {e}")
-        return None
-    except Exception as e:
-        bot_logger.error(f"Error sending DM to {user}: {e}")
-        return None
-
-def init_bot_with_app(app, db, user_model, achievement_model, user_achievement_model, economy_settings_model):
+def init_bot_with_app(app, db):
     """Initialize bot with app and database instances."""
-    global app_instance, db_instance, User, Achievement, UserAchievement, EconomySettings
+    global app_instance, db_instance, discord_service
+    
     app_instance = app
     db_instance = db
-    User = user_model
-    Achievement = achievement_model
-    UserAchievement = user_achievement_model
-    EconomySettings = economy_settings_model
-
-@bot.event
-async def on_ready():
-    """Called when the bot is ready and connected to Discord"""
-    bot_logger.info(f"Bot is ready! Logged in as {bot.user}")
-    bot_logger.info(f"Connected to {len(bot.guilds)} guilds")
-    await bot.change_presence(activity=nextcord.Game(name="Managing Economy"))
     
-    # Sync slash commands
-    try:
-        synced = await bot.sync_all_application_commands()
-        if synced:
-            bot_logger.info(f"Synced {len(synced)} application commands")
-        else:
-            bot_logger.info("No application commands to sync")
-    except Exception as e:
-        bot_logger.error(f"Failed to sync commands: {e}")
+    if discord_service:
+        # Initialize the Discord service
+        discord_service.initialize(app, db)
+        bot_logger.info("Bot initialized with Flask app and database")
+    else:
+        bot_logger.warning("Bot initialization skipped - Discord service unavailable")
+
+
+def start_bot_async():
+    """Start the Discord bot in a separate thread."""
+    if not discord_service:
+        bot_logger.error("Discord service not available")
+        return False
+    
+    # Check if Discord token is available
+    discord_token = Settings.DISCORD_TOKEN
+    if not discord_token or discord_token == 'your_discord_bot_token_here':
+        bot_logger.warning("Discord bot not started - DISCORD_TOKEN not configured")
+        return False
+    
+    # Ensure we have the required instances before starting
+    if not app_instance or not db_instance:
+        bot_logger.critical("ERROR: Flask app or database not initialized before starting bot")
+        return False
+    
+    # Check if this is the dummy service
+    if isinstance(discord_service, type(discord_service)) and hasattr(discord_service, '__class__') and 'Dummy' in discord_service.__class__.__name__:
+        bot_logger.warning("Cannot start Discord bot - running in web-only mode due to Python 3.13 compatibility")
+        return False
+    
+    # Start the bot
+    success = discord_service.start_bot(discord_token)
+    if success:
+        bot_logger.info("Discord bot started successfully")
+    else:
+        bot_logger.error("Failed to start Discord bot")
+    
+    return success
+
+
+def stop_bot():
+    """Stop the Discord bot."""
+    global discord_service
+    
+    if discord_service:
+        discord_service.stop_bot()
+        bot_logger.info("Discord bot stopped")
+
+
+def get_bot_status():
+    """Get the current status of the Discord bot."""
+    if discord_service:
+        return discord_service.get_status()
+    return {
+        'running': False,
+        'ready': False,
+        'guild_count': 0,
+        'bot_user': 'Service unavailable',
+        'error': 'Discord service failed to initialize'
+    }
+
+
+def is_bot_ready():
+    """Check if the Discord bot is ready."""
+    return discord_service and hasattr(discord_service, 'is_ready') and discord_service.is_ready
+
 
 def run_bot():
-    """Run the Discord bot"""
+    """Run the Discord bot (blocking mode for standalone execution)."""
     try:
+        # Check if Discord is available
+        if discord_import_error:
+            bot_logger.error("Cannot run Discord bot in standalone mode:")
+            bot_logger.error(f"Import error: {discord_import_error}")
+            bot_logger.error("This is likely due to Python 3.13 compatibility issues with Discord libraries.")
+            bot_logger.error("Please use Python 3.12 or wait for library updates.")
+            return
+        
         # Check if Discord token is available
-        discord_token = os.getenv('DISCORD_TOKEN')
+        discord_token = Settings.DISCORD_TOKEN
         if not discord_token or discord_token == 'your_discord_bot_token_here':
             bot_logger.warning("Discord bot not started - DISCORD_TOKEN not configured")
             return
         
-        # Ensure we have the required instances before starting
-        if not app_instance or not db_instance:
-            bot_logger.critical("ERROR: Flask app or database not initialized before starting bot")
-            return
-            
-        # Load the economy cog
-        from cogs.economy import setup as setup_economy_cog
-        setup_economy_cog(bot, app_instance, db_instance, User, EconomySettings, Achievement, UserAchievement)
+        bot_logger.info("Starting Discord bot in standalone mode...")
         
-        # Start the bot with signal handling disabled (since we're in a thread)
-        import threading
-        if threading.current_thread() is not threading.main_thread():
-            # We're in a thread, so we need to create a new event loop
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Run the bot without signal handlers
-            loop.run_until_complete(bot.start(os.getenv('DISCORD_TOKEN')))
-        else:
-            # We're in the main thread, use normal run method
-            bot.run(os.getenv('DISCORD_TOKEN'))
+        # Create a minimal Flask app for testing
+        from flask import Flask
+        from models.base import init_db
+        
+        app = Flask(__name__)
+        app.config['SECRET_KEY'] = 'test-secret-key'
+        app.config['SQLALCHEMY_DATABASE_URI'] = Settings.SQLALCHEMY_DATABASE_URI
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        
+        # Initialize database
+        init_db(app)
+        
+        # Initialize bot with app
+        init_bot_with_app(app, None)
+        
+        # Set up signal handlers for graceful shutdown
+        def signal_handler(sig, frame):
+            bot_logger.info("Received shutdown signal, stopping bot...")
+            stop_bot()
+            sys.exit(0)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+        
+        # Start bot (blocking)
+        with app.app_context():
+            if hasattr(discord_service, 'discord_bot'):
+                discord_service.discord_bot.run(discord_token)
+            else:
+                bot_logger.error("Discord bot not available in dummy service")
             
     except Exception as e:
         bot_logger.error(f"Error running bot: {e}")
         import traceback
         bot_logger.error(traceback.format_exc())
+
+
+# Backward compatibility functions for existing code
+def safe_send_message(destination, *args, **kwargs):
+    """
+    Legacy function for backward compatibility.
+    In the new architecture, message sending should be handled through the Discord service.
+    """
+    bot_logger.warning("safe_send_message called - consider using Discord service methods instead")
+    # This would need to be implemented if still needed
+    pass
+
+
+def safe_dm_user(user, *args, **kwargs):
+    """
+    Legacy function for backward compatibility.
+    In the new architecture, DM sending should be handled through the Discord service.
+    """
+    bot_logger.warning("safe_dm_user called - consider using Discord service methods instead")
+    # This would need to be implemented if still needed
+    pass
+
 
 if __name__ == "__main__":
     run_bot() 

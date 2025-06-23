@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}User Leaderboard - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-trophy text-yellow-400 mr-3"></i>
+            User Leaderboard
+        </h1>
+        <p class="text-xl text-muted">View user rankings and point breakdowns</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="card p-4">
+        <div class="flex flex-wrap gap-4">
+            <a href="{{ url_for('dashboard.admin_panel') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Dashboard -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-yellow-400 mr-3"></i>
+            Community Statistics
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-blue-400">{{ total_users }}</div>
+                <div class="text-sm text-muted">Total Users</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold asu-gold">
+                    <i class="fas fa-coins mr-1"></i>{{ "{:,}".format(total_balance) }}
+                </div>
+                <div class="text-sm text-muted">Total Current Balance</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-green-400">
+                    <i class="fas fa-trophy mr-1"></i>{{ "{:,}".format(total_points_earned) }}
+                </div>
+                <div class="text-sm text-muted">Total Points Earned</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <i class="fas fa-list-ol text-yellow-400 mr-3"></i>
+                User Rankings
+            </h2>
+            <div class="text-muted">
+                {{ users|length }} user{{ 's' if users|length != 1 else '' }}
+            </div>
+        </div>
+
+        <!-- Sorting Controls -->
+        <div class="mb-6 p-4 bg-gray-800 rounded-lg">
+            <div class="flex flex-wrap gap-2 items-center">
+                <span class="text-sm font-medium text-gray-300 mr-3">Sort by:</span>
+                
+                <!-- Balance Sort -->
+                                        <a href="{{ url_for('users.admin_leaderboard', sort='balance', order='desc' if sort_by != 'balance' or order == 'asc' else 'asc') }}" 
+                   class="px-3 py-1 rounded text-sm transition-colors {{ 'bg-yellow-600 text-white' if sort_by == 'balance' else 'bg-gray-700 hover:bg-gray-600' }}">
+                    Balance
+                    {% if sort_by == 'balance' %}
+                        <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }} ml-1"></i>
+                    {% endif %}
+                </a>
+                
+                <!-- Points Sort -->
+                                        <a href="{{ url_for('users.admin_leaderboard', sort='points', order='desc' if sort_by != 'points' or order == 'asc' else 'asc') }}" 
+                   class="px-3 py-1 rounded text-sm transition-colors {{ 'bg-yellow-600 text-white' if sort_by == 'points' else 'bg-gray-700 hover:bg-gray-600' }}">
+                    Total Points
+                    {% if sort_by == 'points' %}
+                        <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }} ml-1"></i>
+                    {% endif %}
+                </a>
+                
+                <!-- Messages Sort -->
+                                        <a href="{{ url_for('users.admin_leaderboard', sort='messages', order='desc' if sort_by != 'messages' or order == 'asc' else 'asc') }}" 
+                   class="px-3 py-1 rounded text-sm transition-colors {{ 'bg-yellow-600 text-white' if sort_by == 'messages' else 'bg-gray-700 hover:bg-gray-600' }}">
+                    Messages
+                    {% if sort_by == 'messages' %}
+                        <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }} ml-1"></i>
+                    {% endif %}
+                </a>
+                
+                <!-- Username Sort -->
+                                        <a href="{{ url_for('users.admin_leaderboard', sort='username', order='desc' if sort_by != 'username' or order == 'asc' else 'asc') }}" 
+                   class="px-3 py-1 rounded text-sm transition-colors {{ 'bg-yellow-600 text-white' if sort_by == 'username' else 'bg-gray-700 hover:bg-gray-600' }}">
+                    Username
+                    {% if sort_by == 'username' %}
+                        <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }} ml-1"></i>
+                    {% endif %}
+                </a>
+                
+                <!-- Join Date Sort -->
+                                        <a href="{{ url_for('users.admin_leaderboard', sort='created', order='desc' if sort_by != 'created' or order == 'asc' else 'asc') }}" 
+                   class="px-3 py-1 rounded text-sm transition-colors {{ 'bg-yellow-600 text-white' if sort_by == 'created' else 'bg-gray-700 hover:bg-gray-600' }}">
+                    Join Date
+                    {% if sort_by == 'created' %}
+                        <i class="fas fa-sort-{{ 'down' if order == 'desc' else 'up' }} ml-1"></i>
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+
+        {% if users %}
+            <!-- Desktop Table View -->
+            <div class="hidden lg:block overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-600">
+                            <th class="text-left py-4 px-2 text-yellow-400">Rank</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">User</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Current Balance</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Total Points</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Messages</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Joined</th>
+                            <th class="text-left py-4 px-2 text-yellow-400">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                                <td class="py-4 px-2">
+                                    <div class="flex items-center">
+                                        {% if loop.index <= 3 %}
+                                            <i class="fas fa-trophy text-{{ 'yellow' if loop.index == 1 else 'gray' if loop.index == 2 else 'orange' }}-400 mr-2"></i>
+                                        {% endif %}
+                                        <span class="text-lg font-bold">{{ loop.index }}</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <div class="flex items-center space-x-3">
+                                        {% if user.avatar_url %}
+                                            <img src="{{ user.avatar_url }}" 
+                                                 alt="{{ user.username }}" 
+                                                 class="w-10 h-10 rounded-full">
+                                        {% else %}
+                                            <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-user text-gray-400"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <div class="font-semibold flex items-center">
+                                                {{ user.username }}
+                                                {% if user.is_admin %}
+                                                    <span class="ml-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                                        <i class="fas fa-crown mr-1"></i>ADMIN
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-sm text-muted">ID: {{ user.id }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <span class="font-bold asu-gold text-lg">
+                                        <i class="fas fa-coins mr-1"></i>{{ "{:,}".format(user.balance or 0) }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <span class="font-bold text-green-400">
+                                        <i class="fas fa-trophy mr-1"></i>{{ "{:,}".format(user.points or 0) }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <span class="text-blue-400">
+                                        <i class="fas fa-comment mr-1"></i>{{ "{:,}".format(user.message_count or 0) }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-2 text-muted">
+                                    {{ user.created_at.strftime('%m/%d/%Y') if user.created_at else 'N/A' }}
+                                </td>
+                                <td class="py-4 px-2">
+                                    <a href="{{ url_for('users.admin_user_breakdown', user_id=user.id) }}" 
+                                       class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors">
+                                        <i class="fas fa-chart-pie mr-1"></i>View Breakdown
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-4">
+                {% for user in users %}
+                    <div class="card p-4">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 text-center">
+                                {% if loop.index <= 3 %}
+                                    <i class="fas fa-trophy text-{{ 'yellow' if loop.index == 1 else 'gray' if loop.index == 2 else 'orange' }}-400 text-lg mb-1"></i>
+                                {% endif %}
+                                <div class="text-xl font-bold">{{ loop.index }}</div>
+                            </div>
+                            
+                            {% if user.avatar_url %}
+                                <img src="{{ user.avatar_url }}" 
+                                     alt="{{ user.username }}" 
+                                     class="w-12 h-12 rounded-full flex-shrink-0">
+                            {% else %}
+                                <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user text-gray-400"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-lg flex items-center">
+                                    {{ user.username }}
+                                    {% if user.is_admin %}
+                                        <span class="ml-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                            <i class="fas fa-crown mr-1"></i>ADMIN
+                                        </span>
+                                    {% endif %}
+                                </h3>
+                                
+                                <div class="mt-2 space-y-1">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted">Balance:</span>
+                                        <span class="font-bold asu-gold">
+                                            <i class="fas fa-coins mr-1"></i>{{ "{:,}".format(user.balance or 0) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted">Total Points:</span>
+                                        <span class="font-bold text-green-400">
+                                            <i class="fas fa-trophy mr-1"></i>{{ "{:,}".format(user.points or 0) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted">Messages:</span>
+                                        <span class="text-blue-400">{{ "{:,}".format(user.message_count or 0) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted">Joined:</span>
+                                        <span class="text-muted">{{ user.created_at.strftime('%m/%d/%Y') if user.created_at else 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <a href="{{ url_for('users.admin_user_breakdown', user_id=user.id) }}" 
+                                       class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors w-full block text-center">
+                                        <i class="fas fa-chart-pie mr-1"></i>View Breakdown
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-users text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">No users found</h3>
+                <p class="text-muted">Users will appear here once they start using the economy system.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

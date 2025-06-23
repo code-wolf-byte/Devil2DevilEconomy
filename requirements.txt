@@ -1,5 +1,5 @@
 flask==3.0.3
-py-cord==2.6.1
+py-cord==2.6.1  # Note: Python 3.13 compatibility issue - use Python 3.12
 sqlalchemy==2.0.36
 python-dotenv==1.0.1
 flask-sqlalchemy==3.1.1

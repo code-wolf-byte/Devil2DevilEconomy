@@ -4,19 +4,17 @@ Contains all SQLAlchemy models for the economy application.
 """
 
 from .base import db
-from .user import User
-from .product import Product
-from .purchase import Purchase
-from .achievement import Achievement, UserAchievement
-from .economy import EconomySettings, RoleAssignment, DownloadToken
+from .user import User, UserAchievement
+from .product import Product, Purchase
+from .economy import Achievement, EconomySettings, RoleAssignment, DownloadToken
 
 __all__ = [
     'db',
     'User',
+    'UserAchievement',
     'Product', 
     'Purchase',
     'Achievement',
-    'UserAchievement',
     'EconomySettings',
     'RoleAssignment',
     'DownloadToken'

@@ -89,7 +89,7 @@
                             <h5 class="text-xl sm:text-2xl font-semibold">Create Role Product</h5>
                         </div>
                                     
-                        <form id="roleProductForm" action="{{ url_for('create_role_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <form id="roleProductForm" action="{{ url_for('products.create_role_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                 <div class="form-group">
                                                     <label class="form-label text-sm font-medium mb-2">
@@ -221,7 +221,7 @@
     </div>
 
     <!-- Minecraft Skins Section -->
-    <div id="minecraft-skins-section" class="category-section animate-slide-up-delay-2">
+    <div id="minecraft-skins-section" class="category-section" style="display: none;">
         <div class="card p-6 sm:p-8 mb-6 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
             <div class="text-center mb-8">
                 <i class="fas fa-cube text-4xl sm:text-6xl text-green-400 mb-4 animate-bounce-subtle"></i>
@@ -255,7 +255,7 @@
                         </p>
                     </div>
                         
-                    <form action="{{ url_for('new_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                    <form action="{{ url_for('products.new_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                         <input type="hidden" name="product_type" value="minecraft_skin">
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -337,10 +337,10 @@
 
     <!-- Navigation -->
     <div class="text-center space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center animate-fade-in">
-        <a href="{{ url_for('admin_panel') }}" class="btn-secondary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
+        <a href="{{ url_for('dashboard.admin_panel') }}" class="btn-secondary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
         </a>
-        <a href="{{ url_for('new_product') }}" class="btn-primary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
+                        <a href="{{ url_for('products.new_product') }}" class="btn-primary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-plus mr-2"></i>Advanced Product Creator
         </a>
     </div>
@@ -941,23 +941,16 @@ function initializeCategoryTabs() {
         });
     });
     
-    // Initialize first tab as active
+    // Initialize first tab as active and show its section
+    // The minecraft section is already hidden via inline CSS
     if (tabs.length > 0) {
         const firstTab = tabs[0];
-        const firstCategory = firstTab.dataset.category;
-        
-        // Set first tab as active
         firstTab.classList.add('active');
         
-        // Hide non-first sections, keep first visible
-        const firstSection = document.getElementById(firstCategory + '-section');
-        sections.forEach(section => {
-            if (section !== firstSection) {
-                section.style.display = 'none';
-            } else {
-                section.style.display = 'block';
-            }
-        });
+        const firstSection = document.getElementById(firstTab.dataset.category + '-section');
+        if (firstSection) {
+            firstSection.style.display = 'block';
+        }
     }
 }
 

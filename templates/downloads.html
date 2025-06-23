@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}My Downloads - Devil2Devil Store{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold flex items-center justify-center mb-4">
+            <i class="fas fa-download text-yellow-400 mr-3"></i>
+            My Downloads
+        </h1>
+        <p class="text-lg text-muted">
+            Access all your purchased digital products and downloads
+        </p>
+    </div>
+
+    {% if downloads %}
+        <!-- Downloads Grid -->
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {% for download in downloads %}
+                <div class="card hover:shadow-2xl transition-shadow duration-300">
+                    <!-- Product Image -->
+                    <div class="relative">
+                        {% if download.product.display_image %}
+                            {% if download.product.display_image.endswith('.mp4') %}
+                                <video class="w-full h-48 object-cover rounded-t-lg" 
+                                       autoplay muted loop playsinline>
+                                    <source src="{{ url_for('static', filename='uploads/' + download.product.display_image) }}" type="video/mp4">
+                                </video>
+                            {% else %}
+                                <img src="{{ url_for('static', filename='uploads/' + download.product.display_image) }}" 
+                                     alt="{{ download.product.name }}" 
+                                     class="w-full h-48 object-cover rounded-t-lg">
+                            {% endif %}
+                        {% else %}
+                            <div class="w-full h-48 bg-gradient-to-br from-gray-700 to-gray-800 rounded-t-lg flex items-center justify-center">
+                                <i class="fas fa-cube text-6xl text-gray-500"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Product Type Badge -->
+                        <div class="absolute top-2 right-2">
+                            {% if download.product.product_type == 'minecraft_skin' %}
+                                <span class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                    <i class="fas fa-cube mr-1"></i>Minecraft Skin
+                                </span>
+                            {% else %}
+                                <span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                    <i class="fas fa-download mr-1"></i>Digital
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Product Info -->
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold mb-2">{{ download.product.name }}</h3>
+                        
+                        {% if download.product.description %}
+                            <p class="text-muted mb-4 line-clamp-2">{{ download.product.description }}</p>
+                        {% endif %}
+
+                        <!-- Purchase Info -->
+                        <div class="flex items-center justify-between text-sm text-muted mb-4">
+                            <span>
+                                <i class="fas fa-calendar mr-1"></i>
+                                Purchased {{ download.purchase.timestamp.strftime('%b %d, %Y') }}
+                            </span>
+                            <span>
+                                <i class="fas fa-coins mr-1"></i>
+                                {{ download.purchase.points_spent }} points
+                            </span>
+                        </div>
+
+                        <!-- Download Button -->
+                        <div class="space-y-3">
+                            <a href="{{ download.download_url }}" 
+                               class="btn-primary w-full text-center block transform hover:scale-105 transition-transform duration-200"
+                               target="_blank">
+                                <i class="fas fa-download mr-2"></i>
+                                Download Now
+                            </a>
+                            
+                            <!-- Token Expiry Info -->
+                            <div class="text-xs text-center text-muted">
+                                <i class="fas fa-clock mr-1"></i>
+                                Download link expires {{ download.expires_at.strftime('%b %d, %Y at %I:%M %p') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Info Section -->
+        <div class="mt-12 bg-blue-900 bg-opacity-30 border border-blue-600 rounded-lg p-6">
+            <div class="flex items-start space-x-4">
+                <i class="fas fa-info-circle text-blue-400 text-xl mt-1"></i>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-300 mb-2">Download Information</h3>
+                    <ul class="text-sm text-blue-200 space-y-1">
+                        <li>• Download links are valid for 24 hours from when you visit this page</li>
+                        <li>• You can re-visit this page to generate new download links anytime</li>
+                        <li>• Keep your downloaded files safe - they are yours to keep forever</li>
+                        <li>• If you have any issues downloading, contact an administrator</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="mb-8">
+                <i class="fas fa-download text-6xl text-gray-500 mb-4"></i>
+                <h2 class="text-2xl font-bold mb-2">No Downloads Yet</h2>
+                <p class="text-muted mb-6">
+                    You haven't purchased any digital products yet. Browse the store to find downloadable content!
+                </p>
+                <a href="{{ url_for('shop.index') }}" class="btn-primary">
+                    <i class="fas fa-shopping-cart mr-2"></i>
+                    Browse Store
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    <div class="mt-12 text-center">
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="{{ url_for('shop.index') }}" class="btn-secondary">
+                <i class="fas fa-store mr-2"></i>
+                Back to Store
+            </a>
+            <a href="{{ url_for('user.my_purchases') }}" class="btn-secondary">
+                <i class="fas fa-receipt mr-2"></i>
+                Purchase History
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Line clamp utility for description truncation */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+{% endblock %} 

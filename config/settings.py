@@ -81,4 +81,26 @@ class Settings:
         }
         
         from urllib.parse import urlencode
-        return f"{base_url}?{urlencode(params)}" 
+        return f"{base_url}?{urlencode(params)}"
+
+class DevelopmentConfig(Settings):
+    """Development configuration"""
+    DEBUG = True
+
+class ProductionConfig(Settings):
+    """Production configuration"""
+    DEBUG = False
+
+class TestingConfig(Settings):
+    """Testing configuration"""
+    DEBUG = True
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+
+# Configuration mapping
+config_mapping = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+} 

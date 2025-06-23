@@ -37,6 +37,9 @@ class CustomEmojis:
 class DiscordConfig:
     GUILD_ID = "1082823852322725888"  # Default test guild ID
 
+# Discord OAuth scopes
+DISCORD_SCOPES = 'identify guilds guilds.members.read'
+
 # File upload configurations
 class FileConfig:
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'zip', 'rar'}

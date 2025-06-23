@@ -33,10 +33,7 @@ def index():
     # Get all active products
     products = Product.get_active_products()
     
-    # Fix any None values in products for template compatibility
-    for product in products:
-        if product.stock is None:
-            product.stock = -1  # Use -1 to represent unlimited stock
+    # Note: Template will handle None stock values properly
     
     # Get current user's purchases if they're logged in
     user_purchases = []
@@ -54,13 +51,13 @@ def purchase(product_id):
     try:
         with db_transaction() as session:
             # Re-fetch current user with lock to prevent race conditions
-            current_user_fresh = session.query(User).with_for_update().get(current_user.id)
+            current_user_fresh = session.query(User).with_for_update().filter_by(id=current_user.id).first()
             if not current_user_fresh:
                 flash('User not found')
                 return redirect(url_for('shop.index'))
             
             # Lock the product row to prevent race conditions
-            product = session.query(Product).with_for_update().get(product_id)
+            product = session.query(Product).with_for_update().filter_by(id=product_id).first()
             if not product:
                 flash('Product not found')
                 return redirect(url_for('shop.index'))
@@ -133,21 +130,24 @@ def _process_purchase(user, product, session):
         
         # Handle digital product delivery
         if product.is_digital and product.auto_delivery:
-            delivery_success, delivery_message = _handle_digital_delivery(user, product, purchase)
+            delivery_success, delivery_message = _handle_digital_delivery(user, product, purchase, session)
             
             if delivery_success:
-                purchase.mark_completed(delivery_message)
+                purchase.status = 'completed'
+                purchase.delivery_info = delivery_message
                 
                 # Special handling for Minecraft skins with auto-download
                 if product.product_type == 'minecraft_skin' and product.delivery_method == 'download':
-                    return True, f'Purchase successful! Your download will start automatically. {delivery_message}'
+                    return True, f'Purchase successful! Visit the Downloads page to access your new skin.'
                 
-                return True, f'Purchase successful! {delivery_message}'
+                return True, f'Purchase successful! Visit the Downloads page to access your digital content.'
             else:
-                purchase.mark_pending(delivery_message)
+                purchase.status = 'pending_delivery'
+                purchase.delivery_info = delivery_message
                 return True, f'Purchase completed but delivery pending: {delivery_message}'
         else:
-            purchase.mark_completed()
+            purchase.status = 'completed'
+            purchase.delivery_info = f'Manual delivery - UUID: {user.user_uuid}'
             return True, f'Purchase successful! Your UUID: {user.user_uuid}'
             
     except ValueError as e:
@@ -158,7 +158,7 @@ def _process_purchase(user, product, session):
         return False, "Internal error during purchase processing"
 
 
-def _handle_digital_delivery(user, product, purchase):
+def _handle_digital_delivery(user, product, purchase, session):
     """Handle digital product delivery (placeholder for now)."""
     # TODO: Move DigitalDeliveryService logic here or create a proper service class
     
@@ -184,8 +184,8 @@ def _handle_digital_delivery(user, product, purchase):
                 original_filename=product.name
             )
             
-            db.session.add(token)
-            db.session.flush()
+            session.add(token)
+            session.flush()
             
             download_url = f"/download/{token.token}"
             return True, f"Download ready: <a href='{download_url}'>Click here to download</a>"
@@ -212,8 +212,8 @@ def _handle_digital_delivery(user, product, purchase):
                 status='pending'
             )
             
-            db.session.add(role_assignment)
-            db.session.flush()
+            session.add(role_assignment)
+            session.flush()
             
             return True, f"Discord role assignment queued. You will receive the role shortly."
             

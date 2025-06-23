@@ -12,7 +12,7 @@
             </h1>
             <p class="text-muted mt-2">View your purchase history and details</p>
         </div>
-        <a href="{{ url_for('index') }}" class="btn-secondary">
+        <a href="{{ url_for('shop.index') }}" class="btn-secondary">
             <i class="fas fa-arrow-left mr-2"></i>Back to Shop
         </a>
     </div>
@@ -82,7 +82,7 @@
                                         {% if purchase.product.product_type == 'minecraft_skin' and purchase.status == 'completed' and purchase.download_tokens %}
                                             {% for token in purchase.download_tokens %}
                                                 {% if not token.downloaded or token.download_count < 3 %}
-                                                    <a href="{{ url_for('download_file', token=token.token) }}" 
+                                                    <a href="{{ url_for('api.download_file', token=token.token) }}" 
                                                        class="inline-block bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded mt-1 transition-colors">
                                                         <i class="fas fa-download mr-1"></i>Download Skin
                                                     </a>
@@ -138,7 +138,7 @@
                     {% if purchase.product.product_type == 'minecraft_skin' and purchase.status == 'completed' and purchase.download_tokens %}
                         {% for token in purchase.download_tokens %}
                             {% if not token.downloaded or token.download_count < 3 %}
-                                <a href="{{ url_for('download_file', token=token.token) }}" 
+                                <a href="{{ url_for('api.download_file', token=token.token) }}" 
                                    class="inline-block bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded transition-colors">
                                     <i class="fas fa-download mr-1"></i>Download Skin
                                 </a>

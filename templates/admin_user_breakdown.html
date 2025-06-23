@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - Point Breakdown{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-chart-pie text-yellow-400 mr-3"></i>
+            Point Breakdown
+        </h1>
+        <p class="text-xl text-muted">Detailed analysis for {{ user.username }}</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="card p-4">
+        <div class="flex flex-wrap gap-4">
+            <a href="{{ url_for('users.admin_leaderboard') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Leaderboard
+            </a>
+            <a href="{{ url_for('dashboard.admin_panel') }}" class="btn-secondary">
+                <i class="fas fa-tools mr-2"></i>Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <!-- User Profile Card -->
+    <div class="card p-6">
+        <div class="flex items-center space-x-6">
+            {% if user.avatar_url %}
+                <img src="{{ user.avatar_url }}" 
+                     alt="{{ user.username }}" 
+                     class="w-24 h-24 rounded-full">
+            {% else %}
+                <div class="w-24 h-24 bg-gray-600 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-gray-400 text-3xl"></i>
+                </div>
+            {% endif %}
+            
+            <div class="flex-1">
+                <h2 class="text-3xl font-bold flex items-center">
+                    {{ user.username }}
+                    {% if user.is_admin %}
+                        <span class="ml-3 bg-red-600 text-white px-3 py-1 rounded-full text-base">
+                            <i class="fas fa-crown mr-1"></i>ADMIN
+                        </span>
+                    {% endif %}
+                </h2>
+                <p class="text-muted text-lg">Discord ID: {{ user.id }}</p>
+                <p class="text-muted">Joined: {{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'Unknown' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Point Summary -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-coins text-yellow-400 mr-3"></i>
+            Point Summary
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-3xl font-bold asu-gold">
+                    <i class="fas fa-wallet mr-1"></i>{{ "{:,}".format(points_breakdown.current_balance) }}
+                </div>
+                <div class="text-sm text-muted">Current Balance</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-3xl font-bold text-green-400">
+                    <i class="fas fa-trophy mr-1"></i>{{ "{:,}".format(points_breakdown.total_earned) }}
+                </div>
+                <div class="text-sm text-muted">Total Points Earned</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-3xl font-bold text-red-400">
+                    <i class="fas fa-shopping-cart mr-1"></i>{{ "{:,}".format(points_breakdown.purchases_spent) }}
+                </div>
+                <div class="text-sm text-muted">Points Spent</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-3xl font-bold text-blue-400">
+                    <i class="fas fa-star mr-1"></i>{{ "{:,}".format(points_breakdown.achievement_points) }}
+                </div>
+                <div class="text-sm text-muted">Achievement Points</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Statistics -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-yellow-400 mr-3"></i>
+            Activity Statistics
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-blue-400">
+                    <i class="fas fa-comment mr-1"></i>{{ "{:,}".format(user.message_count or 0) }}
+                </div>
+                <div class="text-sm text-muted">Messages Sent</div>
+                <div class="text-xs text-gray-400 mt-1">
+                    ~{{ "{:,}".format(estimated_activity_points.message_points|int) }} points estimated
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-yellow-400">
+                    <i class="fas fa-heart mr-1"></i>{{ "{:,}".format(user.reaction_count or 0) }}
+                </div>
+                <div class="text-sm text-muted">Reactions Given</div>
+                <div class="text-xs text-gray-400 mt-1">
+                    ~{{ "{:,}".format(estimated_activity_points.reaction_points|int) }} points estimated
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-purple-400">
+                    <i class="fas fa-microphone mr-1"></i>{{ "{:,}".format(user.voice_minutes or 0) }}
+                </div>
+                <div class="text-sm text-muted">Voice Minutes</div>
+                <div class="text-xs text-gray-400 mt-1">
+                    ~{{ "{:,}".format(estimated_activity_points.voice_points|int) }} points estimated
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-pink-400">
+                    <i class="fas fa-rocket mr-1"></i>{{ 'Yes' if user.has_boosted else 'No' }}
+                </div>
+                <div class="text-sm text-muted">Server Booster</div>
+                {% if user.has_boosted %}
+                    <div class="text-xs text-pink-400 mt-1">
+                        <i class="fas fa-gem mr-1"></i>Thank you!
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bonus Status -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-gift text-yellow-400 mr-3"></i>
+            First-Time Bonuses
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">Verification Bonus</div>
+                        <div class="text-sm text-muted">First-time verification reward</div>
+                    </div>
+                    <div class="text-right">
+                        {% if points_breakdown.verification_bonus %}
+                            <div class="text-green-400 font-bold">
+                                <i class="fas fa-check-circle mr-1"></i>Received
+                            </div>
+                        {% else %}
+                            <div class="text-gray-400">
+                                <i class="fas fa-times-circle mr-1"></i>Not Received
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">Onboarding Bonus</div>
+                        <div class="text-sm text-muted">First-time role assignment reward</div>
+                    </div>
+                    <div class="text-right">
+                        {% if points_breakdown.onboarding_bonus %}
+                            <div class="text-green-400 font-bold">
+                                <i class="fas fa-check-circle mr-1"></i>Received
+                            </div>
+                        {% else %}
+                            <div class="text-gray-400">
+                                <i class="fas fa-times-circle mr-1"></i>Not Received
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Achievements -->
+    {% if user_achievements %}
+        <div class="card p-6">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-medal text-yellow-400 mr-3"></i>
+                Recent Achievements ({{ user_achievements|length }})
+            </h2>
+            <div class="space-y-3">
+                {% for ua in user_achievements[:10] %}
+                    <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-trophy text-white"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">{{ ua.achievement.name }}</div>
+                                <div class="text-sm text-muted">{{ ua.achievement.description }}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-green-400">
+                                +{{ ua.achievement.points }} points
+                            </div>
+                            <div class="text-sm text-muted">
+                                {{ ua.achieved_at.strftime('%m/%d/%Y') }}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% if user_achievements|length > 10 %}
+                    <div class="text-center text-muted">
+                        ... and {{ user_achievements|length - 10 }} more achievements
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Recent Purchases -->
+    {% if purchases %}
+        <div class="card p-6">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-shopping-bag text-yellow-400 mr-3"></i>
+                Recent Purchases ({{ purchases|length }})
+            </h2>
+            <div class="space-y-3">
+                {% for purchase in purchases[:10] %}
+                    <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            {% if purchase.product.image_url %}
+                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
+                                     alt="{{ purchase.product.name }}" 
+                                     class="w-12 h-12 object-cover rounded-lg">
+                            {% else %}
+                                <div class="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-box text-gray-400"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <div class="font-semibold">{{ purchase.product.name }}</div>
+                                <div class="text-sm text-muted">{{ purchase.timestamp.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-red-400">
+                                -{{ purchase.points_spent }} points
+                            </div>
+                            <div class="text-sm {{ 'text-green-400' if purchase.status == 'completed' else 'text-yellow-400' }}">
+                                {{ purchase.status.replace('_', ' ').title() }}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% if purchases|length > 10 %}
+                    <div class="text-center text-muted">
+                        ... and {{ purchases|length - 10 }} more purchases
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card p-6">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-shopping-bag text-yellow-400 mr-3"></i>
+                Purchases
+            </h2>
+            <div class="text-center py-8">
+                <i class="fas fa-shopping-cart text-4xl text-gray-600 mb-4"></i>
+                <p class="text-muted">{{ user.username }} hasn't made any purchases yet.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

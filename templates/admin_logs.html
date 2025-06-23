@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}System Logs - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="text-center py-6">
+        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
+            <i class="fas fa-file-alt text-yellow-400 mr-3"></i>
+            System Logs
+        </h1>
+        <p class="text-xl text-muted">Monitor application activity and troubleshoot issues</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="card p-4">
+        <div class="flex flex-wrap gap-4">
+            <a href="{{ url_for('dashboard.admin_panel') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
+            </a>
+            <button onclick="location.reload()" class="btn-primary">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh Logs
+            </button>
+        </div>
+    </div>
+
+    <!-- Log File Status -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-info-circle text-yellow-400 mr-3"></i>
+            Log File Status
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for log_name, info in log_file_info.items() %}
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-lg capitalize">{{ log_name }} Logs</h3>
+                        {% if info.exists %}
+                            <span class="bg-green-600 text-white px-2 py-1 rounded-full text-xs">
+                                <i class="fas fa-check-circle mr-1"></i>Available
+                            </span>
+                        {% else %}
+                            <span class="bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                                <i class="fas fa-times-circle mr-1"></i>Not Found
+                            </span>
+                        {% endif %}
+                    </div>
+                    {% if info.exists %}
+                        <div class="text-sm text-muted space-y-1">
+                            <div>Size: {{ info.size_mb }} MB ({{ "{:,}".format(info.size) }} bytes)</div>
+                            <div>Modified: {{ info.modified.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                        </div>
+                        <div class="mt-3 flex space-x-2">
+                                        <a href="{{ url_for('logs.admin_logs_download', log_type=log_name) }}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                <i class="fas fa-download mr-1"></i>Download
+            </a>
+            <form method="POST" action="{{ url_for('logs.admin_logs_clear', log_type=log_name) }}" 
+                                  style="display: inline;" 
+                                  onsubmit="return confirm('Are you sure you want to clear the {{ log_name }} log? This will create a backup.')">
+                                <button type="submit" 
+                                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                    <i class="fas fa-trash mr-1"></i>Clear
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Log Filters -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-filter text-yellow-400 mr-3"></i>
+            Log Filters
+        </h2>
+        
+        <form method="GET" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Log Type Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Log Type</label>
+                    <select name="type" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        <option value="app" {{ 'selected' if log_type == 'app' else '' }}>Application Logs</option>
+                        <option value="error" {{ 'selected' if log_type == 'error' else '' }}>Error Logs</option>
+                        <option value="all" {{ 'selected' if log_type == 'all' else '' }}>All Logs</option>
+                    </select>
+                </div>
+                
+                <!-- Log Level Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Log Level</label>
+                    <select name="level" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        <option value="" {{ 'selected' if not level_filter else '' }}>All Levels</option>
+                        <option value="DEBUG" {{ 'selected' if level_filter == 'DEBUG' else '' }}>DEBUG</option>
+                        <option value="INFO" {{ 'selected' if level_filter == 'INFO' else '' }}>INFO</option>
+                        <option value="WARNING" {{ 'selected' if level_filter == 'WARNING' else '' }}>WARNING</option>
+                        <option value="ERROR" {{ 'selected' if level_filter == 'ERROR' else '' }}>ERROR</option>
+                        <option value="CRITICAL" {{ 'selected' if level_filter == 'CRITICAL' else '' }}>CRITICAL</option>
+                    </select>
+                </div>
+                
+                <!-- Lines Limit -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Lines per Page</label>
+                    <select name="lines" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        <option value="50" {{ 'selected' if lines_limit == 50 else '' }}>50</option>
+                        <option value="100" {{ 'selected' if lines_limit == 100 else '' }}>100</option>
+                        <option value="200" {{ 'selected' if lines_limit == 200 else '' }}>200</option>
+                        <option value="500" {{ 'selected' if lines_limit == 500 else '' }}>500</option>
+                    </select>
+                </div>
+                
+                <!-- Search Term -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Search</label>
+                    <input type="text" name="search" value="{{ search_term }}" 
+                           placeholder="Search logs..." 
+                           class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                </div>
+            </div>
+            
+            <div class="flex space-x-2">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-search mr-2"></i>Apply Filters
+                </button>
+                <a href="{{ url_for('logs.admin_logs') }}" class="btn-secondary">
+                    <i class="fas fa-times mr-2"></i>Clear Filters
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Log Statistics -->
+    <div class="card p-6">
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-chart-bar text-yellow-400 mr-3"></i>
+            Log Statistics
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-blue-400">{{ total_lines }}</div>
+                <div class="text-sm text-muted">Total Log Lines</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-green-400">{{ total_entries }}</div>
+                <div class="text-sm text-muted">Filtered Entries</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-yellow-400">{{ page }}</div>
+                <div class="text-sm text-muted">Current Page</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-purple-400">{{ total_pages }}</div>
+                <div class="text-sm text-muted">Total Pages</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Entries -->
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <i class="fas fa-list text-yellow-400 mr-3"></i>
+                Log Entries
+            </h2>
+            
+            <!-- Pagination Info -->
+            {% if total_entries > 0 %}
+                <div class="text-muted">
+                    Showing {{ start_entry }} - {{ end_entry }} of {{ total_entries }} entries
+                </div>
+            {% endif %}
+        </div>
+
+        {% if log_entries %}
+            <!-- Desktop View -->
+            <div class="hidden lg:block">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="text-left py-3 px-2 text-yellow-400">Time</th>
+                                <th class="text-left py-3 px-2 text-yellow-400">Level</th>
+                                <th class="text-left py-3 px-2 text-yellow-400">Logger</th>
+                                <th class="text-left py-3 px-2 text-yellow-400">Message</th>
+                                <th class="text-left py-3 px-2 text-yellow-400">File</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in log_entries %}
+                                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                                    <td class="py-2 px-2 text-gray-300 font-mono text-xs">
+                                        {{ entry.timestamp_str }}
+                                    </td>
+                                    <td class="py-2 px-2">
+                                        <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                            {% if entry.level == 'ERROR' or entry.level == 'CRITICAL' %}
+                                                bg-red-600 text-white
+                                            {% elif entry.level == 'WARNING' %}
+                                                bg-yellow-600 text-white
+                                            {% elif entry.level == 'INFO' %}
+                                                bg-blue-600 text-white
+                                            {% elif entry.level == 'DEBUG' %}
+                                                bg-gray-600 text-white
+                                            {% else %}
+                                                bg-gray-700 text-gray-300
+                                            {% endif %}">
+                                            {{ entry.level }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 px-2 text-gray-400 text-xs">
+                                        {{ entry.logger }}
+                                    </td>
+                                    <td class="py-2 px-2 text-gray-200 font-mono text-xs break-all">
+                                        {{ entry.message }}
+                                    </td>
+                                    <td class="py-2 px-2 text-gray-400 text-xs">
+                                        {{ entry.file }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Mobile View -->
+            <div class="lg:hidden space-y-3">
+                {% for entry in log_entries %}
+                    <div class="bg-gray-800 p-3 rounded-lg text-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-400 font-mono text-xs">{{ entry.timestamp_str }}</span>
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                {% if entry.level == 'ERROR' or entry.level == 'CRITICAL' %}
+                                    bg-red-600 text-white
+                                {% elif entry.level == 'WARNING' %}
+                                    bg-yellow-600 text-white
+                                {% elif entry.level == 'INFO' %}
+                                    bg-blue-600 text-white
+                                {% elif entry.level == 'DEBUG' %}
+                                    bg-gray-600 text-white
+                                {% else %}
+                                    bg-gray-700 text-gray-300
+                                {% endif %}">
+                                {{ entry.level }}
+                            </span>
+                        </div>
+                        <div class="text-gray-200 font-mono text-xs mb-1 break-all">{{ entry.message }}</div>
+                        <div class="text-gray-500 text-xs">{{ entry.logger }} • {{ entry.file }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+                <div class="mt-6 flex items-center justify-between">
+                    <div class="flex space-x-2">
+                        {% if has_prev %}
+                            <a href="{{ url_for('logs.admin_logs', type=log_type, search=search_term, level=level_filter, lines=lines_limit, page=prev_page) }}" 
+                               class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm transition-colors">
+                                <i class="fas fa-chevron-left mr-1"></i>Previous
+                            </a>
+                        {% endif %}
+                        
+                        {% if has_next %}
+                            <a href="{{ url_for('logs.admin_logs', type=log_type, search=search_term, level=level_filter, lines=lines_limit, page=next_page) }}" 
+                               class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm transition-colors">
+                                Next<i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-sm text-gray-400">
+                        Page {{ page }} of {{ total_pages }}
+                    </div>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-search text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">No log entries found</h3>
+                <p class="text-muted mb-6">
+                    {% if search_term or level_filter %}
+                        Try adjusting your filters or search terms.
+                    {% else %}
+                        No logs available yet. Logs will appear here as the application runs.
+                    {% endif %}
+                </p>
+                {% if search_term or level_filter %}
+                    <a href="{{ url_for('logs.admin_logs') }}" class="btn-primary">
+                        <i class="fas fa-times mr-2"></i>Clear All Filters
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
