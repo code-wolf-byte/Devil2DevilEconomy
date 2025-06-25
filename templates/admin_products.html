@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Products - D2D Economy{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="card p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-white">Manage Products</h1>
+                <p class="text-gray-300">Add, edit, or remove products from the shop</p>
+            </div>
+            <a href="{{ url_for('main.add_product') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Add Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card p-6">
+        {% if products %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="px-4 py-3 text-white font-bold">Image</th>
+                            <th class="px-4 py-3 text-white font-bold">Name</th>
+                            <th class="px-4 py-3 text-white font-bold">Type</th>
+                            <th class="px-4 py-3 text-white font-bold">Price</th>
+                            <th class="px-4 py-3 text-white font-bold">Stock</th>
+                            <th class="px-4 py-3 text-white font-bold">Status</th>
+                            <th class="px-4 py-3 text-white font-bold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                            <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                                <td class="px-4 py-4">
+                                    {% if product.image_url %}
+                                        <img src="{{ product.image_url }}" alt="{{ product.name }}" class="w-12 h-12 rounded-lg object-cover">
+                                    {% else %}
+                                        <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-box text-gray-400"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div>
+                                        <h3 class="text-white font-bold">{{ product.name }}</h3>
+                                        <p class="text-gray-400 text-sm">{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</p>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% if product.product_type == 'physical' %}
+                                        <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">Physical</span>
+                                    {% elif product.product_type == 'role' %}
+                                        <span class="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">Discord Role</span>
+                                    {% elif product.product_type == 'minecraft_skin' %}
+                                        <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">Minecraft Skin</span>
+                                    {% elif product.product_type == 'game_code' %}
+                                        <span class="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">Game Code</span>
+                                    {% else %}
+                                        <span class="bg-gray-500 text-white text-xs px-2 py-1 rounded-full">{{ product.product_type|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span class="text-yellow-400 font-bold">{{ product.price }} pts</span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% if product.stock is none %}
+                                        <span class="text-green-400">Unlimited</span>
+                                    {% elif product.stock > 0 %}
+                                        <span class="text-yellow-400">{{ product.stock }}</span>
+                                    {% else %}
+                                        <span class="text-red-400">Out of Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    {% if product.is_active %}
+                                        <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">Active</span>
+                                    {% else %}
+                                        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">Archived</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex space-x-2">
+                                        <a href="{{ url_for('main.edit_product', product_id=product.id) }}" 
+                                           class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form method="POST" action="{{ url_for('main.delete_product', product_id=product.id) }}" 
+                                              class="inline" onsubmit="return confirm('Are you sure you want to archive this product?')">
+                                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-12">
+                <i class="fas fa-box text-6xl text-gray-600 mb-6"></i>
+                <h2 class="text-2xl font-bold text-white mb-4">No Products Yet</h2>
+                <p class="text-gray-400 mb-6">Start by adding your first product to the shop!</p>
+                <a href="{{ url_for('main.add_product') }}" class="btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Add Your First Product
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

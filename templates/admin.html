@@ -20,25 +20,25 @@
             Quick Actions
         </h2>
         <div class="flex flex-wrap gap-4">
-            <a href="{{ url_for('new_product') }}" class="btn-primary">
-                <i class="fas fa-plus mr-2"></i>Add New Product
+            <a href="{{ url_for('main.new_product') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Add Product
             </a>
-            <a href="{{ url_for('digital_templates') }}" class="btn-primary">
-                <i class="fas fa-magic mr-2"></i>Digital Templates
+            <a href="{{ url_for('main.digital_templates') }}" class="btn-primary">
+                <i class="fas fa-palette mr-2"></i>Digital Templates
             </a>
-            <a href="{{ url_for('file_manager') }}" class="btn-primary">
-                <i class="fas fa-folder-open mr-2"></i>File Manager
+            <a href="{{ url_for('main.file_manager') }}" class="btn-primary">
+                <i class="fas fa-folder mr-2"></i>File Manager
             </a>
-            <a href="{{ url_for('economy_config') }}" class="btn-primary">
+            <a href="{{ url_for('main.economy_config') }}" class="btn-primary">
                 <i class="fas fa-cog mr-2"></i>Economy Config
             </a>
-            <a href="{{ url_for('admin_purchases') }}" class="btn-secondary">
-                <i class="fas fa-shopping-bag mr-2"></i>View Purchase History
+            <a href="{{ url_for('main.admin_purchases') }}" class="btn-secondary">
+                <i class="fas fa-shopping-cart mr-2"></i>View Purchases
             </a>
-            <a href="{{ url_for('admin_leaderboard') }}" class="btn-secondary">
+            <a href="{{ url_for('main.admin_leaderboard') }}" class="btn-secondary">
                 <i class="fas fa-trophy mr-2"></i>View Leaderboard
             </a>
-            <a href="{{ url_for('index') }}" class="btn-secondary">
+            <a href="{{ url_for('main.index') }}" class="btn-secondary">
                 <i class="fas fa-home mr-2"></i>Back to Shop
             </a>
         </div>
@@ -152,12 +152,12 @@
                                 </td>
                                 <td class="py-4 px-2">
                                     <div class="flex space-x-2">
-                                        <a href="{{ url_for('edit_product', product_id=product.id) }}" 
+                                        <a href="{{ url_for('main.edit_product', product_id=product.id) }}" 
                                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
                                             <i class="fas fa-edit mr-1"></i>Edit
                                         </a>
                                         {% if product.is_active %}
-                                            <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                            <form method="POST" action="{{ url_for('main.delete_product', product_id=product.id) }}" 
                                                   style="display: inline;" 
                                                   onsubmit="return confirm('Are you sure you want to remove {{ product.name }} from the store?')">
                                                 <button type="submit" 
@@ -166,7 +166,7 @@
                                                 </button>
                                             </form>
                                         {% else %}
-                                            <form method="POST" action="{{ url_for('restore_product', product_id=product.id) }}" 
+                                            <form method="POST" action="{{ url_for('main.restore_product', product_id=product.id) }}" 
                                                   style="display: inline;" 
                                                   onsubmit="return confirm('Are you sure you want to restore {{ product.name }} to the store?')">
                                                 <button type="submit" 
@@ -229,12 +229,12 @@
                                 </div>
                                 
                                 <div class="flex space-x-2">
-                                    <a href="{{ url_for('edit_product', product_id=product.id) }}" 
+                                    <a href="{{ url_for('main.edit_product', product_id=product.id) }}" 
                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
                                         <i class="fas fa-edit mr-1"></i>Edit
                                     </a>
                                     {% if product.is_active %}
-                                        <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" 
+                                        <form method="POST" action="{{ url_for('main.delete_product', product_id=product.id) }}" 
                                               style="display: inline;" 
                                               onsubmit="return confirm('Are you sure you want to remove {{ product.name }} from the store?')">
                                             <button type="submit" 
@@ -243,7 +243,7 @@
                                             </button>
                                         </form>
                                     {% else %}
-                                        <form method="POST" action="{{ url_for('restore_product', product_id=product.id) }}" 
+                                        <form method="POST" action="{{ url_for('main.restore_product', product_id=product.id) }}" 
                                               style="display: inline;" 
                                               onsubmit="return confirm('Are you sure you want to restore {{ product.name }} to the store?')">
                                             <button type="submit" 
@@ -263,7 +263,7 @@
                 <i class="fas fa-box-open text-6xl text-gray-600 mb-4"></i>
                 <h3 class="text-xl font-semibold mb-2">No products found</h3>
                 <p class="text-muted mb-6">Start by adding your first product to the shop!</p>
-                <a href="{{ url_for('new_product') }}" class="btn-primary">
+                <a href="{{ url_for('main.new_product') }}" class="btn-primary">
                     <i class="fas fa-plus mr-2"></i>Add New Product
                 </a>
             </div>

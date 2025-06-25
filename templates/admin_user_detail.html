@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - User Details{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header Section -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('main.admin_leaderboard') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Leaderboard
+            </a>
+            <h1 class="text-3xl font-bold">{{ user.username }}</h1>
+            {% if user.is_admin %}
+                <span class="bg-yellow-600 text-white px-3 py-1 rounded-full text-sm">
+                    <i class="fas fa-crown mr-1"></i>Admin
+                </span>
+            {% endif %}
+            {% if user.has_boosted %}
+                <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm">
+                    <i class="fas fa-star mr-1"></i>Booster
+                </span>
+            {% endif %}
+        </div>
+        <div class="text-right">
+            <div class="text-2xl font-bold asu-gold">
+                <i class="fas fa-coins mr-2"></i>{{ user.balance or 0 }}
+            </div>
+            <div class="text-sm text-muted">Current Balance</div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card p-6 text-center">
+            <div class="text-3xl font-bold asu-gold mb-2">{{ user_rank }}</div>
+            <div class="text-sm text-muted">Global Rank</div>
+        </div>
+        <div class="card p-6 text-center">
+            <div class="text-3xl font-bold text-green-400 mb-2">{{ total_earned }}</div>
+            <div class="text-sm text-muted">Total Earned</div>
+        </div>
+        <div class="card p-6 text-center">
+            <div class="text-3xl font-bold text-red-400 mb-2">{{ total_spent }}</div>
+            <div class="text-sm text-muted">Total Spent</div>
+        </div>
+        <div class="card p-6 text-center">
+            <div class="text-3xl font-bold text-orange-400 mb-2">{{ activity_score }}</div>
+            <div class="text-sm text-muted">Activity Score</div>
+        </div>
+    </div>
+
+    <!-- Points Breakdown Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Earning Breakdown -->
+        <div class="card p-6">
+            <h2 class="text-xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-plus-circle text-green-400 mr-3"></i>
+                Points Earned Breakdown
+            </h2>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-comments text-blue-400 mr-3"></i>
+                        <span>Messages Sent</span>
+                    </div>
+                    <span class="font-bold text-blue-400">{{ earning_breakdown.messages }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-heart text-red-400 mr-3"></i>
+                        <span>Reactions Given</span>
+                    </div>
+                    <span class="font-bold text-red-400">{{ earning_breakdown.reactions }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-microphone text-purple-400 mr-3"></i>
+                        <span>Voice Minutes</span>
+                    </div>
+                    <span class="font-bold text-purple-400">{{ earning_breakdown.voice_minutes }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-calendar-check text-green-400 mr-3"></i>
+                        <span>Daily Claims</span>
+                    </div>
+                    <span class="font-bold text-green-400">{{ earning_breakdown.daily_claims }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-camera text-yellow-400 mr-3"></i>
+                        <span>Campus Photos</span>
+                    </div>
+                    <span class="font-bold text-yellow-400">{{ earning_breakdown.campus_photos }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-users text-cyan-400 mr-3"></i>
+                        <span>Daily Engagement</span>
+                    </div>
+                    <span class="font-bold text-cyan-400">{{ earning_breakdown.daily_engagement }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-trophy text-orange-400 mr-3"></i>
+                        <span>Achievements</span>
+                    </div>
+                    <span class="font-bold text-orange-400">{{ earning_breakdown.achievements }}</span>
+                </div>
+                {% if earning_breakdown.verification_bonus > 0 %}
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-400 mr-3"></i>
+                        <span>Verification Bonus</span>
+                    </div>
+                    <span class="font-bold text-green-400">{{ earning_breakdown.verification_bonus }}</span>
+                </div>
+                {% endif %}
+                {% if earning_breakdown.onboarding_bonus > 0 %}
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-graduation-cap text-blue-400 mr-3"></i>
+                        <span>Onboarding Bonus</span>
+                    </div>
+                    <span class="font-bold text-blue-400">{{ earning_breakdown.onboarding_bonus }}</span>
+                </div>
+                {% endif %}
+                {% if earning_breakdown.enrollment_deposit > 0 %}
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-university text-purple-400 mr-3"></i>
+                        <span>Enrollment Deposit</span>
+                    </div>
+                    <span class="font-bold text-purple-400">{{ earning_breakdown.enrollment_deposit }}</span>
+                </div>
+                {% endif %}
+                {% if earning_breakdown.birthday_bonus > 0 %}
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-birthday-cake text-pink-400 mr-3"></i>
+                        <span>Birthday Bonus</span>
+                    </div>
+                    <span class="font-bold text-pink-400">{{ earning_breakdown.birthday_bonus }}</span>
+                </div>
+                {% endif %}
+                {% if earning_breakdown.boost_bonus > 0 %}
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-rocket text-purple-400 mr-3"></i>
+                        <span>Server Boost Bonus</span>
+                    </div>
+                    <span class="font-bold text-purple-400">{{ earning_breakdown.boost_bonus }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Spending Breakdown -->
+        <div class="card p-6">
+            <h2 class="text-xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-minus-circle text-red-400 mr-3"></i>
+                Points Spent Breakdown
+            </h2>
+            {% if spending_breakdown %}
+                <div class="space-y-4">
+                    {% for product_type, amount in spending_breakdown.items() %}
+                    <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                        <div class="flex items-center">
+                            {% if product_type == 'physical' %}
+                                <i class="fas fa-box text-blue-400 mr-3"></i>
+                            {% elif product_type == 'role' %}
+                                <i class="fas fa-user-tag text-purple-400 mr-3"></i>
+                            {% elif product_type == 'minecraft_skin' %}
+                                <i class="fas fa-cube text-green-400 mr-3"></i>
+                            {% elif product_type == 'game_code' %}
+                                <i class="fas fa-gamepad text-yellow-400 mr-3"></i>
+                            {% else %}
+                                <i class="fas fa-shopping-cart text-gray-400 mr-3"></i>
+                            {% endif %}
+                            <span class="capitalize">{{ product_type.replace('_', ' ') }}</span>
+                        </div>
+                        <span class="font-bold text-red-400">{{ amount }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-muted">
+                    <i class="fas fa-shopping-cart text-4xl mb-4"></i>
+                    <p>No purchases yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Achievements Section -->
+    {% if achievements %}
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-trophy text-yellow-400 mr-3"></i>
+            Achievements ({{ achievements|length }})
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for achievement in achievements %}
+            <div class="bg-gray-800 p-4 rounded-lg border border-yellow-400/30">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-yellow-400">{{ achievement.name }}</h3>
+                    <span class="text-sm font-bold asu-gold">+{{ achievement.points }}</span>
+                </div>
+                <p class="text-sm text-muted">{{ achievement.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Activity Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Purchases -->
+        <div class="card p-6">
+            <h2 class="text-xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-shopping-cart text-blue-400 mr-3"></i>
+                Recent Purchases (Last 30 Days)
+            </h2>
+            {% if recent_purchases %}
+                <div class="space-y-4">
+                    {% for purchase in recent_purchases[:10] %}
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div>
+                            <div class="font-semibold">{{ purchase.product.name if purchase.product else 'Unknown Product' }}</div>
+                            <div class="text-sm text-muted">{{ purchase.timestamp.strftime('%m/%d/%Y %H:%M') }}</div>
+                        </div>
+                        <span class="font-bold text-red-400">-{{ purchase.points_spent }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-muted">
+                    <i class="fas fa-shopping-cart text-4xl mb-4"></i>
+                    <p>No recent purchases</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Achievements -->
+        <div class="card p-6">
+            <h2 class="text-xl font-semibold mb-6 flex items-center">
+                <i class="fas fa-star text-yellow-400 mr-3"></i>
+                Recent Achievements (Last 30 Days)
+            </h2>
+            {% if recent_achievements %}
+                <div class="space-y-4">
+                    {% for ua in recent_achievements[:10] %}
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div>
+                            <div class="font-semibold text-yellow-400">{{ ua.achievement.name }}</div>
+                            <div class="text-sm text-muted">{{ ua.achieved_at.strftime('%m/%d/%Y %H:%M') }}</div>
+                        </div>
+                        <span class="font-bold asu-gold">+{{ ua.achievement.points }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-muted">
+                    <i class="fas fa-star text-4xl mb-4"></i>
+                    <p>No recent achievements</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- User Information -->
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-6 flex items-center">
+            <i class="fas fa-user text-blue-400 mr-3"></i>
+            User Information
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div>
+                <div class="text-sm text-muted mb-1">Discord ID</div>
+                <div class="font-semibold">{{ user.discord_id or 'Not set' }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-muted mb-1">User ID</div>
+                <div class="font-semibold">{{ user.id }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-muted mb-1">Joined</div>
+                <div class="font-semibold">{{ user.created_at.strftime('%m/%d/%Y') if user.created_at else 'Unknown' }}</div>
+            </div>
+            {% if user.birthday %}
+            <div>
+                <div class="text-sm text-muted mb-1">Birthday</div>
+                <div class="font-semibold">{{ user.birthday.strftime('%m/%d') }}</div>
+            </div>
+            {% endif %}
+            <div>
+                <div class="text-sm text-muted mb-1">Total Purchases</div>
+                <div class="font-semibold">{{ purchases|length }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-muted mb-1">Total Achievements</div>
+                <div class="font-semibold">{{ achievements|length }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

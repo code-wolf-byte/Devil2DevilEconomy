@@ -89,7 +89,7 @@
                             <h5 class="text-xl sm:text-2xl font-semibold">Create Role Product</h5>
                         </div>
                                     
-                        <form id="roleProductForm" action="{{ url_for('create_role_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <form id="roleProductForm" action="{{ url_for('main.create_role_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                 <div class="form-group">
                                                     <label class="form-label text-sm font-medium mb-2">
@@ -255,7 +255,7 @@
                         </p>
                     </div>
                         
-                    <form action="{{ url_for('new_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                    <form action="{{ url_for('main.new_product') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                         <input type="hidden" name="product_type" value="minecraft_skin">
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -337,10 +337,10 @@
 
     <!-- Navigation -->
     <div class="text-center space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center animate-fade-in">
-        <a href="{{ url_for('admin_panel') }}" class="btn-secondary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
+        <a href="{{ url_for('main.admin') }}" class="btn-secondary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
         </a>
-        <a href="{{ url_for('new_product') }}" class="btn-primary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
+        <a href="{{ url_for('main.new_product') }}" class="btn-primary inline-flex items-center px-6 py-3 transform hover:scale-105 transition-transform duration-200">
             <i class="fas fa-plus mr-2"></i>Advanced Product Creator
         </a>
     </div>

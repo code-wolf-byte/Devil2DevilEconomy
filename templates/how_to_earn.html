@@ -3,615 +3,105 @@
 {% block title %}How to Earn Pitchforks - Devil2Devil Store{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
-    <!-- Header -->
-    <div class="text-center">
-        <h1 class="text-4xl font-bold mb-4 flex items-center justify-center">
-            <i class="fas fa-coins text-yellow-400 mr-3"></i>
-            How to Earn Pitchforks
-        </h1>
-        <p class="text-xl text-muted max-w-3xl mx-auto">
-            Discover all the ways you can earn pitchforks in our Devil2Devil economy system! 
-            From daily rewards to special achievements, there are plenty of opportunities to build your balance.
-        </p>
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-white mb-4">How to Earn Pitchforks</h1>
+        <p class="text-gray-300 text-lg">Learn all the ways you can earn pitchforks in the Devil2Devil economy!</p>
     </div>
 
-    <!-- Daily & Regular Activities -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-calendar-day text-blue-400 mr-3"></i>
-                Daily & Regular Activities
-            </h2>
-        </div>
-        <div class="card-body space-y-6">
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-green-500">
-                        <i class="fas fa-gift"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Daily Reward</h3>
-                        <p class="text-yellow-400 font-bold">+85 Pitchforks</p>
-                    </div>
+    <div class="grid md:grid-cols-2 gap-8">
+        <!-- Daily Command -->
+        <div class="card p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-calendar-day text-white text-xl"></i>
                 </div>
-                <p class="text-muted ml-16">
-                    Use the <code>/daily</code> command in Discord once every 24 hours to claim your daily pitchforks. 
-                    It's the most reliable way to build your balance!
-                </p>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Daily Command</h3>
+                    <p class="text-yellow-400 font-semibold">85 pitchforks per day</p>
+                </div>
             </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-blue-500">
-                        <i class="fas fa-comments"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Message Activity</h3>
-                        <p class="text-yellow-400 font-bold">Achievement Rewards</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Stay active in Discord! Sending messages helps you unlock achievements that award pitchforks. 
-                    The more you participate in conversations, the more you earn.
-                </p>
-            </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-purple-500">
-                        <i class="fas fa-microphone"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Voice Chat</h3>
-                        <p class="text-yellow-400 font-bold">Achievement Rewards</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Join voice channels and hang out with the community! Time spent in voice chat counts toward 
-                    voice activity achievements.
-                </p>
+            <p class="text-gray-300 mb-4">Use the <code class="bg-gray-800 px-2 py-1 rounded">/daily</code> command once per day to claim your daily reward.</p>
+            <div class="bg-gray-800 p-3 rounded">
+                <p class="text-sm text-gray-400">Limit: 90 lifetime claims</p>
             </div>
         </div>
-    </div>
 
-    <!-- One-Time Bonuses -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-star text-yellow-400 mr-3"></i>
-                One-Time Bonuses
-            </h2>
-        </div>
-        <div class="card-body space-y-6">
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-green-600">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Verification Bonus</h3>
-                        <p class="text-yellow-400 font-bold">+200 Pitchforks</p>
-                    </div>
+        <!-- Admin Reactions -->
+        <div class="card p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-thumbs-up text-white text-xl"></i>
                 </div>
-                <p class="text-muted ml-16">
-                    Get verified in the server to receive an automatic 200 pitchfork bonus! This happens once when you 
-                    receive the verified role.
-                </p>
-            </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-indigo-600">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Onboarding Bonus</h3>
-                        <p class="text-yellow-400 font-bold">+500 Pitchforks</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Complete the server onboarding process to earn a massive 500 pitchfork bonus! This is awarded when 
-                    you receive specific onboarding roles.
-                </p>
-            </div>
-
-
-        </div>
-    </div>
-
-    <!-- Admin-Approved Activities -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-thumbs-up text-green-400 mr-3"></i>
-                Admin-Approved Activities
-            </h2>
-            <p class="text-sm text-muted mt-2">
-                These activities require admin approval via custom emoji reactions
-            </p>
-        </div>
-        <div class="card-body space-y-6">
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-orange-500">
-                        <i class="fas fa-fire"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Daily Engagement</h3>
-                        <p class="text-yellow-400 font-bold">+25 Pitchforks</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Post meaningful content and get admin approval! When an admin reacts to your message with the 
-                    daily engagement emoji, you earn 25 pitchforks. Available once every 20 hours.
-                </p>
-            </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-blue-600">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Campus Pictures</h3>
-                        <p class="text-yellow-400 font-bold">+100 Pitchforks</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Share photos of campus life! When you post images and an admin approves them with the campus photo 
-                    emoji, you earn 100 pitchforks. Maximum of 5 approvals per user.
-                </p>
-            </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-yellow-600">
-                        <i class="fas fa-money-check"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">Enrollment Deposit</h3>
-                        <p class="text-yellow-400 font-bold">+500 Pitchforks</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Submit proof of your enrollment deposit and get admin approval for a huge 500 pitchfork bonus! 
-                    This is a one-time reward per user.
-                </p>
-            </div>
-
-            <div class="earning-method">
-                <div class="flex items-center mb-3">
-                    <div class="earning-icon bg-pink-600">
-                        <i class="fab fa-instagram"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">400 Likes on FSD IG</h3>
-                        <p class="text-yellow-400 font-bold">Points Awarded</p>
-                    </div>
-                </div>
-                <p class="text-muted ml-16">
-                    Help a FutureSunDevils Instagram post reach 400 likes! When you contribute to getting a single post 
-                    to 400 likes and get admin approval, you earn pitchforks. Tag admins when the milestone is reached!
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Achievement System -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-trophy text-yellow-400 mr-3"></i>
-                Achievement System
-            </h2>
-        </div>
-        <div class="card-body">
-            <p class="text-muted mb-6">
-                Unlock achievements by reaching various milestones! Each achievement awards pitchforks and gets announced 
-                in the general channel. Use <code>/achievements</code> to see your progress.
-            </p>
-            
-            <div class="space-y-6">
-                <!-- Message Achievements -->
-                <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-4 flex items-center">
-                        <i class="fas fa-comment text-blue-400 mr-2"></i>
-                        Message Milestones
-                    </h4>
-                    <div class="grid md:grid-cols-3 gap-4 ml-6">
-                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
-                            <h5 class="font-semibold text-blue-300 mb-1">🎯 First Message</h5>
-                            <p class="text-xs text-muted">Send your first message</p>
-                            <p class="text-yellow-400 font-bold text-sm">425 points</p>
-                        </div>
-                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
-                            <h5 class="font-semibold text-blue-300 mb-1">💬 Chatty</h5>
-                            <p class="text-xs text-muted">Send 100 messages</p>
-                            <p class="text-yellow-400 font-bold text-sm">50 points</p>
-                        </div>
-                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
-                            <h5 class="font-semibold text-blue-300 mb-1">🗣️ Conversationalist</h5>
-                            <p class="text-xs text-muted">Send 1,000 messages</p>
-                            <p class="text-yellow-400 font-bold text-sm">100 points</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Reaction Achievements -->
-                <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-4 flex items-center">
-                        <i class="fas fa-heart text-red-400 mr-2"></i>
-                        Reaction Milestones
-                    </h4>
-                    <div class="grid md:grid-cols-2 gap-4 ml-6">
-                        <div class="achievement-item bg-red-900/20 p-3 rounded border border-red-500/30">
-                            <h5 class="font-semibold text-red-300 mb-1">👍 Reactor</h5>
-                            <p class="text-xs text-muted">React to 50 messages</p>
-                            <p class="text-yellow-400 font-bold text-sm">50 points</p>
-                        </div>
-                        <div class="achievement-item bg-red-900/20 p-3 rounded border border-red-500/30">
-                            <h5 class="font-semibold text-red-300 mb-1">⭐ Super Reactor</h5>
-                            <p class="text-xs text-muted">React to 500 messages</p>
-                            <p class="text-yellow-400 font-bold text-sm">100 points</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Special Achievements -->
-                <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-4 flex items-center">
-                        <i class="fas fa-star text-yellow-400 mr-2"></i>
-                        Special Achievements
-                    </h4>
-                    <div class="grid md:grid-cols-3 gap-4 ml-6">
-                        <div class="achievement-item bg-yellow-900/20 p-3 rounded border border-yellow-500/30">
-                            <h5 class="font-semibold text-yellow-300 mb-1">🎉 Join Server</h5>
-                            <p class="text-xs text-muted">Join the server</p>
-                            <p class="text-yellow-400 font-bold text-sm">213 points</p>
-                        </div>
-                        <div class="achievement-item bg-green-900/20 p-3 rounded border border-green-500/30">
-                            <h5 class="font-semibold text-green-300 mb-1">✅ Verified</h5>
-                            <p class="text-xs text-muted">Get verified in server</p>
-                            <p class="text-yellow-400 font-bold text-sm">200 points</p>
-                        </div>
-                        <div class="achievement-item bg-blue-900/20 p-3 rounded border border-blue-500/30">
-                            <h5 class="font-semibold text-blue-300 mb-1">📅 Daily Reward</h5>
-                            <p class="text-xs text-muted">Claim daily reward</p>
-                            <p class="text-yellow-400 font-bold text-sm">85 points</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Future Achievements -->
-                <div class="achievement-category">
-                    <h4 class="font-semibold text-lg mb-4 flex items-center">
-                        <i class="fas fa-clock text-purple-400 mr-2"></i>
-                        Coming Soon
-                    </h4>
-                    <div class="grid md:grid-cols-2 gap-4 ml-6">
-                        <div class="achievement-item bg-purple-900/20 p-3 rounded border border-purple-500/30 opacity-60">
-                            <h5 class="font-semibold text-purple-300 mb-1">🎤 Voice Activity</h5>
-                            <p class="text-xs text-muted">Voice channel achievements coming soon</p>
-                            <p class="text-gray-400 font-bold text-sm">TBD points</p>
-                        </div>
-                        <div class="achievement-item bg-pink-900/20 p-3 rounded border border-pink-500/30 opacity-60">
-                            <h5 class="font-semibold text-pink-300 mb-1">🚀 Server Boost</h5>
-                            <p class="text-xs text-muted">Server boosting achievements coming soon</p>
-                            <p class="text-gray-400 font-bold text-sm">TBD points</p>
-                        </div>
-                    </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Admin Reactions</h3>
+                    <p class="text-green-400 font-semibold">Various rewards</p>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Commands Reference -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-terminal text-green-400 mr-3"></i>
-                Useful Commands
-            </h2>
-        </div>
-        <div class="card-body">
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="command-item">
-                    <code class="command-code">/balance</code>
-                    <p class="text-sm text-muted mt-1">Check your current pitchfork balance</p>
-                </div>
-                
-                <div class="command-item">
-                    <code class="command-code">/daily</code>
-                    <p class="text-sm text-muted mt-1">Claim your daily 85 pitchforks</p>
-                </div>
-                
-                <div class="command-item">
-                    <code class="command-code">/achievements</code>
-                    <p class="text-sm text-muted mt-1">View your unlocked achievements</p>
-                </div>
-                
-                <div class="command-item">
-                    <code class="command-code">/leaderboard</code>
-                    <p class="text-sm text-muted mt-1">See the top pitchfork earners</p>
-                </div>
-                
-                <div class="command-item">
-                    <code class="command-code">/limits</code>
-                    <p class="text-sm text-muted mt-1">View your earning limits and progress</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Earning Limits -->
-    <div class="card bg-gradient-to-r from-red-900/20 to-orange-900/20 border-red-500/30">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-exclamation-triangle text-red-400 mr-3"></i>
-                Earning Limits & Theoretical Maximum
-            </h2>
-            <p class="text-sm text-muted mt-2">
-                To maintain balance and prevent exploitation, some earning methods have limits
-            </p>
-        </div>
-        <div class="card-body space-y-6">
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="limit-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-calendar-day text-blue-400 mr-2"></i>
-                        Daily Rewards
-                    </h4>
-                    <p class="text-sm text-muted mb-2">
-                        <strong class="text-yellow-400">Limit:</strong> 90 claims maximum
-                    </p>
-                    <p class="text-sm text-muted">
-                        <strong class="text-green-400">Max Pitchforks:</strong> 7,650 (90 × 85)
-                    </p>
-                </div>
-                
-                <div class="limit-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-camera text-purple-400 mr-2"></i>
-                        Campus Photos
-                    </h4>
-                    <p class="text-sm text-muted mb-2">
-                        <strong class="text-yellow-400">Limit:</strong> 5 approvals maximum
-                    </p>
-                    <p class="text-sm text-muted">
-                        <strong class="text-green-400">Max Pitchforks:</strong> 500 (5 × 100)
-                    </p>
-                </div>
-                
-                <div class="limit-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-fire text-orange-400 mr-2"></i>
-                        Daily Engagement
-                    </h4>
-                    <p class="text-sm text-muted mb-2">
-                        <strong class="text-yellow-400">Limit:</strong> 365 approvals maximum
-                    </p>
-                    <p class="text-sm text-muted">
-                        <strong class="text-green-400">Max Pitchforks:</strong> 9,125 (365 × 25)
-                    </p>
-                </div>
-                
-                <div class="limit-category">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-chart-line text-pink-400 mr-2"></i>
-                        Activity Tracking
-                    </h4>
-                    <p class="text-sm text-muted mb-2">
-                        <strong class="text-yellow-400">Limits:</strong> 50K messages, 25K reactions, 10K voice minutes
-                    </p>
-                    <p class="text-sm text-muted">
-                        These limits affect achievement eligibility
-                    </p>
-                </div>
-            </div>
-            
-            <div class="theoretical-max bg-gradient-to-r from-yellow-900/30 to-red-900/30 p-6 rounded-lg border border-yellow-500/30">
-                <h3 class="text-xl font-bold mb-4 flex items-center">
-                    <i class="fas fa-trophy text-yellow-400 mr-3"></i>
-                    Theoretical Maximum: 20,825 Pitchforks
-                </h3>
-                <div class="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p class="mb-1"><strong>Daily Rewards:</strong> 7,650 pitchforks</p>
-                        <p class="mb-1"><strong>Daily Engagement:</strong> 9,125 pitchforks</p>
-                        <p class="mb-1"><strong>Campus Photos:</strong> 500 pitchforks</p>
-                    </div>
-                    <div>
-                        <p class="mb-1"><strong>One-Time Bonuses:</strong> 1,250 pitchforks</p>
-                        <p class="mb-1"><strong>Achievements:</strong> 1,223 pitchforks</p>
-                        <p class="mb-1"><strong>Activity Bonuses:</strong> 1,077 pitchforks</p>
-                    </div>
-                </div>
-                <div class="mt-4 p-3 bg-yellow-900/20 rounded border border-yellow-600/30">
-                    <h4 class="font-semibold text-yellow-300 mb-2">🏆 Achievement Breakdown</h4>
-                    <div class="grid md:grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <p>• Daily Reward: 85 points</p>
-                            <p>• Join Server: 213 points</p>
-                            <p>• First Message: 425 points</p>
-                            <p>• Verified: 200 points</p>
-                        </div>
-                        <div>
-                            <p>• Chatty (100 msgs): 50 points</p>
-                            <p>• Conversationalist (1K msgs): 100 points</p>
-                            <p>• Reactor (50 reactions): 50 points</p>
-                            <p>• Super Reactor (500 reactions): 100 points</p>
-                        </div>
-                    </div>
-                </div>
-                <p class="text-xs text-muted mt-4">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Use <code>/limits</code> to track your progress toward these maximums
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Item Pickup Information -->
-    <div class="card bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border-indigo-500/30">
-        <div class="card-header">
-            <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-box text-indigo-400 mr-3"></i>
-                Item Pickup Information
-            </h2>
-        </div>
-        <div class="card-body">
-            <div class="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 p-6 rounded-lg border border-yellow-500/30 mb-6">
-                <h3 class="text-xl font-bold mb-4 flex items-center">
-                    <i class="fas fa-calendar-check text-yellow-400 mr-3"></i>
-                    When to Pick Up Your Items
-                </h3>
-                <div class="text-lg text-center">
-                    <p class="mb-4">
-                        <strong class="text-yellow-400 text-xl">All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</strong>
-                    </p>
-                    <p class="text-muted">
-                        After purchasing items with your pitchforks, you'll receive confirmation that your items will be ready for pickup during the Welcome Week Devil2Devil event.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="pickup-info-card">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-map-marker-alt text-red-400 mr-2"></i>
-                        Event Location
-                    </h4>
-                    <p class="text-sm text-muted">
-                        Devil2Devil in-person event during ASU Welcome Week
-                    </p>
-                </div>
-                
-                <div class="pickup-info-card">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-clock text-blue-400 mr-2"></i>
-                        When to Attend
-                    </h4>
-                    <p class="text-sm text-muted">
-                        Fall semester Welcome Week (exact dates will be announced)
-                    </p>
-                </div>
-                
-                <div class="pickup-info-card">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-id-card text-green-400 mr-2"></i>
-                        What to Bring
-                    </h4>
-                    <p class="text-sm text-muted">
-                        Your student ID and Discord username for item verification
-                    </p>
-                </div>
-                
-                <div class="pickup-info-card">
-                    <h4 class="font-semibold text-lg mb-3 flex items-center">
-                        <i class="fas fa-question-circle text-purple-400 mr-2"></i>
-                        Need Help?
-                    </h4>
-                    <p class="text-sm text-muted">
-                        Contact admins in Discord if you have questions about your purchases
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tips -->
-    <div class="card bg-gradient-to-r from-yellow-900/20 to-red-900/20 border-yellow-500/30">
-        <div class="card-body">
-            <h3 class="text-xl font-bold mb-4 flex items-center">
-                <i class="fas fa-lightbulb text-yellow-400 mr-3"></i>
-                Pro Tips for Earning More Pitchforks
-            </h3>
-            <ul class="space-y-2 text-muted">
-                <li class="flex items-start">
-                    <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-                    <span>Claim your daily reward every day - it adds up quickly!</span>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-                    <span>Stay active in chat and voice channels to unlock achievements</span>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-                    <span>Share campus photos and engage meaningfully for admin approval</span>
-                </li>
-                <li class="flex items-start">
-                    <i class="fas fa-check text-green-400 mr-3 mt-1"></i>
-                    <span>Complete your verification and onboarding for big one-time bonuses</span>
-                </li>
-
-                <li class="flex items-start">
-                    <i class="fas fa-box text-indigo-400 mr-3 mt-1"></i>
-                    <span><strong>Remember:</strong> All purchased items can be collected during the Devil2Devil Welcome Week event!</span>
-                </li>
+            <p class="text-gray-300 mb-4">Admins can react to your messages with special emojis to award points:</p>
+            <ul class="text-gray-300 space-y-2">
+                <li><span class="text-yellow-400">📸 Campus Photo:</span> 100 pitchforks (one-time)</li>
+                <li><span class="text-blue-400">💳 Enrollment Deposit:</span> 500 pitchforks (one-time)</li>
+                <li><span class="text-green-400">📅 Daily Engagement:</span> 25 pitchforks (max 3 per user)</li>
             </ul>
         </div>
+
+        <!-- Role Bonuses -->
+        <div class="card p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-crown text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Role Bonuses</h3>
+                    <p class="text-purple-400 font-semibold">One-time rewards</p>
+                </div>
+            </div>
+            <p class="text-gray-300 mb-4">Earn bonus pitchforks when you receive certain Discord roles:</p>
+            <ul class="text-gray-300 space-y-2">
+                <li><span class="text-green-400">✅ Verification:</span> 200 pitchforks</li>
+                <li><span class="text-blue-400">🎓 Onboarding:</span> 500 pitchforks</li>
+            </ul>
+        </div>
+
+        <!-- Birthday Bonus -->
+        <div class="card p-6">
+            <div class="flex items-center mb-4">
+                <div class="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-birthday-cake text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Birthday Bonus</h3>
+                    <p class="text-pink-400 font-semibold">100 pitchforks</p>
+                </div>
+            </div>
+            <p class="text-gray-300 mb-4">Set your birthday using <code class="bg-gray-800 px-2 py-1 rounded">/birthday</code> to receive 100 pitchforks on your birthday each year!</p>
+        </div>
     </div>
 
-    <!-- Back to Store -->
-    <div class="text-center">
-        <a href="{{ url_for('index') }}" class="btn-primary inline-flex items-center">
-            <i class="fas fa-store mr-2"></i>
-            Back to Store
-        </a>
+    <!-- Tips Section -->
+    <div class="mt-12">
+        <div class="card p-6">
+            <h2 class="text-2xl font-bold text-white mb-4">💡 Tips for Earning More</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">Be Active</h3>
+                    <p class="text-gray-300">Engage regularly in the community to increase your chances of receiving admin reactions.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">Follow Guidelines</h3>
+                    <p class="text-gray-300">Make sure your content follows community guidelines to be eligible for rewards.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">Use Daily Command</h3>
+                    <p class="text-gray-300">Don't forget to claim your daily reward every day to maximize your earnings.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">Check Leaderboard</h3>
+                    <p class="text-gray-300">Use <code class="bg-gray-800 px-2 py-1 rounded">/leaderboard</code> to see how you rank among other users.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
-<style>
-.earning-method {
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.earning-method:last-child {
-    border-bottom: none;
-}
-
-.earning-icon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 1rem;
-    color: white;
-    font-size: 1.25rem;
-}
-
-.command-code {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    color: #10b981;
-    display: inline-block;
-}
-
-.achievement-category {
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.pickup-info-card {
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-.pickup-info-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(102, 126, 234, 0.3);
-}
-</style>
 {% endblock %} 

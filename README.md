@@ -1,299 +1,107 @@
-# Devil2Devil Store 🏪
+# D2D Economy
 
-A professional Discord economy bot and web application built with Flask and Nextcord, featuring a modern ASU-themed UI, custom emoji reward system, and comprehensive shop management.
+A comprehensive Discord economy system with web interface, achievements, and digital product delivery. Similar to the [Devil2DevilEconomy](https://github.com/code-wolf-byte/Devil2DevilEconomy) project.
 
-## 🧪 User Interaction Testing
+## 🚀 Features
 
-Quick tests to verify the economy system works for users:
-
-### 🚀 **Quick Setup Check**
-- [ ] Bot is online in Discord
-- [ ] Web app loads at `http://localhost:6000`
-- [ ] Admin runs `/economy enable` to start the system
-
-### 💰 **Basic User Commands**
-- [ ] `/balance` - Shows user's current pitchforks
-- [ ] `/daily` - Awards 85 pitchforks (once per day)
-- [ ] `/leaderboard` - Shows top users by pitchfork balance
-- [ ] `/achievements` - Shows user's unlocked achievements
-
-### 🎯 **Pitchfork Earning Tests**
-- [ ] **New User Bonus**: User gets verified role → receives 200 pitchforks automatically
-- [ ] **Daily Engagement**: User posts message → admin reacts with custom emoji → user gets 25 pitchforks
-- [ ] **Campus Photos**: User posts image → admin reacts with custom emoji → user gets 100 pitchforks
-- [ ] **Message Activity**: User sends messages → message count increases → achievements unlock
-- [ ] Use `/daily` command to claim daily reward (85 pitchforks)
-- [ ] Check that daily command has 24-hour cooldown
-- [ ] Test that daily claims are limited to 90 total per user
-- [ ] Verify `/balance` shows correct pitchfork count
-- [ ] Test message sending earns activity tracking (limited to 50,000 messages)
-- [ ] Test reaction adding earns activity tracking (limited to 25,000 reactions)
-- [ ] Test voice channel participation earns activity tracking (limited to 10,000 minutes)
-- [ ] Use `/limits` command to view earning progress and theoretical maximum
-- [ ] Verify campus photo submissions can be approved by admins (limited to 5 per user)
-- [ ] Test daily engagement can be approved by admins (limited to 365 per user)
-
-### 🛒 **Store Interaction**
-- [ ] User visits web store and logs in with Discord
-- [ ] User sees products and current balance
-- [ ] User clicks "Purchase" → confirmation dialog appears
-- [ ] User confirms purchase → balance decreases, purchase recorded
-- [ ] User visits "My Purchases" page to see purchase history
-
-### 👑 **Admin Functions**
-- [ ] `/economy enable/disable` - Controls entire system
-- [ ] `/give_all <amount>` - Gives pitchforks to all users
-- [ ] `/give @user <amount>` - Gives pitchforks to a specific user
-- [ ] Admin can add/edit products in web interface
-- [ ] Admin emoji reactions award pitchforks to users
-
-### 🎂 **Special Features**
-- [ ] User sets birthday → gets 50 pitchforks
-- [ ] Birthday announcements appear daily at 9:30 MST
-- [ ] Achievement announcements appear in general channel when unlocked
-
----
-
-### 🔍 **Test with Real Users**
-
-1. **Invite 2-3 test users** to your Discord server
-2. **Have them try each command** and earning method
-3. **Check that pitchforks are awarded correctly**
-4. **Verify web store purchases work**
-5. **Test admin functions** with different permission levels
-
-### 🚨 **Watch For Issues**
-- Users getting duplicate bonuses
-- Commands not responding
-- Web store login problems
-- Pitchforks not updating correctly
-- Achievement spam
-
----
-
-## 🏆 Theoretical Maximum Pitchforks
-
-The economy system has built-in limits to maintain balance and prevent exploitation. Here's the breakdown of the theoretical maximum pitchforks a user can earn:
-
-### Recurring Activities (Limited)
-- **Daily Rewards**: 90 claims × 85 pitchforks = **7,650 pitchforks**
-- **Daily Engagement**: 365 approvals × 25 pitchforks = **9,125 pitchforks**
-- **Campus Photos**: 5 approvals × 100 pitchforks = **500 pitchforks**
-
-### One-Time Bonuses
-- **Verification Bonus**: 200 pitchforks
-- **Onboarding Bonus**: 500 pitchforks
-- **Enrollment Deposit**: 500 pitchforks
-- **Birthday Setup**: 50 pitchforks
-- **Total One-Time**: **1,250 pitchforks**
-
-### Achievements
-- **Estimated Total**: ~2,000 pitchforks (varies based on activity)
-
-### Activity Limits (Achievement Eligibility)
-- **Messages**: 50,000 maximum (affects message-based achievements)
-- **Reactions**: 25,000 maximum (affects reaction-based achievements)
-- **Voice Minutes**: 10,000 maximum (affects voice-based achievements)
-
-### **Grand Total: ~20,525 Pitchforks**
-
-Users can track their progress toward these limits using the `/limits` command, which shows current counts and remaining opportunities for each earning method.
-
----
-
-## 🌟 Features
-
-### 🎮 Discord Bot Integration
-- **Slash Commands** for user interaction
-- **Custom Emoji Reward System** with admin approval
-- **Real-time Point Tracking** across Discord and web
-- **Achievement System** with automated rewards
-- **QR Code Generation** for unique user identification
-
-### 🌐 Modern Web Interface
-- **Professional ASU-themed Design** (Maroon & Gold)
-- **Responsive Mobile-First Layout** 
-- **Smooth Animations** and modern UI components
-- **Discord OAuth Authentication**
-- **Admin Management Panel**
-- **Purchase History Tracking**
-
-### 🛒 Shop Management
-- **Product Management** with image uploads
-- **Stock Management** (limited or unlimited)
-- **Purchase System** with balance validation
-- **Admin Analytics** and purchase history
-
-### 🏆 Point System
-- **Multiple Earning Methods** (see below)
-- **Balance Tracking** separate from total points earned
-- **Purchase Integration** with automatic deductions
-- **Admin Point Distribution** tools
-
-### 🎮 Economy System
-- **Enable/Disable Economy**: Admin command to control the entire economy system
-- **First-Time Setup**: Automatically awards existing verified members when economy is first enabled
-- **Points and Balance**: Dual currency system for earning and spending
-- **Daily Rewards**: 85 points daily with 24-hour cooldown
-- **Achievement System**: Automated achievements for various milestones
-- **Leaderboards**: Real-time rankings by balance
-
-### 🏪 Store Integration
-- **Product Management**: Admin can add/edit/delete products with images
-- **Stock Control**: Limited and unlimited stock options
-- **Purchase History**: Track all user purchases
-- **QR Code Generation**: Secure purchase verification system
-
-### 🎯 Point Earning Methods
-- **Verification Bonus**: 200 points for getting verified role (one-time)
-- **Onboarding Bonus**: 500 points for completing onboarding (one-time)
-- **Custom Emoji Rewards**: Admin-controlled point awards via reactions
-  - Campus Picture Posts: 100 points (react to posts with images)
-  - Daily Engagement: 25 points (20-hour cooldown)
-  - Enrollment Deposit: 500 points (one-time bonus)
-- **Birthday Setup**: 50 points for setting birthday once
-- **Achievements**: Various point rewards for milestones
-
-### 🎂 Birthday System
-- **Birthday Registration**: Users can set their birthday once for points
-- **Daily Announcements**: Automated birthday celebrations at 9:30 MST
-- **Community Engagement**: Public birthday announcements in general channel
-
-### 👑 Admin Features
-- **Economy Toggle**: Enable/disable the entire economy system
-- **Role-Based Automation**: Automatic point awards for role assignments
-- **Custom Emoji System**: Award points via emoji reactions
-- **Product Management**: Full CRUD operations for store items
-- **Purchase Tracking**: Monitor all transactions and user activity
-- **Bulk Operations**: Give points to all users simultaneously
-
-## 💰 How Users Can Earn Points
-
-### 🔄 Regular Activities
-
-#### 1. **Daily Reward** `/daily` - 85 Points
-- **Frequency**: Once every 24 hours
-- **Method**: Use `/daily` command in Discord
-- **Automatic**: No admin approval needed
-
-#### 2. **Daily Engagement** - 25 Points ⭐
-- **Frequency**: Once every 20 hours  
-- **Method**: Post any message in Discord
-- **Requirement**: Admin reacts with `:daily_engage:` custom emoji
-- **Admin Action Required**: Yes
-
-#### 3. **Campus Picture Posts** - 100 Points 📸
-- **Frequency**: No limit
-- **Method**: Post a message with image attachments
-- **Requirement**: Admin reacts with `:campus_photo:` custom emoji
-- **Validation**: Message must contain images
-- **Admin Action Required**: Yes
-
-#### 4. **Enrollment Deposit** - 500 Points 💰
-- **Frequency**: One-time bonus per user
-- **Method**: Post about enrollment deposit submission
-- **Requirement**: Admin reacts with `:deposit_check:` custom emoji
-- **Admin Action Required**: Yes
-
-#### 5. **Birthday Setup** - 50 Points 🎂
-- **Frequency**: One-time bonus per user
-- **Method**: Use `/birthday <month> <day>` command in Discord
-- **Automatic**: No admin approval needed
-- **Bonus**: Daily birthday announcements in #general channel
-
-### 🏆 Achievement System
-
-Users earn points automatically when reaching milestones:
-
-- **Message Milestones**: Points for sending messages
-- **Reaction Milestones**: Points for reacting to messages  
+### Discord Integration
+- **OAuth Authentication**: Login with Discord account
+- **Slash Commands**: `/balance`, `/daily`, `/leaderboard`, `/achievements`
+- **Reaction System**: Earn points through emoji reactions
 - **Voice Activity**: Points for spending time in voice channels
-- **Server Boosting**: Bonus points for boosting the server
-- **Community Participation**: Various engagement achievements
+- **Message Tracking**: Points for sending messages and reactions
 
-**🎉 Achievement Announcements**: When users unlock achievements, the bot automatically posts a celebration message in the #general channel with:
-- User ping and congratulations
-- Achievement name and description
-- Points earned from the achievement
-- User's new point balance
+### Web Interface
+- **Modern UI**: Beautiful, responsive design with Tailwind CSS
+- **User Dashboard**: View balance, achievements, and recent purchases
+- **Shop System**: Browse and purchase products with points
+- **Admin Panel**: Manage products, users, and economy settings
+- **Leaderboard**: See top users by point balance
 
-### 👑 Admin Tools
+### Achievement System
+- **Automatic Unlocking**: Achievements based on user activity
+- **Point Rewards**: Bonus points for completing achievements
+- **Announcements**: Automatic Discord announcements for achievements
 
-Administrators can award points using:
-- **Bulk Point Distribution**: Give points to all users at once
-- **Custom Emoji Reactions**: Approve activities for point rewards
-- **Manual Balance Adjustments**: Direct point management
+### Digital Products
+- **Discord Roles**: Automatic role assignment
+- **Minecraft Skins**: Download system for custom skins
+- **Game Codes**: Digital code delivery
+- **Physical Products**: Support for real-world items
 
-## 🚀 Quick Start
+## 🛠️ Installation
 
 ### Prerequisites
-
 - Python 3.8+
 - Discord Bot Token
 - Discord OAuth Application
 - SQLite (included) or PostgreSQL
 
-### Installation
-
-1. **Clone the Repository**
+### 1. Clone the Repository
 ```bash
-git clone <repository-url>
-cd Economy
+git clone <your-repo-url>
+cd D2D-Economy
 ```
 
-2. **Install Dependencies**
+### 2. Set Up Virtual Environment
+```bash
+python -m venv env
+source env/bin/activate  # On Windows: env\Scripts\activate
+```
+
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Environment Setup**
-Create a `.env` file:
+### 4. Environment Configuration
+Copy the example environment file and configure it:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Discord credentials:
 ```env
+# Discord Bot Configuration
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
 DISCORD_CLIENT_SECRET=your_discord_client_secret_here
 DISCORD_REDIRECT_URI=http://localhost:6000/callback
+
+# Discord Server Configuration
 GENERAL_CHANNEL_ID=your_general_channel_id_here
-SECRET_KEY=your_secret_key_here
-DATABASE_URL=sqlite:///store.db
 GUILD_ID=your_discord_server_id_here
 VERIFIED_ROLE_ID=your_verified_role_id_here
 ONBOARDING_ROLE_IDS=role_id_1,role_id_2,role_id_3
+
+# Flask Configuration
+SECRET_KEY=your_secret_key_here
+FLASK_ENV=development
+DATABASE_URL=sqlite:///store.db
+
+# Point System Configuration
+DAILY_ENGAGEMENT_POINTS=25
+CAMPUS_PICTURE_POINTS=100
+ENROLLMENT_DEPOSIT_POINTS=500
+BIRTHDAY_SETUP_POINTS=50
+DAILY_POINTS=85
+
+# Emoji Configuration
+CAMPUS_PICTURE_EMOJI=campus_photo
+DAILY_ENGAGEMENT_EMOJI=daily_engage
+ENROLLMENT_DEPOSIT_EMOJI=deposit_check
+
+# Birthday System
+BIRTHDAY_CHECK_TIME=09:30
+
+# File Upload Configuration
+UPLOAD_FOLDER=static/uploads
+MAX_CONTENT_LENGTH=16777216
 ```
 
-4. **Run the Application**
-```bash
-python app.py
-```
+### 5. Discord Bot Setup
 
-The web interface will be available at `http://localhost:6000`
-
-## ⚙️ Configuration
-
-### Custom Emoji Setup
-
-1. **Upload Custom Emojis** to your Discord server with these names:
-   - `:daily_engage:` - For daily engagement approval
-   - `:campus_photo:` - For campus picture approval  
-   - `:deposit_check:` - For enrollment deposit approval
-
-2. **Update Bot Configuration** in `bot.py`:
-```python
-CAMPUS_PICTURE_EMOJI = "campus_photo"        # Your custom emoji name
-DAILY_ENGAGEMENT_EMOJI = "daily_engage"      # Your custom emoji name  
-ENROLLMENT_DEPOSIT_EMOJI = "deposit_check"   # Your custom emoji name
-```
-
-3. **Adjust Point Values**:
-```python
-DAILY_ENGAGEMENT_POINTS = 25   # Points for daily engagement
-CAMPUS_PICTURE_POINTS = 100    # Points for campus pictures
-ENROLLMENT_DEPOSIT_POINTS = 500 # Points for enrollment deposit
-```
-
-### Discord Bot Setup
-
-1. **Create Discord Application** at https://discord.com/developers/applications
+1. **Create Discord Application** at [Discord Developer Portal](https://discord.com/developers/applications)
 2. **Create Bot** and get token
 3. **Set OAuth Redirects** to match your domain
 4. **Bot Permissions** needed:
@@ -302,6 +110,14 @@ ENROLLMENT_DEPOSIT_POINTS = 500 # Points for enrollment deposit
    - Add Reactions
    - Use Slash Commands
    - Embed Links
+   - Manage Roles (for role assignments)
+
+### 6. Run the Application
+```bash
+python main.py
+```
+
+The web interface will be available at `http://localhost:6000`
 
 ## 🎮 Discord Commands
 
@@ -313,7 +129,7 @@ ENROLLMENT_DEPOSIT_POINTS = 500 # Points for enrollment deposit
 - `/achievements` - View your earned achievements
 - `/qrcode` - Get your unique QR code (requires purchase)
 
-### Admin Commands  
+### Admin Commands
 - `/give_all <amount>` - Give points to all users
 - `/emoji_system` - View emoji reward system information
 
@@ -332,68 +148,6 @@ ENROLLMENT_DEPOSIT_POINTS = 500 # Points for enrollment deposit
 - **Purchase Analytics**: View all purchases with pagination
 - **User Management**: View user statistics
 
-## 🛠️ Technical Stack
-
-### Backend
-- **Flask** - Web framework
-- **SQLAlchemy** - Database ORM
-- **Flask-Login** - User session management
-- **Nextcord** - Discord bot library
-- **Werkzeug** - File upload handling
-
-### Frontend
-- **Tailwind CSS** - Utility-first CSS framework
-- **Font Awesome** - Icon library
-- **Custom CSS** - Animations and ASU theming
-- **Responsive Design** - Mobile-first approach
-
-### Database Schema
-- **Users**: Discord integration, points, achievements
-- **Products**: Shop items with images and stock
-- **Purchases**: Transaction history with timestamps
-- **Achievements**: Milestone tracking system
-
-## 📊 Database Models
-
-### User Model
-```python
-- id (Discord ID)
-- username
-- discord_id
-- avatar_url
-- user_uuid (generated on first purchase)
-- is_admin
-- points (total earned)
-- balance (available to spend)
-- last_daily
-- last_daily_engagement
-- enrollment_deposit_received
-- birthday (date field)
-- birthday_points_received (boolean)
-- message_count, reaction_count, voice_minutes
-- achievement relationships
-```
-
-### Product Model
-```python
-- id
-- name
-- description  
-- price
-- stock (0 = unlimited)
-- image_url
-- created_at
-```
-
-### Purchase Model
-```python
-- id
-- user_id
-- product_id
-- points_spent
-- timestamp
-```
-
 ## 🎨 Customization
 
 ### Theming
@@ -408,39 +162,53 @@ The application uses ASU colors but can be customized in `templates/base.html`:
 ```
 
 ### Point Values
-Easily adjust point rewards in `bot.py`:
-```python
-DAILY_ENGAGEMENT_POINTS = 25
-CAMPUS_PICTURE_POINTS = 100  
-ENROLLMENT_DEPOSIT_POINTS = 500
-BIRTHDAY_SETUP_POINTS = 50
+Easily adjust point rewards in the environment variables:
+```env
+DAILY_ENGAGEMENT_POINTS=25
+CAMPUS_PICTURE_POINTS=100
+ENROLLMENT_DEPOSIT_POINTS=500
+BIRTHDAY_SETUP_POINTS=50
 ```
 
-### Birthday System
-The bot automatically checks for birthdays daily at 9:30 MST and sends announcements to the general channel:
-```python
-GENERAL_CHANNEL_ID = "your_general_channel_id"  # Set in environment variables
-BIRTHDAY_CHECK_TIME = "09:30"  # MST timezone
-```
+## 📊 Database Schema
 
-### Achievement Announcements  
-All achievements are automatically announced in the general channel with beautiful embeds that include user pings, achievement details, and point rewards. This encourages community engagement and celebrates user milestones.
+### User Model
+- `id` (Discord ID)
+- `username`
+- `discord_id`
+- `avatar_url`
+- `user_uuid` (generated on first purchase)
+- `is_admin`
+- `points` (total earned)
+- `balance` (available to spend)
+- `last_daily`
+- `last_daily_engagement`
+- `enrollment_deposit_received`
+- `birthday` (date field)
+- `birthday_points_received` (boolean)
+- `message_count`, `reaction_count`, `voice_minutes`
+- `achievement` relationships
 
-## 🔒 Security Features
+### Product Model
+- `id`
+- `name`
+- `description`
+- `price`
+- `stock` (0 = unlimited)
+- `image_url`
+- `created_at`
+- `product_type` (physical, role, minecraft_skin, game_code, custom)
+- `delivery_method`
+- `delivery_data` (JSON for delivery configuration)
 
-- **OAuth Authentication** with Discord
-- **Admin Permission Validation**
-- **File Upload Security** with type validation
-- **SQL Injection Protection** via SQLAlchemy ORM
-- **Session Management** with secure cookies
-
-## 📱 Mobile Experience
-
-- **Touch-Friendly** buttons (44px minimum)
-- **Responsive Grid** layouts
-- **Mobile Navigation** optimizations
-- **Fast Loading** with optimized assets
-- **Progressive Enhancement**
+### Purchase Model
+- `id`
+- `user_id`
+- `product_id`
+- `points_spent`
+- `timestamp`
+- `delivery_info`
+- `status`
 
 ## 🚦 Deployment
 
@@ -458,20 +226,6 @@ FLASK_ENV=production
 DISCORD_REDIRECT_URI=https://yourdomain.com/callback
 ```
 
-## 📈 Analytics & Monitoring
-
-### Available Metrics
-- **User Engagement**: Message counts, reaction counts
-- **Purchase Analytics**: Revenue, popular products
-- **Achievement Progress**: User milestone tracking
-- **Admin Activity**: Point distribution tracking
-
-### Admin Dashboard Features
-- **User Statistics**: Total users, active users
-- **Sales Analytics**: Purchase history with pagination
-- **Stock Monitoring**: Product availability tracking
-- **Point Economy**: Total points in circulation
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -482,7 +236,7 @@ DISCORD_REDIRECT_URI=https://yourdomain.com/callback
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🆘 Support
 
@@ -494,12 +248,12 @@ For support and questions:
 
 ## 🎯 Roadmap
 
-- [ ] Enhanced achievement system
-- [ ] User profile customization
-- [ ] Product categories and filtering
-- [ ] Advanced analytics dashboard
-- [ ] Mobile app integration
-- [ ] Multi-server support
+- Enhanced achievement system
+- User profile customization
+- Product categories and filtering
+- Advanced analytics dashboard
+- Mobile app integration
+- Multi-server support
 
 ---
 

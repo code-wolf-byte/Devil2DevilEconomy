@@ -7,7 +7,7 @@
     <h1 class="text-3xl font-bold mb-8">Add New Product</h1>
 
     <div class="bg-white rounded-lg shadow-md p-6">
-        <form method="POST" action="{{ url_for('new_product') }}">
+        <form method="POST" action="{{ url_for('main.new_product') }}">
             <div class="mb-4">
                 <label for="name" class="block text-sm font-medium text-gray-700">Product Name</label>
                 <input type="text" 
@@ -55,7 +55,7 @@
             </div>
 
             <div class="flex justify-end space-x-4">
-                <a href="{{ url_for('admin') }}" 
+                <a href="{{ url_for('main.admin') }}" 
                    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
                     Cancel
                 </a>
