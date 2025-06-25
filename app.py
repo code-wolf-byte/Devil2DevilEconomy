@@ -2524,15 +2524,9 @@ if __name__ == '__main__':
     import signal
     import sys
     
-    # Global variable to track bot thread
-    bot_thread = None
-    
     def signal_handler(sig, frame):
         """Handle graceful shutdown"""
         app_logger.info("Shutting down gracefully...")
-        if bot_thread and bot_thread.is_alive():
-            app_logger.info("Waiting for bot thread to finish...")
-            bot_thread.join(timeout=5)
         sys.exit(0)
     
     # Register signal handlers for graceful shutdown
@@ -2540,17 +2534,44 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
-        # Start Discord bot in a separate thread (if configured)
-        app_logger.info("=== BOT STARTUP DEBUG ===")
-        app_logger.info(f"discord_configured: {discord_configured}")
-        app_logger.info(f"DISCORD_TOKEN exists: {bool(DISCORD_TOKEN)}")
-        app_logger.info(f"DISCORD_TOKEN length: {len(DISCORD_TOKEN) if DISCORD_TOKEN else 0}")
-        app_logger.info("========================")
+        # Check if we should start the Discord bot
+        start_bot = discord_configured and DISCORD_TOKEN
         
-        if discord_configured and DISCORD_TOKEN:
-            app_logger.info("✅ Starting Discord bot...")
-            bot_thread = threading.Thread(target=run_bot, name="DiscordBot")
-            bot_thread.daemon = False  # Not daemon to allow graceful shutdown
+        if start_bot:
+            app_logger.info("=== BOT STARTUP DEBUG ===")
+            app_logger.info(f"discord_configured: {discord_configured}")
+            app_logger.info(f"DISCORD_TOKEN exists: {bool(DISCORD_TOKEN)}")
+            app_logger.info(f"DISCORD_TOKEN length: {len(DISCORD_TOKEN) if DISCORD_TOKEN else 0}")
+            app_logger.info("========================")
+            
+            # Import and initialize the bot
+            from bot import bot, init_bot_with_app, run_bot
+            import threading
+            import asyncio
+            
+            # Initialize bot with app context
+            init_bot_with_app(app, db, User, Achievement, UserAchievement, EconomySettings)
+            
+            # Set up the bot (load cogs, etc.)
+            run_bot()
+            
+            def run_bot_in_thread():
+                """Run bot in separate thread with proper event loop"""
+                try:
+                    # Create new event loop for this thread
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    app_logger.info("🚀 Bot thread started, connecting to Discord...")
+                    # Run bot.start() in the new event loop
+                    loop.run_until_complete(bot.start(DISCORD_TOKEN))
+                except Exception as e:
+                    app_logger.error(f"Bot thread error: {e}")
+                    import traceback
+                    app_logger.error(traceback.format_exc())
+            
+            # Start bot in separate thread
+            bot_thread = threading.Thread(target=run_bot_in_thread, name="DiscordBot", daemon=False)
             bot_thread.start()
             app_logger.info("✅ Discord bot thread started successfully")
         else:
@@ -2558,17 +2579,16 @@ if __name__ == '__main__':
             app_logger.warning(f"   discord_configured: {discord_configured}")
             app_logger.warning(f"   DISCORD_TOKEN: {'SET' if DISCORD_TOKEN else 'NOT SET'}")
             app_logger.warning("Web interface will be available, but Discord integration disabled")
-            bot_thread = None
         
-        # Start Flask application
+        # Start Flask application in main thread
         app_logger.info("Starting Flask web application...")
-        app_logger.info("🌐 Web interface available at: http://localhost:6000")
-        if discord_configured:
+        app_logger.info("🌐 Web interface available at: http://localhost:5000")
+        if start_bot:
             app_logger.info("🤖 Discord bot is running")
         else:
             app_logger.info("⚠️  Discord bot disabled - configure .env file to enable")
         
-        app.run(host='0.0.0.0', port=6000, threaded=True)
+        app.run(host='0.0.0.0', port=5000, threaded=True)
         
     except KeyboardInterrupt:
         signal_handler(None, None)

@@ -105,22 +105,58 @@ def init_bot_with_app(app, db, user_model, achievement_model, user_achievement_m
 @bot.event
 async def on_ready():
     """Called when the bot is ready and connected to Discord"""
-    bot_logger.info(f"Bot is ready! Logged in as {bot.user}")
-    bot_logger.info(f"Connected to {len(bot.guilds)} guilds")
+    bot_logger.info(f"🎉 Bot is ready! Logged in as {bot.user} (ID: {bot.user.id})")
+    bot_logger.info(f"🌐 Connected to {len(bot.guilds)} guilds:")
+    
+    for guild in bot.guilds:
+        bot_logger.info(f"   - {guild.name} (ID: {guild.id}) - {guild.member_count} members")
+    
     await bot.change_presence(activity=nextcord.Game(name="Managing Economy"))
+    bot_logger.info("🎮 Bot presence set to 'Managing Economy'")
+    
+    # Test intents
+    bot_logger.info("🔍 Testing bot permissions and intents...")
+    bot_logger.info(f"   - Can read messages: {bot.intents.message_content}")
+    bot_logger.info(f"   - Can see members: {bot.intents.members}")
+    bot_logger.info(f"   - Can see reactions: {bot.intents.reactions}")
     
     # Sync slash commands
     try:
+        bot_logger.info("⚙️  Syncing application commands...")
         synced = await bot.sync_all_application_commands()
         if synced:
-            bot_logger.info(f"Synced {len(synced)} application commands")
+            bot_logger.info(f"✅ Synced {len(synced)} application commands successfully")
         else:
-            bot_logger.info("No application commands to sync")
+            bot_logger.info("ℹ️  No application commands to sync")
     except Exception as e:
-        bot_logger.error(f"Failed to sync commands: {e}")
+        bot_logger.error(f"❌ Failed to sync commands: {e}")
+    
+    bot_logger.info("🚀 Bot startup complete! Ready to process events.")
+
+@bot.event
+async def on_connect():
+    """Called when the bot connects to Discord"""
+    bot_logger.info("🔗 Bot connected to Discord!")
+
+@bot.event
+async def on_disconnect():
+    """Called when the bot disconnects from Discord"""
+    bot_logger.warning("⚠️  Bot disconnected from Discord")
+
+@bot.event
+async def on_resumed():
+    """Called when the bot resumes a session"""
+    bot_logger.info("🔄 Bot session resumed")
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Called when an error occurs"""
+    bot_logger.error(f"❌ Bot error in event '{event}': {args}")
+    import traceback
+    bot_logger.error(traceback.format_exc())
 
 def run_bot():
-    """Run the Discord bot"""
+    """Run the Discord bot - simplified version for async integration"""
     try:
         # Check if Discord token is available
         discord_token = os.getenv('DISCORD_TOKEN')
@@ -137,22 +173,11 @@ def run_bot():
         from cogs.economy import setup as setup_economy_cog
         setup_economy_cog(bot, app_instance, db_instance, User, EconomySettings, Achievement, UserAchievement)
         
-        # Start the bot with signal handling disabled (since we're in a thread)
-        import threading
-        if threading.current_thread() is not threading.main_thread():
-            # We're in a thread, so we need to create a new event loop
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Run the bot without signal handlers
-            loop.run_until_complete(bot.start(os.getenv('DISCORD_TOKEN')))
-        else:
-            # We're in the main thread, use normal run method
-            bot.run(os.getenv('DISCORD_TOKEN'))
-            
+        # Simple bot run - the calling code will handle async properly
+        bot_logger.info("Bot setup complete, ready to start...")
+        
     except Exception as e:
-        bot_logger.error(f"Error running bot: {e}")
+        bot_logger.error(f"Error setting up bot: {e}")
         import traceback
         bot_logger.error(traceback.format_exc())
 
