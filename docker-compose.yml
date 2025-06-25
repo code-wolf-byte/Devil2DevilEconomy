@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./store.db:/app/store.db
+      - ./instance:/app/instance
+      - ./static/uploads:/app/static/uploads
+    env_file:
+      - .env
+    environment:
+      - FLASK_APP=main.py
+      - FLASK_ENV=production
+    restart: unless-stopped 
