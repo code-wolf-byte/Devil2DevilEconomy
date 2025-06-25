@@ -2551,7 +2551,7 @@ if __name__ == '__main__':
         else:
             app_logger.info("⚠️  Discord bot disabled - configure .env file to enable")
         
-        app.run( port=6000, threaded=True)
+        app.run(host='0.0.0.0', port=6000, threaded=True)
         
     except KeyboardInterrupt:
         signal_handler(None, None)
