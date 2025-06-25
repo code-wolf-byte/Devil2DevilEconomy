@@ -7,6 +7,7 @@ services:
       - ./store.db:/app/store.db
       - ./instance:/app/instance
       - ./static/uploads:/app/static/uploads
+      - ./uploads:/app/uploads
     env_file:
       - .env
     environment:
