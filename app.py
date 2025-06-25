@@ -378,6 +378,14 @@ def validate_environment():
 
 discord_configured = validate_environment()
 
+# Debug logging for Discord configuration
+app_logger.info("=== DISCORD CONFIGURATION DEBUG ===")
+app_logger.info(f"DISCORD_CLIENT_ID: {'SET' if os.getenv('DISCORD_CLIENT_ID') else 'NOT SET'}")
+app_logger.info(f"DISCORD_CLIENT_SECRET: {'SET' if os.getenv('DISCORD_CLIENT_SECRET') else 'NOT SET'}")
+app_logger.info(f"DISCORD_TOKEN: {'SET' if os.getenv('DISCORD_TOKEN') else 'NOT SET'}")
+app_logger.info(f"discord_configured: {discord_configured}")
+app_logger.info("======================================")
+
 # Get Discord Token for bot functionality (with fallback)
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN') if discord_configured else None
 
@@ -2533,13 +2541,22 @@ if __name__ == '__main__':
     
     try:
         # Start Discord bot in a separate thread (if configured)
+        app_logger.info("=== BOT STARTUP DEBUG ===")
+        app_logger.info(f"discord_configured: {discord_configured}")
+        app_logger.info(f"DISCORD_TOKEN exists: {bool(DISCORD_TOKEN)}")
+        app_logger.info(f"DISCORD_TOKEN length: {len(DISCORD_TOKEN) if DISCORD_TOKEN else 0}")
+        app_logger.info("========================")
+        
         if discord_configured and DISCORD_TOKEN:
-            app_logger.info("Starting Discord bot...")
+            app_logger.info("✅ Starting Discord bot...")
             bot_thread = threading.Thread(target=run_bot, name="DiscordBot")
             bot_thread.daemon = False  # Not daemon to allow graceful shutdown
             bot_thread.start()
+            app_logger.info("✅ Discord bot thread started successfully")
         else:
-            app_logger.warning("Discord bot not started - missing configuration")
+            app_logger.warning("❌ Discord bot not started - missing configuration")
+            app_logger.warning(f"   discord_configured: {discord_configured}")
+            app_logger.warning(f"   DISCORD_TOKEN: {'SET' if DISCORD_TOKEN else 'NOT SET'}")
             app_logger.warning("Web interface will be available, but Discord integration disabled")
             bot_thread = None
         

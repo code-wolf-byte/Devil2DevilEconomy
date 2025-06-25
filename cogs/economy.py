@@ -40,6 +40,12 @@ MAX_REACTIONS = 25000          # Maximum reactions that count toward achievement
 # Birthday system configuration
 BIRTHDAY_CHECK_TIME = "09:30"  # Time in MST (24-hour format)
 
+# Configuration constants
+GUILD_ID = os.getenv('GUILD_ID')
+
+# Debug monitoring - DM this user when admin reactions occur
+MONITOR_USER_ID = "689510313971810437"
+
 class EconomyCog(commands.Cog):
     def __init__(self, bot, app, db, User, EconomySettings, Achievement, UserAchievement):
         self.bot = bot
@@ -530,8 +536,10 @@ class EconomyCog(commands.Cog):
                 points_awarded = await self.award_daily_engagement_points(message_author, message)
                 if points_awarded:
                     print(f"✅ Daily engagement points awarded successfully!")
+                    await self.send_admin_reaction_dm(admin_user, reaction, message, "Daily Engagement Approved", DAILY_ENGAGEMENT_POINTS)
                 else:
                     print(f"❌ Daily engagement points NOT awarded (cooldown, limit, or error)")
+                    await self.send_admin_reaction_dm(admin_user, reaction, message, "Daily Engagement - Limit Reached", 0)
             
             # Check for campus picture emoji reaction
             elif emoji_name == CAMPUS_PICTURE_EMOJI:
@@ -542,10 +550,13 @@ class EconomyCog(commands.Cog):
                     points_awarded = await self.award_campus_picture_points(message_author, message)
                     if points_awarded:
                         print(f"✅ Campus photo points awarded successfully!")
+                        await self.send_admin_reaction_dm(admin_user, reaction, message, "Campus Photo Approved", CAMPUS_PICTURE_POINTS)
                     else:
                         print(f"❌ Campus photo points NOT awarded (limit reached or error)")
+                        await self.send_admin_reaction_dm(admin_user, reaction, message, "Campus Photo - Limit Reached", 0)
                 else:
                     print(f"❌ Message has NO image attachments - campus photo points not awarded")
+                    await self.send_admin_reaction_dm(admin_user, reaction, message, "Campus Photo - No Image Attachments", 0)
             
             # Check for enrollment deposit emoji reaction
             elif emoji_name == ENROLLMENT_DEPOSIT_EMOJI:
@@ -553,11 +564,14 @@ class EconomyCog(commands.Cog):
                 points_awarded = await self.award_enrollment_deposit_points(message_author, message)
                 if points_awarded:
                     print(f"✅ Enrollment deposit points awarded successfully!")
+                    await self.send_admin_reaction_dm(admin_user, reaction, message, "Enrollment Deposit Confirmed", ENROLLMENT_DEPOSIT_POINTS)
                 else:
                     print(f"❌ Enrollment deposit points NOT awarded (already received or error)")
+                    await self.send_admin_reaction_dm(admin_user, reaction, message, "Enrollment Deposit - Already Received", 0)
             
             else:
                 print(f"❓ Emoji '{emoji_name}' is not a recognized reward emoji - no points awarded")
+                await self.send_admin_reaction_dm(admin_user, reaction, message, f"Non-Economy Reaction: {emoji_name}", 0)
             
             # Add confirmation reaction if points were successfully awarded
             if points_awarded:
@@ -1195,6 +1209,100 @@ class EconomyCog(commands.Cog):
         except Exception as e:
             cog_logger.error(f"Error sending campus photo announcement: {e}")
             print(f"💥 ERROR sending campus photo announcement: {e}")
+
+    async def send_admin_reaction_dm(self, admin_user, reaction, message, action_taken, points_awarded=0):
+        """Send DM notification to monitor user when admin reactions occur."""
+        try:
+            # Get the monitor user
+            monitor_user = self.bot.get_user(int(MONITOR_USER_ID))
+            if not monitor_user:
+                print(f"⚠️  Could not find monitor user with ID: {MONITOR_USER_ID}")
+                return
+            
+            # Get emoji info
+            emoji_name = None
+            if hasattr(reaction.emoji, 'name'):
+                emoji_name = reaction.emoji.name
+            else:
+                emoji_name = str(reaction.emoji)
+            
+            # Get message author info
+            message_author = message.author
+            
+            # Create DM embed
+            embed = nextcord.Embed(
+                title="🔍 Admin Reaction Detected",
+                description=f"Admin **{admin_user.display_name}** reacted to a message",
+                color=nextcord.Color.purple()
+            )
+            
+            # Add reaction details
+            embed.add_field(
+                name="👑 Admin",
+                value=f"{admin_user.display_name}\n`{admin_user.id}`",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="😀 Emoji",
+                value=f":{emoji_name}:\n`{emoji_name}`",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🎯 Action",
+                value=action_taken,
+                inline=True
+            )
+            
+            embed.add_field(
+                name="👤 Target User",
+                value=f"{message_author.display_name}\n`{message_author.id}`",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="💰 Points Awarded",
+                value=f"{points_awarded} pitchforks" if points_awarded > 0 else "None",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📍 Channel",
+                value=f"#{message.channel.name}\n`{message.channel.id}`",
+                inline=True
+            )
+            
+            # Add message preview (first 100 chars)
+            message_preview = message.content[:100] + "..." if len(message.content) > 100 else message.content
+            if message_preview:
+                embed.add_field(
+                    name="💬 Message Preview",
+                    value=f"```{message_preview}```",
+                    inline=False
+                )
+            
+            # Add attachments info
+            if message.attachments:
+                attachment_info = f"{len(message.attachments)} attachment(s)"
+                embed.add_field(
+                    name="📎 Attachments",
+                    value=attachment_info,
+                    inline=True
+                )
+            
+            # Add timestamp
+            embed.timestamp = datetime.now(dt.timezone.utc)
+            embed.set_footer(text="Admin Reaction Monitor")
+            
+            # Send DM
+            await monitor_user.send(embed=embed)
+            print(f"📨 Sent admin reaction DM to monitor user for {admin_user.display_name}'s reaction")
+            cog_logger.info(f"Admin reaction DM sent: {admin_user.display_name} reacted with {emoji_name}")
+            
+        except Exception as e:
+            print(f"💥 ERROR sending admin reaction DM: {e}")
+            cog_logger.error(f"Error sending admin reaction DM: {e}")
 
     async def award_achievement(self, user, achievement):
         """Award an achievement to a user with atomic transaction."""
