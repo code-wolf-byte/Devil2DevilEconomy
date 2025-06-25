@@ -19,7 +19,6 @@ RUN pip install --no-cache-dir \
     Flask-Login==0.6.3 \
     Flask-Migrate==4.0.5 \
     discord.py==2.3.2 \
-    gunicorn==21.2.0 \
     python-dotenv==1.0.0 \
     Werkzeug==2.3.7 \
     SQLAlchemy==2.0.21 \
@@ -41,5 +40,5 @@ RUN chmod -R 755 static/uploads && \
 # Expose port
 EXPOSE 5000
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "--workers", "1", "main:app"] 
+# Run the application with Flask development server
+CMD ["python3", "main.py"] 
