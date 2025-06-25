@@ -110,11 +110,50 @@ class EconomyCog(commands.Cog):
         if user.bot:
             return
         
+        # Debug logging for all reactions
+        emoji_name = None
+        emoji_info = ""
+        
+        if hasattr(reaction.emoji, 'name'):
+            emoji_name = reaction.emoji.name
+            if hasattr(reaction.emoji, 'id'):
+                emoji_info = f"Custom emoji: {emoji_name} (ID: {reaction.emoji.id})"
+            else:
+                emoji_info = f"Unicode emoji: {emoji_name}"
+        else:
+            emoji_name = str(reaction.emoji)
+            emoji_info = f"Unicode emoji: {emoji_name}"
+        
+        # Get message preview (first 50 characters)
+        message_preview = reaction.message.content[:50] + "..." if len(reaction.message.content) > 50 else reaction.message.content
+        if not message_preview:
+            message_preview = "[No text content - may have attachments/embeds]"
+        
+        # Print detailed reaction information
+        print("=" * 60)
+        print("🔍 REACTION DETECTED:")
+        print(f"👤 User: {user.display_name} (@{user.name}) [ID: {user.id}]")
+        print(f"😀 Emoji: {emoji_info}")
+        print(f"📝 Message Author: {reaction.message.author.display_name} (@{reaction.message.author.name}) [ID: {reaction.message.author.id}]")
+        print(f"💬 Message Preview: {message_preview}")
+        print(f"📷 Has Attachments: {len(reaction.message.attachments) > 0} ({len(reaction.message.attachments)} files)")
+        print(f"👑 User Is Admin: {user.guild_permissions.administrator}")
+        print(f"🔧 Target Emoji Names: campus_photo={CAMPUS_PICTURE_EMOJI}, daily_engage={DAILY_ENGAGEMENT_EMOJI}, deposit_check={ENROLLMENT_DEPOSIT_EMOJI}")
+        print(f"✅ Emoji Match: {emoji_name in [CAMPUS_PICTURE_EMOJI, DAILY_ENGAGEMENT_EMOJI, ENROLLMENT_DEPOSIT_EMOJI]}")
+        print("=" * 60)
+        
+        # Also log to the logger
+        cog_logger.info(f"Reaction detected - User: {user.display_name} | Emoji: {emoji_info} | Message Author: {reaction.message.author.display_name} | Admin: {user.guild_permissions.administrator}")
+        
         with self.app.app_context():
             # Check if economy is enabled
             settings = self.EconomySettings.query.first()
             if not settings or not settings.economy_enabled:
+                print("⚠️  Economy system is DISABLED - no points will be awarded")
+                cog_logger.info("Economy system disabled - reaction ignored")
                 return  # Economy is disabled, don't award points
+            
+            print("✅ Economy system is ENABLED - processing reaction")
             
             # Check if this is an admin giving points through custom emoji reactions
             await self.check_admin_reactions(reaction, user)
@@ -432,6 +471,13 @@ class EconomyCog(commands.Cog):
                 await message.reply(f"🎉 {message.author.mention} earned {DAILY_ENGAGEMENT_POINTS} pitchforks for daily engagement! ({remaining_engagements} remaining)")
                 
             cog_logger.info(f"Daily engagement points awarded to {user.username}: {DAILY_ENGAGEMENT_POINTS} points ({user.daily_engagement_count}/{MAX_DAILY_ENGAGEMENT})")
+            
+            # Check achievements after awarding points
+            await self.check_achievements(user, 'daily_engagement')
+            
+            # Send daily engagement announcement to general channel
+            await self.send_daily_engagement_announcement(user)
+            
             return True
             
         except Exception as e:
@@ -450,7 +496,10 @@ class EconomyCog(commands.Cog):
             
             # Check if the user who reacted is an admin
             if not admin_user.guild_permissions.administrator:
+                print(f"❌ User {admin_user.display_name} is NOT an admin - skipping point award processing")
                 return
+            
+            print(f"✅ Admin {admin_user.display_name} reacted - processing for point awards...")
             
             message = reaction.message
             
@@ -459,6 +508,9 @@ class EconomyCog(commands.Cog):
             if not message_author:
                 message_author = self.User(id=str(message.author.id), username=message.author.name)
                 self.db.session.add(message_author)
+                print(f"📝 Created new user record for {message.author.display_name}")
+            else:
+                print(f"📝 Found existing user record for {message.author.display_name}")
             
             # Check which custom emoji was used
             emoji_name = None
@@ -467,32 +519,62 @@ class EconomyCog(commands.Cog):
             else:
                 emoji_name = str(reaction.emoji)
             
+            print(f"🔍 Processing emoji: '{emoji_name}'")
+            
             # Track if any points were awarded (for confirmation reaction)
             points_awarded = False
             
             # Check for daily engagement emoji reaction
             if emoji_name == DAILY_ENGAGEMENT_EMOJI:
+                print(f"🔥 DAILY ENGAGEMENT emoji detected! Attempting to award {DAILY_ENGAGEMENT_POINTS} points...")
                 points_awarded = await self.award_daily_engagement_points(message_author, message)
+                if points_awarded:
+                    print(f"✅ Daily engagement points awarded successfully!")
+                else:
+                    print(f"❌ Daily engagement points NOT awarded (cooldown, limit, or error)")
             
             # Check for campus picture emoji reaction
             elif emoji_name == CAMPUS_PICTURE_EMOJI:
+                print(f"📸 CAMPUS PHOTO emoji detected! Checking for image attachments...")
                 # Check if message has image attachments
                 if message.attachments and any(attachment.content_type and attachment.content_type.startswith('image/') for attachment in message.attachments):
+                    print(f"✅ Message has image attachments! Attempting to award {CAMPUS_PICTURE_POINTS} points...")
                     points_awarded = await self.award_campus_picture_points(message_author, message)
+                    if points_awarded:
+                        print(f"✅ Campus photo points awarded successfully!")
+                    else:
+                        print(f"❌ Campus photo points NOT awarded (limit reached or error)")
+                else:
+                    print(f"❌ Message has NO image attachments - campus photo points not awarded")
             
             # Check for enrollment deposit emoji reaction
             elif emoji_name == ENROLLMENT_DEPOSIT_EMOJI:
+                print(f"💰 ENROLLMENT DEPOSIT emoji detected! Attempting to award {ENROLLMENT_DEPOSIT_POINTS} points...")
                 points_awarded = await self.award_enrollment_deposit_points(message_author, message)
+                if points_awarded:
+                    print(f"✅ Enrollment deposit points awarded successfully!")
+                else:
+                    print(f"❌ Enrollment deposit points NOT awarded (already received or error)")
+            
+            else:
+                print(f"❓ Emoji '{emoji_name}' is not a recognized reward emoji - no points awarded")
             
             # Add confirmation reaction if points were successfully awarded
             if points_awarded:
                 try:
+                    print(f"✅ Points were awarded! Attempting to add confirmation reaction ✅ to message...")
                     await message.add_reaction("✅")
+                    print(f"✅ Added confirmation reaction to message")
                     cog_logger.info(f"Added confirmation reaction ✅ to message after admin processing by {admin_user.display_name}")
                 except Exception as e:
+                    print(f"⚠️  Could not add confirmation reaction: {e}")
                     cog_logger.warning(f"Could not add confirmation reaction: {e}")
+            else:
+                print(f"❌ No points awarded - no confirmation reaction added")
+                print(f"   Points awarded result: {points_awarded}")
             
         except Exception as e:
+            print(f"💥 ERROR in check_admin_reactions: {e}")
             cog_logger.error(f"Error in check_admin_reactions: {e}")
 
     async def award_campus_picture_points(self, user, message):
@@ -552,6 +634,13 @@ class EconomyCog(commands.Cog):
                 await message.reply(f"📸 {message.author.mention} earned {CAMPUS_PICTURE_POINTS} pitchforks for sharing a campus picture! ({remaining_photos} photos remaining)")
                 
             cog_logger.info(f"Campus picture points awarded to {user.username}: {CAMPUS_PICTURE_POINTS} points ({user.campus_photos_count}/{MAX_CAMPUS_PHOTOS})")
+            
+            # Check achievements after awarding points
+            await self.check_achievements(user, 'campus_picture')
+            
+            # Send campus photo announcement to general channel
+            await self.send_campus_photo_announcement(user)
+            
             return True
             
         except Exception as e:
@@ -584,6 +673,12 @@ class EconomyCog(commands.Cog):
             # Commit the database changes
             self.db.session.commit()
             
+            # Check achievements after awarding points
+            await self.check_achievements(user, 'enrollment_deposit')
+            
+            # Send enrollment deposit announcement to general channel
+            await self.send_enrollment_deposit_announcement(user)
+            
             # Send confirmation message
             embed = nextcord.Embed(
                 title="💰 Enrollment Deposit Confirmed!",
@@ -599,12 +694,14 @@ class EconomyCog(commands.Cog):
                 await message.reply(f"💰 {message.author.mention} earned {ENROLLMENT_DEPOSIT_POINTS} pitchforks for enrollment deposit confirmation!")
                 
             cog_logger.info(f"Enrollment deposit points awarded to {user.username}: {ENROLLMENT_DEPOSIT_POINTS} points")
+            print(f"✅ Enrollment deposit points awarded to {user.username}: {ENROLLMENT_DEPOSIT_POINTS} points - returning True")
             return True
             
         except Exception as e:
             # Rollback on error
             self.db.session.rollback()
             cog_logger.error(f"Error awarding enrollment deposit points: {e}")
+            print(f"💥 ERROR in award_enrollment_deposit_points: {e}")
             return False
 
     # Birthday system functions
@@ -870,6 +967,8 @@ class EconomyCog(commands.Cog):
                     requirement_met = True  # Verification achievement is awarded when verified
                 elif achievement_type == 'birthday':
                     requirement_met = user.birthday is not None and achievement.requirement == 1
+                elif achievement_type == 'campus_picture':
+                    requirement_met = user.campus_photos_count >= achievement.requirement
                     
                 if requirement_met:
                     await self.award_achievement(user, achievement)
@@ -928,6 +1027,174 @@ class EconomyCog(commands.Cog):
                 
         except Exception as e:
             cog_logger.error(f"Error sending achievement announcement: {e}")
+
+    async def send_enrollment_deposit_announcement(self, user):
+        """Send enrollment deposit confirmation announcement to general channel."""
+        try:
+            if not GENERAL_CHANNEL_ID:
+                cog_logger.warning("GENERAL_CHANNEL_ID not configured - skipping enrollment deposit announcement")
+                return
+                
+            channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+            if channel:
+                # Create enrollment deposit announcement embed
+                embed = nextcord.Embed(
+                    title="💰 Enrollment Deposit Confirmed!",
+                    description=f"**{user.username}** has submitted their enrollment deposit proof and received a bonus!",
+                    color=nextcord.Color.gold()
+                )
+                
+                # Add deposit details
+                embed.add_field(
+                    name="💵 Deposit Bonus",
+                    value=f"**{ENROLLMENT_DEPOSIT_POINTS} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🎯 New Balance",
+                    value=f"**{user.balance} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🎓 Status",
+                    value="**Enrollment Confirmed**",
+                    inline=True
+                )
+                
+                # Set user avatar as thumbnail
+                embed.set_thumbnail(url=user.avatar_url if user.avatar_url else "https://cdn.discordapp.com/embed/avatars/0.png")
+                
+                # Add footer with congratulations
+                embed.set_footer(text="Welcome to ASU! Ready to be a Sun Devil! ☀️🔱")
+                
+                # Send message with user ping and embed
+                await channel.send(f"🎓 Congratulations <@{user.id}>! Your enrollment deposit has been confirmed!", embed=embed)
+                cog_logger.info(f"Enrollment deposit announcement sent for {user.username}")
+                print(f"📢 Sent enrollment deposit announcement to general channel for {user.username}")
+                
+            else:
+                cog_logger.warning(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                print(f"⚠️  Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                
+        except Exception as e:
+            cog_logger.error(f"Error sending enrollment deposit announcement: {e}")
+            print(f"💥 ERROR sending enrollment deposit announcement: {e}")
+
+    async def send_daily_engagement_announcement(self, user):
+        """Send daily engagement approval announcement to general channel."""
+        try:
+            if not GENERAL_CHANNEL_ID:
+                cog_logger.warning("GENERAL_CHANNEL_ID not configured - skipping daily engagement announcement")
+                return
+                
+            channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+            if channel:
+                # Calculate remaining engagements
+                remaining_engagements = MAX_DAILY_ENGAGEMENT - (getattr(user, 'daily_engagement_count', 0) or 0)
+                
+                # Create daily engagement announcement embed
+                embed = nextcord.Embed(
+                    title="🔥 Daily Engagement Approved!",
+                    description=f"**{user.username}** shared meaningful content and got admin approval!",
+                    color=nextcord.Color.orange()
+                )
+                
+                # Add engagement details
+                embed.add_field(
+                    name="🔥 Engagement Points",
+                    value=f"**{DAILY_ENGAGEMENT_POINTS} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🎯 New Balance",
+                    value=f"**{user.balance} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="📈 Remaining",
+                    value=f"**{remaining_engagements}** more approvals",
+                    inline=True
+                )
+                
+                # Set user avatar as thumbnail
+                embed.set_thumbnail(url=user.avatar_url if user.avatar_url else "https://cdn.discordapp.com/embed/avatars/0.png")
+                
+                # Add footer with encouragement
+                embed.set_footer(text="Keep sharing great content! 🌟")
+                
+                # Send message with user ping and embed
+                await channel.send(f"🔥 Great engagement <@{user.id}>! Your content got admin approval!", embed=embed)
+                cog_logger.info(f"Daily engagement announcement sent for {user.username}")
+                print(f"📢 Sent daily engagement announcement to general channel for {user.username}")
+                
+            else:
+                cog_logger.warning(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                print(f"⚠️  Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                
+        except Exception as e:
+            cog_logger.error(f"Error sending daily engagement announcement: {e}")
+            print(f"💥 ERROR sending daily engagement announcement: {e}")
+
+    async def send_campus_photo_announcement(self, user):
+        """Send campus photo approval announcement to general channel."""
+        try:
+            if not GENERAL_CHANNEL_ID:
+                cog_logger.warning("GENERAL_CHANNEL_ID not configured - skipping campus photo announcement")
+                return
+                
+            channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+            if channel:
+                # Calculate remaining photos
+                remaining_photos = MAX_CAMPUS_PHOTOS - (getattr(user, 'campus_photos_count', 0) or 0)
+                
+                # Create campus photo announcement embed
+                embed = nextcord.Embed(
+                    title="📸 Campus Photo Approved!",
+                    description=f"**{user.username}** shared an awesome campus photo and got admin approval!",
+                    color=nextcord.Color.blue()
+                )
+                
+                # Add photo details
+                embed.add_field(
+                    name="📸 Photo Bonus",
+                    value=f"**{CAMPUS_PICTURE_POINTS} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🎯 New Balance",
+                    value=f"**{user.balance} pitchforks**",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="📷 Remaining",
+                    value=f"**{remaining_photos}** more photos",
+                    inline=True
+                )
+                
+                # Set user avatar as thumbnail
+                embed.set_thumbnail(url=user.avatar_url if user.avatar_url else "https://cdn.discordapp.com/embed/avatars/0.png")
+                
+                # Add footer with encouragement
+                embed.set_footer(text="Keep sharing those campus moments! 📷✨")
+                
+                # Send message with user ping and embed
+                await channel.send(f"📸 Amazing photo <@{user.id}>! Thanks for sharing campus life!", embed=embed)
+                cog_logger.info(f"Campus photo announcement sent for {user.username}")
+                print(f"📢 Sent campus photo announcement to general channel for {user.username}")
+                
+            else:
+                cog_logger.warning(f"Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                print(f"⚠️  Could not find general channel with ID: {GENERAL_CHANNEL_ID}")
+                
+        except Exception as e:
+            cog_logger.error(f"Error sending campus photo announcement: {e}")
+            print(f"💥 ERROR sending campus photo announcement: {e}")
 
     async def award_achievement(self, user, achievement):
         """Award an achievement to a user with atomic transaction."""
@@ -1401,21 +1668,14 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_message("Economy settings not found.", ephemeral=True)
                 return
             if action.lower() == "enable":
-                # Check if roles are configured before enabling for the first time
+                # Check if this is the first time enabling
                 first_time = not getattr(settings, 'first_time_enabled', False)
-                if first_time and not getattr(settings, 'roles_configured', False):
-                    await interaction.response.send_message(
-                        "⚠️ **Economy Configuration Required**\n\n"
-                        "Before enabling the economy for the first time, please configure the roles and bonuses using the web interface:\n"
-                        "Go to **Admin Panel → Economy Config** to set up verified and onboarding roles.\n\n"
-                        "This ensures users with existing roles get their bonus points when the economy is enabled.",
-                        ephemeral=True
-                    )
-                    return
+                roles_configured = getattr(settings, 'roles_configured', False)
                 
                 print(f"🔧 DEBUG: Economy enable - first_time: {first_time}")
+                print(f"🔧 DEBUG: Economy enable - roles_configured: {roles_configured}")
                 print(f"🔧 DEBUG: Economy enable - settings.first_time_enabled: {getattr(settings, 'first_time_enabled', 'Not set')}")
-                cog_logger.info(f"🔧 DEBUG: Economy enable - first_time: {first_time}")
+                cog_logger.info(f"🔧 DEBUG: Economy enable - first_time: {first_time}, roles_configured: {roles_configured}")
                 
                 settings.economy_enabled = True
                 settings.first_time_enabled = True
@@ -1427,13 +1687,24 @@ class EconomyCog(commands.Cog):
                     color=nextcord.Color.green()
                 )
                 
-                if first_time:
-                    print("🔧 DEBUG: Calling on_first_economy_enable because this is the first time")
-                    cog_logger.info("🔧 DEBUG: Calling on_first_economy_enable because this is the first time")
+                if first_time and roles_configured:
+                    # Only award first-time bonuses if roles are configured
+                    print("🔧 DEBUG: Calling on_first_economy_enable because this is the first time AND roles are configured")
+                    cog_logger.info("🔧 DEBUG: Calling on_first_economy_enable because this is the first time AND roles are configured")
                     self.on_first_economy_enable(interaction)
                     embed.add_field(
                         name="🎁 First-Time Bonuses",
                         value="Bonus points are being awarded to users with configured roles!",
+                        inline=False
+                    )
+                elif first_time and not roles_configured:
+                    # First time but no roles configured - skip bonuses
+                    print("🔧 DEBUG: First time enabling but roles NOT configured - skipping bonuses")
+                    cog_logger.info("🔧 DEBUG: First time enabling but roles NOT configured - skipping bonuses")
+                    embed.add_field(
+                        name="⚠️ Configuration Notice",
+                        value="Economy enabled without role configuration. First-time bonuses will be skipped.\n"
+                              "Configure roles in the **Admin Panel → Economy Config** to set up bonuses for future users.",
                         inline=False
                     )
                 else:
