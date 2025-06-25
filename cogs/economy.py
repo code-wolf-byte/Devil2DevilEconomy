@@ -49,10 +49,6 @@ class EconomyCog(commands.Cog):
         self.EconomySettings = EconomySettings
         self.Achievement = Achievement
         self.UserAchievement = UserAchievement
-        
-        # Don't start tasks in __init__ - wait for bot to be ready
-        # self.daily_birthday_check.start()  # Moved to on_ready
-        # self.process_role_assignments.start()  # Moved to on_ready
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
@@ -95,6 +91,11 @@ class EconomyCog(commands.Cog):
             # Only increment if under the limit
             if user.message_count < MAX_MESSAGES:
                 user.message_count += 1
+                
+                # Check for first message achievement
+                if user.message_count == 1:
+                    await self.check_achievements(user, 'message')
+                
                 self.db.session.commit()
                 
                 # Check message achievements
@@ -173,6 +174,7 @@ class EconomyCog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         """Called when a member is updated (role changes, nickname changes, etc.)"""
+        # Check for role changes
         if before.roles != after.roles:
             # Check if economy is enabled
             with self.app.app_context():
@@ -192,6 +194,29 @@ class EconomyCog(commands.Cog):
                     onboarding_role_ids = [int(role_id) for role_id in settings.onboarding_roles_list if role_id.strip()]
                     if any(role.id in onboarding_role_ids for role in added_roles):
                         await self.handle_onboarding_bonus(after)
+        
+        # Check for boost status changes
+        if before.premium_since != after.premium_since:
+            # Check if user started boosting
+            if after.premium_since and not before.premium_since:
+                with self.app.app_context():
+                    settings = self.EconomySettings.query.first()
+                    if not settings or not settings.economy_enabled:
+                        return
+                    
+                    # Get or create user
+                    user = self.User.query.filter_by(id=str(after.id)).first()
+                    if not user:
+                        user = self.User(id=str(after.id), username=after.display_name, discord_id=str(after.id))
+                        self.db.session.add(user)
+                        self.db.session.flush()
+                    
+                    # Mark user as booster and check achievements
+                    user.has_boosted = True
+                    self.db.session.commit()
+                    
+                    # Check for boost achievements
+                    await self.check_achievements(user, 'boost')
 
     async def handle_verification_bonus(self, member):
         """Handle verification bonus for new verified members with atomic transaction"""
@@ -218,6 +243,10 @@ class EconomyCog(commands.Cog):
                 user.balance += 200
                 user.verification_bonus_received = True
                 self.db.session.commit()
+                
+                # Check for verification achievements
+                await self.check_achievements(user, 'verification')
+                
                 cog_logger.info(f"Verification bonus awarded to {member.display_name}: 200 points")
                 
             except Exception as e:
@@ -293,6 +322,10 @@ class EconomyCog(commands.Cog):
                 user.balance += bonus_amount
                 user.onboarding_bonus_received = True
                 self.db.session.commit()
+                
+                # Check for join achievements
+                await self.check_achievements(user, 'join')
+                
                 cog_logger.info(f"Onboarding bonus awarded to {member.display_name}: {bonus_amount} points")
                 
             except Exception as e:
@@ -429,19 +462,30 @@ class EconomyCog(commands.Cog):
             else:
                 emoji_name = str(reaction.emoji)
             
+            # Track if any points were awarded (for confirmation reaction)
+            points_awarded = False
+            
             # Check for daily engagement emoji reaction
             if emoji_name == DAILY_ENGAGEMENT_EMOJI:
-                await self.award_daily_engagement_points(message_author, message)
+                points_awarded = await self.award_daily_engagement_points(message_author, message)
             
             # Check for campus picture emoji reaction
             elif emoji_name == CAMPUS_PICTURE_EMOJI:
                 # Check if message has image attachments
                 if message.attachments and any(attachment.content_type and attachment.content_type.startswith('image/') for attachment in message.attachments):
-                    await self.award_campus_picture_points(message_author, message)
+                    points_awarded = await self.award_campus_picture_points(message_author, message)
             
             # Check for enrollment deposit emoji reaction
             elif emoji_name == ENROLLMENT_DEPOSIT_EMOJI:
-                await self.award_enrollment_deposit_points(message_author, message)
+                points_awarded = await self.award_enrollment_deposit_points(message_author, message)
+            
+            # Add confirmation reaction if points were successfully awarded
+            if points_awarded:
+                try:
+                    await message.add_reaction("✅")
+                    cog_logger.info(f"Added confirmation reaction ✅ to message after admin processing by {admin_user.display_name}")
+                except Exception as e:
+                    cog_logger.warning(f"Could not add confirmation reaction: {e}")
             
         except Exception as e:
             cog_logger.error(f"Error in check_admin_reactions: {e}")
@@ -803,6 +847,10 @@ class EconomyCog(commands.Cog):
                     requirement_met = True  # Join achievement is awarded immediately
                 elif achievement_type == 'daily':
                     requirement_met = True  # Daily achievement is awarded when claiming
+                elif achievement_type == 'verification':
+                    requirement_met = True  # Verification achievement is awarded when verified
+                elif achievement_type == 'birthday':
+                    requirement_met = user.birthday is not None and achievement.requirement == 1
                     
                 if requirement_met:
                     await self.award_achievement(user, achievement)
@@ -955,6 +1003,86 @@ class EconomyCog(commands.Cog):
             embed.set_footer(text=f"Total Points Earned: {user.points}")
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @nextcord.slash_command(name="birthday", description="Set your birthday to receive points and birthday announcements")
+    async def set_birthday(self, interaction: Interaction, month: int, day: int):
+        """Set your birthday (month and day)"""
+        with self.app.app_context():
+            # Validate input
+            if month < 1 or month > 12:
+                await interaction.response.send_message("Invalid month! Please enter a number between 1 and 12.", ephemeral=True)
+                return
+            
+            if day < 1 or day > 31:
+                await interaction.response.send_message("Invalid day! Please enter a number between 1 and 31.", ephemeral=True)
+                return
+            
+            # Validate day for specific months
+            days_in_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            if day > days_in_month[month - 1]:
+                await interaction.response.send_message(f"Invalid day for month {month}! Please enter a valid day.", ephemeral=True)
+                return
+            
+            # Get or create user
+            user = self.User.query.filter_by(id=str(interaction.user.id)).first()
+            if not user:
+                user = self.User(id=str(interaction.user.id), username=interaction.user.name, discord_id=str(interaction.user.id))
+                self.db.session.add(user)
+                self.db.session.flush()
+            
+            # Check if birthday is already set
+            birthday_already_set = user.birthday is not None
+            
+            # Set the birthday
+            from datetime import date
+            try:
+                user.birthday = date(2000, month, day)  # Use 2000 as placeholder year
+                
+                # Award points for setting birthday (only if not already set)
+                if not birthday_already_set and not user.birthday_points_received:
+                    user.balance += BIRTHDAY_SETUP_POINTS
+                    user.points += BIRTHDAY_SETUP_POINTS
+                    user.birthday_points_received = True
+                
+                self.db.session.commit()
+                
+                # Check for birthday achievements
+                await self.check_achievements(user, 'birthday')
+                
+                # Create response embed
+                embed = nextcord.Embed(
+                    title="🎂 Birthday Set!",
+                    description=f"Your birthday has been set to **{user.birthday.strftime('%B %d')}**!",
+                    color=nextcord.Color.gold()
+                )
+                
+                if not birthday_already_set:
+                    embed.add_field(
+                        name="🎉 Bonus Points!",
+                        value=f"You received **{BIRTHDAY_SETUP_POINTS} points** for setting up your birthday!",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="💰 New Balance",
+                        value=f"{user.balance} pitchforks",
+                        inline=True
+                    )
+                
+                embed.add_field(
+                    name="🎈 Birthday Announcements",
+                    value="You'll receive special birthday announcements on your special day!",
+                    inline=False
+                )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                cog_logger.info(f"Birthday set for {user.username}: {user.birthday.strftime('%B %d')}")
+                
+            except ValueError as e:
+                await interaction.response.send_message("Invalid date! Please check your month and day values.", ephemeral=True)
+            except Exception as e:
+                self.db.session.rollback()
+                await interaction.response.send_message("An error occurred while setting your birthday. Please try again.", ephemeral=True)
+                cog_logger.error(f"Error setting birthday for {interaction.user.name}: {e}")
+
     @nextcord.slash_command(name="balance", description="Check your current pitchfork balance")
     async def balance(self, interaction: Interaction):
         """Check your current pitchfork balance"""
@@ -1024,6 +1152,9 @@ class EconomyCog(commands.Cog):
                 user.daily_claims_count += 1
                 
                 self.db.session.commit()
+                
+                # Check for daily achievements
+                await self.check_achievements(user, 'daily')
                 
                 remaining_claims = MAX_DAILY_CLAIMS - user.daily_claims_count
                 embed = nextcord.Embed(

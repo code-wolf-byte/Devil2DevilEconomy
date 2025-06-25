@@ -658,6 +658,44 @@ def setup_achievements():
                 'points': 100,
                 'type': 'reaction',
                 'requirement': 500
+            },
+            # Voice achievements
+            {
+                'name': 'Voice Chat Participant',
+                'description': 'Spend 60 minutes in voice chat',
+                'points': 75,
+                'type': 'voice',
+                'requirement': 60
+            },
+            {
+                'name': 'Voice Chat Regular',
+                'description': 'Spend 300 minutes in voice chat',
+                'points': 150,
+                'type': 'voice',
+                'requirement': 300
+            },
+            {
+                'name': 'Voice Chat Enthusiast',
+                'description': 'Spend 1000 minutes in voice chat',
+                'points': 300,
+                'type': 'voice',
+                'requirement': 1000
+            },
+            # Boost achievement
+            {
+                'name': 'Server Booster',
+                'description': 'Boost the Discord server',
+                'points': 500,
+                'type': 'boost',
+                'requirement': 1
+            },
+            # Birthday achievement
+            {
+                'name': 'Birthday Setup',
+                'description': 'Set up your birthday for celebrations',
+                'points': 50,
+                'type': 'birthday',
+                'requirement': 1
             }
             # Add more achievements as needed
         ]
@@ -1573,6 +1611,10 @@ def get_discord_roles():
     if not current_user.is_admin:
         return jsonify({'error': 'Access denied'}), 403
     
+    # Check if Discord bot is configured
+    if not discord_configured:
+        return jsonify({'error': 'Discord bot is not configured. Please set up your Discord bot credentials in the .env file.'}), 503
+    
     try:
         from bot import bot
         
@@ -1622,6 +1664,9 @@ def get_discord_roles():
         
         return jsonify({'roles': roles})
     
+    except ImportError:
+        # Bot module not available
+        return jsonify({'error': 'Discord bot module is not available. Please check your bot configuration.'}), 503
     except Exception as e:
         app_logger.error(f"Error fetching Discord roles: {e}")
         return jsonify({'error': f'Failed to fetch roles: {str(e)}'}), 500
@@ -2506,7 +2551,7 @@ if __name__ == '__main__':
         else:
             app_logger.info("⚠️  Discord bot disabled - configure .env file to enable")
         
-        app.run(host='0.0.0.0', port=6000, threaded=True)
+        app.run( port=6000, threaded=True)
         
     except KeyboardInterrupt:
         signal_handler(None, None)
