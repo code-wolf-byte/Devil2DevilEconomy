@@ -28,11 +28,15 @@ RUN pip install --no-cache-dir \
     Pillow==10.0.1 \
     cryptography==41.0.7
 
+# Create necessary directories
+RUN mkdir -p instance static/uploads
+
 # Copy application code
 COPY . .
 
-# Create instance directory for database
-RUN mkdir -p instance
+# Ensure upload directory exists and has proper permissions
+RUN chmod -R 755 static/uploads && \
+    chown -R root:root static/uploads
 
 # Expose port
 EXPOSE 5000

@@ -48,6 +48,7 @@ $DOCKER_COMPOSE_CMD down 2>/dev/null || true
 print_status "Creating necessary directories..."
 mkdir -p instance
 mkdir -p static/uploads
+mkdir -p uploads
 mkdir -p data_backup
 
 # Backup existing data if it exists
@@ -57,6 +58,17 @@ if [ -f "store.db" ]; then
 elif [ -f "instance/store.db" ]; then
     print_status "Backing up existing database from instance directory..."
     cp instance/store.db data_backup/store.db.backup.$(date +%Y%m%d_%H%M%S)
+fi
+
+# Backup existing uploads
+if [ "$(ls -A static/uploads 2>/dev/null)" ]; then
+    print_status "Backing up existing uploads from static/uploads..."
+    cp -r static/uploads data_backup/static_uploads_backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+fi
+
+if [ "$(ls -A uploads 2>/dev/null)" ]; then
+    print_status "Backing up existing uploads from uploads directory..."
+    cp -r uploads data_backup/uploads_backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
 fi
 
 # Remove any existing store.db directory (if it was created incorrectly)
@@ -80,14 +92,26 @@ if [ -f "store.db" ]; then
     chown $(whoami):$(whoami) store.db 2>/dev/null || true
 fi
 
-# Set proper permissions for uploads directory
+# Set proper permissions for uploads directories
 print_status "Setting uploads directory permissions..."
 chmod -R 755 static/uploads
 chown -R $(whoami):$(whoami) static/uploads 2>/dev/null || true
 
+if [ -d "uploads" ]; then
+    chmod -R 755 uploads
+    chown -R $(whoami):$(whoami) uploads 2>/dev/null || true
+fi
+
 # Set proper permissions for instance directory
 chmod -R 755 instance
 chown -R $(whoami):$(whoami) instance 2>/dev/null || true
+
+# Count upload files
+STATIC_UPLOAD_COUNT=$(find static/uploads -type f 2>/dev/null | wc -l)
+UPLOAD_COUNT=$(find uploads -type f 2>/dev/null | wc -l)
+
+print_status "Found $STATIC_UPLOAD_COUNT files in static/uploads"
+print_status "Found $UPLOAD_COUNT files in uploads directory"
 
 # Build and start the application
 print_status "Building Docker image..."
@@ -103,6 +127,14 @@ sleep 3
 if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
     print_success "Container is running!"
     
+    # Verify uploads are mounted correctly
+    print_status "Verifying upload files are accessible in container..."
+    CONTAINER_STATIC_COUNT=$($DOCKER_CMD exec $(docker ps -q -f name=devil2devileconomy-web) find /app/static/uploads -type f 2>/dev/null | wc -l || echo "0")
+    CONTAINER_UPLOAD_COUNT=$($DOCKER_CMD exec $(docker ps -q -f name=devil2devileconomy-web) find /app/uploads -type f 2>/dev/null | wc -l || echo "0")
+    
+    print_status "Container has $CONTAINER_STATIC_COUNT files in /app/static/uploads"
+    print_status "Container has $CONTAINER_UPLOAD_COUNT files in /app/uploads"
+    
     # Test the application
     print_status "Testing application..."
     if curl -s -o /dev/null -w "%{http_code}" http://localhost:5000 | grep -q "200\|302\|404"; then
@@ -112,7 +144,8 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo "📋 Deployment Summary:"
         echo "   • Application URL: http://localhost:5000"
         echo "   • Database: $([ -f "store.db" ] && echo "✅ Present" || echo "⚠️  Will be created")"
-        echo "   • Uploads: $([ -d "static/uploads" ] && echo "✅ Directory ready" || echo "⚠️  Directory created")"
+        echo "   • Static Uploads: ✅ $STATIC_UPLOAD_COUNT files mounted"
+        echo "   • Upload Directory: ✅ $UPLOAD_COUNT files mounted"
         echo ""
         echo "📊 Container Status:"
         $DOCKER_COMPOSE_CMD ps
