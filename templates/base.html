@@ -268,15 +268,15 @@
 <body>
     <nav class="nav-gradient text-white py-4 sticky top-0 z-50">
         <div class="container mx-auto px-6 flex justify-between items-center">
-            <a href="{{ url_for('index') }}" class="text-2xl font-bold flex items-center space-x-3">
+            <a href="{{ url_for('main.index') }}" class="text-2xl font-bold flex items-center space-x-3">
                 <i class="fas fa-store"></i>
                 <span>Devil2Devil Store</span>
             </a>
             <div class="flex items-center space-x-6">
-                <a href="{{ url_for('index') }}" class="hover:text-yellow-300 transition-colors">
+                <a href="{{ url_for('main.index') }}" class="hover:text-yellow-300 transition-colors">
                     <i class="fas fa-store mr-1"></i>Store
                 </a>
-                <a href="{{ url_for('how_to_earn') }}" class="hover:text-yellow-300 transition-colors">
+                <a href="{{ url_for('main.how_to_earn') }}" class="hover:text-yellow-300 transition-colors">
                     <i class="fas fa-coins mr-1"></i>Earn Pitchforks
                 </a>
                 {% if current_user.is_authenticated %}
@@ -301,14 +301,14 @@
                         </span>
                     </div>
                     {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin_panel') }}" class="hover:text-yellow-300 transition-colors">
+                        <a href="{{ url_for('main.admin') }}" class="hover:text-yellow-300 transition-colors">
                             <i class="fas fa-cog mr-1"></i>Admin Panel
                         </a>
                     {% endif %}
-                    <a href="{{ url_for('logout') }}" class="hover:text-yellow-300 transition-colors">
+                    <a href="{{ url_for('auth.logout') }}" class="hover:text-yellow-300 transition-colors">
                         <i class="fas fa-sign-out-alt mr-1"></i>Logout
                     </a>
-                    <a href="{{ url_for('my_purchases') }}" class="hover:text-yellow-300 transition-colors">
+                    <a href="{{ url_for('main.my_purchases') }}" class="hover:text-yellow-300 transition-colors">
                         <i class="fas fa-shopping-bag mr-1"></i>My Purchases
                     </a>
                 {% else %}
@@ -316,7 +316,7 @@
                         <i class="fas fa-info-circle mr-1"></i>
                         Login to purchase items
                     </div>
-                    <a href="{{ url_for('login') }}" class="btn-secondary">
+                    <a href="{{ url_for('auth.login') }}" class="btn-secondary">
                         <i class="fab fa-discord mr-2"></i>Login with Discord
                     </a>
                 {% endif %}

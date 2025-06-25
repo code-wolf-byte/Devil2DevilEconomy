@@ -23,7 +23,7 @@
             <p class="text-muted mb-0">Upload files for your digital products</p>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data" class="space-y-4">
+            <form method="POST" action="{{ url_for('main.upload_file') }}" enctype="multipart/form-data" class="space-y-4">
                 <div class="form-group">
                     <label for="file" class="form-label text-lg font-medium">
                         <i class="fas fa-file mr-2"></i>Select File
@@ -140,7 +140,7 @@
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
                                             <i class="fas fa-copy mr-1"></i>Copy Path
                                         </button>
-                                        <form method="POST" action="{{ url_for('delete_file') }}" 
+                                        <form method="POST" action="{{ url_for('main.delete_file') }}" 
                                               style="display: inline;" 
                                               onsubmit="return confirm('Are you sure you want to delete {{ file.name }}?')">
                                             <input type="hidden" name="file_path" value="{{ file.path }}">
@@ -167,10 +167,10 @@
 
     <!-- Navigation -->
     <div class="text-center mt-6 space-x-4">
-        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+        <a href="{{ url_for('main.admin') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
         </a>
-        <a href="{{ url_for('digital_templates') }}" class="btn btn-primary">
+        <a href="{{ url_for('main.digital_templates') }}" class="btn btn-primary">
             <i class="fas fa-magic mr-2"></i>Digital Templates
         </a>
     </div>

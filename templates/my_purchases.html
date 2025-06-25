@@ -3,156 +3,124 @@
 {% block title %}My Purchases - Devil2Devil Store{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-3xl font-bold flex items-center">
-                <i class="fas fa-shopping-bag text-yellow-400 mr-3"></i>
-                My Purchases
-            </h1>
-            <p class="text-muted mt-2">View your purchase history and details</p>
-        </div>
-        <a href="{{ url_for('index') }}" class="btn-secondary">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Shop
-        </a>
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-white mb-4">My Purchases</h1>
+        <p class="text-gray-300 text-lg">View your purchase history and track your orders</p>
     </div>
 
     {% if purchases %}
-        <div class="hidden md:block">
-            <div class="card overflow-hidden">
-                <div class="bg-gray-800 px-6 py-4 border-b border-gray-700">
-                    <h3 class="text-lg font-semibold">Your Purchase Records</h3>
+        <div class="card p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="py-3 px-4 text-white font-semibold">Product</th>
+                            <th class="py-3 px-4 text-white font-semibold">Price</th>
+                            <th class="py-3 px-4 text-white font-semibold">Date</th>
+                            <th class="py-3 px-4 text-white font-semibold">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for purchase in purchases %}
+                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    {% if purchase.product.image_url %}
+                                        <img src="{{ purchase.product.image_url }}" 
+                                             alt="{{ purchase.product.name }}" 
+                                             class="w-12 h-12 rounded-lg object-cover mr-3">
+                                    {% else %}
+                                        <div class="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mr-3">
+                                            <i class="fas fa-box text-gray-400"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="text-white font-semibold">{{ purchase.product.name }}</div>
+                                        <div class="text-gray-400 text-sm">{{ purchase.product.description[:50] }}{% if purchase.product.description|length > 50 %}...{% endif %}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4">
+                                <span class="text-yellow-400 font-semibold">{{ purchase.points_spent }} Pitchforks</span>
+                            </td>
+                            <td class="py-4 px-4 text-gray-300">
+                                {{ purchase.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+                            </td>
+                            <td class="py-4 px-4">
+                                <span class="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm font-medium">
+                                    Pending Pickup
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pickup Information -->
+        <div class="mt-8">
+            <div class="card p-6 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-500/30">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center">
+                    <i class="fas fa-calendar-check text-yellow-400 mr-3"></i>
+                    Item Pickup Information
+                </h2>
+                <div class="text-center mb-6">
+                    <p class="text-lg text-white mb-4">
+                        <strong class="text-yellow-400">All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</strong>
+                    </p>
+                    <p class="text-gray-300">
+                        After purchasing items with your pitchforks, you'll receive confirmation that your items will be ready for pickup during the Welcome Week Devil2Devil event.
+                    </p>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-750 border-b border-gray-700">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Product</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Points</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Delivery Info</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            {% for purchase in purchases %}
-                                <tr class="hover:bg-gray-800 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            {% if purchase.product.display_image %}
-                                                {% set file_ext = purchase.product.display_image.split('.')[-1].lower() %}
-                                                {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
-                                                    <video src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
-                                                           class="w-10 h-10 rounded object-cover mr-3"
-                                                           muted loop playsinline>
-                                                        Your browser does not support the video tag.
-                                                    </video>
-                                                {% else %}
-                                                    <img src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
-                                                         alt="{{ purchase.product.name }}" 
-                                                         class="w-10 h-10 rounded object-cover mr-3">
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="w-10 h-10 bg-gray-700 rounded flex items-center justify-center mr-3">
-                                                    <i class="fas fa-box text-gray-400"></i>
-                                                </div>
-                                            {% endif %}
-                                            <div>
-                                                <div class="text-sm font-medium">{{ purchase.product.name }}</div>
-                                                <div class="text-xs text-muted">{{ purchase.product.description[:30] }}...</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium asu-gold">
-                                            <i class="fas fa-coins mr-1"></i>{{ purchase.points_spent }}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm">{{ purchase.timestamp.strftime('%Y-%m-%d') }}</div>
-                                        <div class="text-xs text-muted">{{ purchase.timestamp.strftime('%H:%M:%S') }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="text-xs px-2 py-1 rounded {{ 'bg-green-700 text-green-300' if purchase.status == 'completed' else 'bg-yellow-700 text-yellow-300' }}">
-                                            {{ purchase.status|capitalize }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-xs text-muted mb-1">{{ purchase.delivery_info or 'N/A' }}</div>
-                                        {% if purchase.product.product_type == 'minecraft_skin' and purchase.status == 'completed' and purchase.download_tokens %}
-                                            {% for token in purchase.download_tokens %}
-                                                {% if not token.downloaded or token.download_count < 3 %}
-                                                    <a href="{{ url_for('download_file', token=token.token) }}" 
-                                                       class="inline-block bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded mt-1 transition-colors">
-                                                        <i class="fas fa-download mr-1"></i>Download Skin
-                                                    </a>
-                                                {% endif %}
-                                            {% endfor %}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center">
+                            <i class="fas fa-map-marker-alt text-red-400 mr-2"></i>
+                            Event Location
+                        </h3>
+                        <p class="text-gray-300">Devil2Devil in-person event during ASU Welcome Week</p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center">
+                            <i class="fas fa-clock text-blue-400 mr-2"></i>
+                            When to Attend
+                        </h3>
+                        <p class="text-gray-300">Fall semester Welcome Week (exact dates will be announced)</p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center">
+                            <i class="fas fa-id-card text-green-400 mr-2"></i>
+                            What to Bring
+                        </h3>
+                        <p class="text-gray-300">Your student ID and Discord username for item verification</p>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center">
+                            <i class="fas fa-question-circle text-purple-400 mr-2"></i>
+                            Need Help?
+                        </h3>
+                        <p class="text-gray-300">Contact admins in Discord if you have questions about your purchases</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- Mobile Card View -->
-        <div class="md:hidden space-y-4">
-            {% for purchase in purchases %}
-                <div class="card p-4">
-                    <div class="flex items-center mb-3">
-                        {% if purchase.product.display_image %}
-                            {% set file_ext = purchase.product.display_image.split('.')[-1].lower() %}
-                            {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
-                                <video src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
-                                       class="w-12 h-12 rounded object-cover mr-3"
-                                       muted loop playsinline>
-                                    Your browser does not support the video tag.
-                                </video>
-                            {% else %}
-                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.display_image) }}" 
-                                     alt="{{ purchase.product.name }}" 
-                                     class="w-12 h-12 rounded object-cover mr-3">
-                            {% endif %}
-                        {% else %}
-                            <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center mr-3">
-                                <i class="fas fa-box text-gray-400"></i>
-                            </div>
-                        {% endif %}
-                        <div class="flex-1">
-                            <div class="font-medium">{{ purchase.product.name }}</div>
-                            <div class="text-sm text-muted">{{ purchase.product.description[:50] }}...</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-lg font-bold asu-gold">
-                            <i class="fas fa-coins mr-1"></i>{{ purchase.points_spent }}
-                        </div>
-                        <span class="text-xs px-2 py-1 rounded {{ 'bg-green-700 text-green-300' if purchase.status == 'completed' else 'bg-yellow-700 text-yellow-300' }}">
-                            {{ purchase.status|capitalize }}
-                        </span>
-                    </div>
-                    <div class="text-xs text-muted mb-1">{{ purchase.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
-                    <div class="text-xs text-muted mb-2">{{ purchase.delivery_info or 'N/A' }}</div>
-                    {% if purchase.product.product_type == 'minecraft_skin' and purchase.status == 'completed' and purchase.download_tokens %}
-                        {% for token in purchase.download_tokens %}
-                            {% if not token.downloaded or token.download_count < 3 %}
-                                <a href="{{ url_for('download_file', token=token.token) }}" 
-                                   class="inline-block bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded transition-colors">
-                                    <i class="fas fa-download mr-1"></i>Download Skin
-                                </a>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                </div>
-            {% endfor %}
-        </div>
     {% else %}
         <div class="card p-8 text-center">
-            <i class="fas fa-shopping-bag text-6xl text-gray-600 mb-4"></i>
-            <h3 class="text-xl font-semibold mb-2">No Purchases Found</h3>
-            <p class="text-muted">You haven't purchased anything yet.</p>
+            <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-shopping-bag text-gray-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-4">No Purchases Yet</h2>
+            <p class="text-gray-300 mb-6">You haven't made any purchases yet. Start shopping to see your order history here!</p>
+            <a href="{{ url_for('main.shop') }}" class="btn-primary inline-flex items-center">
+                <i class="fas fa-store mr-2"></i>
+                Browse Store
+            </a>
         </div>
     {% endif %}
 </div>
