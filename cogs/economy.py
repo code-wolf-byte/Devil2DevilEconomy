@@ -402,12 +402,15 @@ class EconomyCog(commands.Cog):
                 user.daily_engagement_count = 0
             user.daily_engagement_count += 1
             
+            # Commit the database changes
+            self.db.session.commit()
+            
             remaining_engagements = MAX_DAILY_ENGAGEMENT - user.daily_engagement_count
             
             # Send confirmation message
             embed = nextcord.Embed(
                 title="🎉 Daily Engagement awarded!",
-                description=f"You have be awarded daily engagement!\n\n**Points Earned:** {DAILY_ENGAGEMENT_POINTS}",
+                description=f"You have been awarded daily engagement!\n\n**Points Earned:** {DAILY_ENGAGEMENT_POINTS}",
                 color=nextcord.Color.green()
             )
             embed.add_field(
@@ -432,6 +435,8 @@ class EconomyCog(commands.Cog):
             return True
             
         except Exception as e:
+            # Rollback on error
+            self.db.session.rollback()
             cog_logger.error(f"Error awarding daily engagement points: {e}")
             return False
 
@@ -517,6 +522,9 @@ class EconomyCog(commands.Cog):
                 user.campus_photos_count = 0
             user.campus_photos_count += 1
             
+            # Commit the database changes
+            self.db.session.commit()
+            
             remaining_photos = MAX_CAMPUS_PHOTOS - user.campus_photos_count
             
             # Send confirmation message
@@ -547,6 +555,8 @@ class EconomyCog(commands.Cog):
             return True
             
         except Exception as e:
+            # Rollback on error
+            self.db.session.rollback()
             cog_logger.error(f"Error awarding campus picture points: {e}")
             return False
 
@@ -560,6 +570,10 @@ class EconomyCog(commands.Cog):
             
             # Check if user has already received enrollment deposit points
             if user.enrollment_deposit_received:
+                try:
+                    await message.reply(f"❌ {message.author.mention} has already received the enrollment deposit bonus.")
+                except:
+                    pass
                 return False
             
             # Award enrollment deposit points
@@ -567,24 +581,29 @@ class EconomyCog(commands.Cog):
             user.balance += ENROLLMENT_DEPOSIT_POINTS
             user.enrollment_deposit_received = True
             
+            # Commit the database changes
+            self.db.session.commit()
+            
             # Send confirmation message
             embed = nextcord.Embed(
                 title="💰 Enrollment Deposit Confirmed!",
                 description=f"Your enrollment deposit has been confirmed by an admin!\n\n**Bonus Points:** {ENROLLMENT_DEPOSIT_POINTS}",
                 color=nextcord.Color.gold()
             )
-            embed.set_footer(text=f"New balance: {user.balance} points")
+            embed.set_footer(text=f"New balance: {user.balance} pitchforks")
             
             try:
                 await message.author.send(embed=embed)
             except nextcord.Forbidden:
                 # If DM fails, reply to the original message
-                await message.reply(f"💰 {message.author.mention} earned {ENROLLMENT_DEPOSIT_POINTS} points for enrollment deposit confirmation!")
+                await message.reply(f"💰 {message.author.mention} earned {ENROLLMENT_DEPOSIT_POINTS} pitchforks for enrollment deposit confirmation!")
                 
             cog_logger.info(f"Enrollment deposit points awarded to {user.username}: {ENROLLMENT_DEPOSIT_POINTS} points")
             return True
             
         except Exception as e:
+            # Rollback on error
+            self.db.session.rollback()
             cog_logger.error(f"Error awarding enrollment deposit points: {e}")
             return False
 
