@@ -183,5 +183,5 @@ if __name__ == "__main__":
     
     # Start the Flask app (this will block)
     print("Starting Flask app...")
-    app.run(debug=True, use_reloader=False, port=5000)  # use_reloader=False to avoid issues with threading
+    app.run(host = '0.0.0.0', debug=True, use_reloader=False, port=5000)  # use_reloader=False to avoid issues with threading
 
