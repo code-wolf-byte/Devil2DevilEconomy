@@ -2,6 +2,7 @@ from shared import app, bot, db, User, EconomySettings, Achievement, UserAchieve
 from discord_files.cogs.economy import EconomyCog
 from routes.auth import auth, handle_callback
 from routes.main import main
+from utils import fix_balance_consistency
 import dotenv
 import os
 import time
@@ -162,6 +163,15 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         print("Database tables created successfully!")
+    
+    # Fix balance/points consistency before starting the application
+    print("🔧 Running balance consistency check...")
+    try:
+        fix_balance_consistency(app, db, User)
+        print("✅ Balance consistency check completed!")
+    except Exception as e:
+        print(f"⚠️ Warning: Balance consistency check failed: {e}")
+        print("   Continuing with application startup...")
     
     # Start the bot in a separate thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)

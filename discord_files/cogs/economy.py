@@ -839,7 +839,7 @@ class EconomyCog(commands.Cog):
                         inline=False
                     )
             
-            embed.set_footer(text=f"Total Points Earned: {user.points}")
+            embed.set_footer(text=f"Total Points Earned: {user.balance}")
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="birthday", description="Set your birthday to receive points and birthday announcements")
@@ -985,6 +985,7 @@ class EconomyCog(commands.Cog):
                 
                 # Award daily reward and increment counter
                 user.balance += 85
+                user.points += 85
                 user.last_daily = current_time
                 if not hasattr(user, 'daily_claims_count') or user.daily_claims_count is None:
                     user.daily_claims_count = 0
@@ -1048,6 +1049,7 @@ class EconomyCog(commands.Cog):
             users = self.User.query.all()
             for user in users:
                 user.balance += amount
+                user.points += amount
             self.db.session.commit()
             
             embed = discord.Embed(
@@ -1071,6 +1073,7 @@ class EconomyCog(commands.Cog):
                 self.db.session.add(db_user)
             
             db_user.balance += amount
+            db_user.points += amount
             self.db.session.commit()
             
             embed = discord.Embed(
@@ -1167,7 +1170,7 @@ class EconomyCog(commands.Cog):
             
             # Theoretical maximum calculation
             theoretical_max = (
-                user.points +  # Current points
+                user.balance +  # Current balance
                 (MAX_DAILY_CLAIMS - daily_claims) * 85 +  # Remaining daily claims
                 (total_achievements - user_achievements) * 50  # Remaining achievements (assuming 50 points each)
             )
