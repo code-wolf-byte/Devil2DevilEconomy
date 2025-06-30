@@ -1021,7 +1021,7 @@ class EconomyCog(commands.Cog):
     async def leaderboard(self, interaction: discord.Interaction):
         """Show the top 10 users by pitchfork balance"""
         with self.app.app_context():
-            top_users = self.User.query.order_by(self.User.balance.desc()).limit(10).all()
+            top_users = self.User.query.filter(self.User.is_admin == False).order_by(self.User.balance.desc()).limit(10).all()
             
             embed = discord.Embed(
                 title="🏆 Pitchfork Leaderboard",
