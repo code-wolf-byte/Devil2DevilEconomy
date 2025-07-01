@@ -1,70 +1,252 @@
 {% extends "base.html" %}
 
-{% block title %}Add New Product - Discord Store{% endblock %}
+{% block title %}Add New Product - Devil2Devil Store{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8">Add New Product</h1>
+<div class="max-w-4xl mx-auto animate-fade-in">
+    <!-- Header Section -->
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-white mb-4">
+            <i class="fas fa-plus-circle text-yellow-400 mr-3"></i>
+            Add New Product
+        </h1>
+        <p class="text-gray-300 text-lg">Create a new product for the Devil2Devil store</p>
+    </div>
 
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <form method="POST" action="{{ url_for('main.new_product') }}">
-            <div class="mb-4">
-                <label for="name" class="block text-sm font-medium text-gray-700">Product Name</label>
-                <input type="text" 
-                       name="name" 
-                       id="name" 
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+    <!-- Main Form Card -->
+    <div class="card p-8 animate-slide-up">
+        <form method="POST" action="{{ url_for('main.new_product') }}" enctype="multipart/form-data" id="productForm">
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Left Column - Basic Info -->
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+                        Product Details
+                    </h2>
+
+                    <!-- Product Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-tag mr-2"></i>Product Name
+                        </label>
+                        <input type="text" 
+                               name="name" 
+                               id="name" 
+                               required
+                               placeholder="Enter product name..."
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-20 transition-all duration-300">
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-align-left mr-2"></i>Description
+                        </label>
+                        <textarea name="description" 
+                                  id="description" 
+                                  rows="4" 
+                                  required
+                                  placeholder="Describe your product..."
+                                  class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-20 transition-all duration-300 resize-none"></textarea>
+                    </div>
+
+                    <!-- Price and Stock Row -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Price -->
+                        <div>
+                                                         <label for="price" class="block text-sm font-medium text-gray-300 mb-2">
+                                 <span class="coin-icon coin-gold coin-lg mr-2"></span>Price (Pitchforks)
+                             </label>
+                            <input type="number" 
+                                   name="price" 
+                                   id="price" 
+                                   min="0" 
+                                   required
+                                   placeholder="0"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-20 transition-all duration-300">
+                        </div>
+
+                        <!-- Stock -->
+                        <div>
+                            <label for="stock" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-boxes mr-2"></i>Stock
+                            </label>
+                            <input type="number" 
+                                   name="stock" 
+                                   id="stock" 
+                                   min="0"
+                                   placeholder="Leave empty for unlimited"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-20 transition-all duration-300">
+                        </div>
+                    </div>
+
+                    <!-- Product Type -->
+                    <div>
+                        <label for="product_type" class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-cube mr-2"></i>Product Type
+                        </label>
+                        <select name="product_type" 
+                                id="product_type"
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-20 transition-all duration-300">
+                            <option value="physical">Physical Product</option>
+                            <option value="digital">Digital Product</option>
+                            <option value="service">Service</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Right Column - Image Upload -->
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-image text-green-400 mr-2"></i>
+                        Product Image
+                    </h2>
+
+                    <!-- Image Upload Area -->
+                    <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors duration-300" id="imageUploadArea">
+                        <!-- Image Preview (Hidden by default) -->
+                        <div id="imagePreview" class="hidden mb-4">
+                            <img id="previewImg" src="" alt="Preview" class="max-w-full h-48 object-cover rounded-lg mx-auto border-2 border-gray-600">
+                        </div>
+
+                        <!-- Upload Interface -->
+                        <div id="uploadInterface" class="space-y-4">
+                            <div class="text-6xl text-gray-500 mb-4">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div>
+                                <p class="text-lg text-gray-300 mb-2">Upload Product Image</p>
+                                <p class="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                            </div>
+                            <input type="file" 
+                                   name="image" 
+                                   id="image" 
+                                   accept="image/*"
+                                   class="hidden">
+                            <button type="button" 
+                                    onclick="document.getElementById('image').click()" 
+                                    class="btn-secondary">
+                                <i class="fas fa-upload mr-2"></i>Choose File
+                            </button>
+                        </div>
+
+                        <!-- Selected File Info -->
+                        <div id="fileInfo" class="hidden mt-4 p-3 bg-gray-800 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-file-image text-green-400 mr-2"></i>
+                                    <span id="fileName" class="text-white"></span>
+                                </div>
+                                <button type="button" onclick="clearImageUpload()" class="text-red-400 hover:text-red-300">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload Tips -->
+                    <div class="bg-blue-900 bg-opacity-30 border border-blue-500 border-opacity-30 rounded-lg p-4">
+                        <h3 class="text-blue-300 font-semibold mb-2">
+                            <i class="fas fa-lightbulb mr-2"></i>Image Tips
+                        </h3>
+                        <ul class="text-sm text-blue-200 space-y-1">
+                            <li>• Use high-quality images for better presentation</li>
+                            <li>• Square aspect ratio (1:1) works best</li>
+                            <li>• Keep file size under 10MB for faster loading</li>
+                            <li>• PNG format recommended for logos/graphics</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
-            <div class="mb-4">
-                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-                <textarea name="description" 
-                          id="description" 
-                          rows="4" 
-                          required
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-            </div>
-
-            <div class="mb-4">
-                <label for="price" class="block text-sm font-medium text-gray-700">Price (points)</label>
-                <input type="number" 
-                       name="price" 
-                       id="price" 
-                       min="0" 
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            </div>
-
-            <div class="mb-4">
-                <label for="stock" class="block text-sm font-medium text-gray-700">Stock</label>
-                <input type="number" 
-                       name="stock" 
-                       id="stock" 
-                       min="0" 
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            </div>
-
-            <div class="mb-4">
-                <label for="image_url" class="block text-sm font-medium text-gray-700">Image URL</label>
-                <input type="url" 
-                       name="image_url" 
-                       id="image_url"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            </div>
-
-            <div class="flex justify-end space-x-4">
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-600">
                 <a href="{{ url_for('main.admin') }}" 
-                   class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-                    Cancel
+                   class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-300 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Cancel
                 </a>
                 <button type="submit" 
-                        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-                    Add Product
+                        class="btn-primary flex items-center" 
+                        id="submitBtn">
+                    <i class="fas fa-plus mr-2"></i>Add Product
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- JavaScript for Image Upload Preview -->
+<script>
+document.getElementById('image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Show file info
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileInfo').classList.remove('hidden');
+        
+        // Show image preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').classList.remove('hidden');
+            document.getElementById('uploadInterface').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function clearImageUpload() {
+    document.getElementById('image').value = '';
+    document.getElementById('fileInfo').classList.add('hidden');
+    document.getElementById('imagePreview').classList.add('hidden');
+    document.getElementById('uploadInterface').classList.remove('hidden');
+}
+
+// Form validation and submission
+document.getElementById('productForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Adding Product...';
+    submitBtn.disabled = true;
+});
+
+// Drag and drop functionality
+const uploadArea = document.getElementById('imageUploadArea');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    uploadArea.classList.add('border-yellow-400', 'bg-yellow-400', 'bg-opacity-10');
+}
+
+function unhighlight(e) {
+    uploadArea.classList.remove('border-yellow-400', 'bg-yellow-400', 'bg-opacity-10');
+}
+
+uploadArea.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        document.getElementById('image').files = files;
+        document.getElementById('image').dispatchEvent(new Event('change'));
+    }
+}
+</script>
 {% endblock %} 
