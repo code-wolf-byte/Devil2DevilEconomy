@@ -85,36 +85,39 @@ elif [ ! -f "store.db" ]; then
     print_warning "No database file found. Application will create a new one."
 fi
 
-# Set proper permissions for database file
-if [ -f "store.db" ]; then
-    print_status "Setting database permissions..."
-    
-    # Check current owner
-    DB_OWNER=$(stat -c '%U' store.db 2>/dev/null || echo "unknown")
-    print_status "Current database owner: $DB_OWNER"
-    
-    # If database is owned by root, we need sudo to change it
-    if [ "$DB_OWNER" = "root" ]; then
-        print_warning "Database is owned by root, fixing ownership..."
-        if command -v sudo >/dev/null 2>&1; then
-            sudo chown $(whoami):$(whoami) store.db
-            print_success "Changed database ownership from root to $(whoami)"
+# Set proper permissions for database files
+# Check both possible locations: instance/store.db (primary) and store.db (legacy)
+for db_path in "instance/store.db" "store.db"; do
+    if [ -f "$db_path" ]; then
+        print_status "Setting database permissions for $db_path..."
+        
+        # Check current owner
+        DB_OWNER=$(stat -c '%U' "$db_path" 2>/dev/null || echo "unknown")
+        print_status "Current database owner: $DB_OWNER"
+        
+        # If database is owned by root, we need sudo to change it
+        if [ "$DB_OWNER" = "root" ]; then
+            print_warning "Database is owned by root, fixing ownership..."
+            if command -v sudo >/dev/null 2>&1; then
+                sudo chown $(whoami):$(whoami) "$db_path"
+                print_success "Changed database ownership from root to $(whoami)"
+            else
+                print_error "Database is owned by root but sudo not available. Manual fix required."
+            fi
         else
-            print_error "Database is owned by root but sudo not available. Manual fix required."
+            # Standard ownership change
+            chown $(whoami):$(whoami) "$db_path" 2>/dev/null || true
         fi
-    else
-        # Standard ownership change
-        chown $(whoami):$(whoami) store.db 2>/dev/null || true
+        
+        # Set permissions (664 = rw-rw-r-- allows read/write for owner and group)
+        chmod 664 "$db_path"
+        
+        # Verify final permissions
+        FINAL_PERMS=$(stat -c '%a' "$db_path" 2>/dev/null || echo "unknown")
+        FINAL_OWNER=$(stat -c '%U:%G' "$db_path" 2>/dev/null || echo "unknown")
+        print_success "Database permissions set for $db_path: $FINAL_PERMS ($FINAL_OWNER)"
     fi
-    
-    # Set permissions (664 = rw-rw-r-- allows read/write for owner and group)
-    chmod 664 store.db
-    
-    # Verify final permissions
-    FINAL_PERMS=$(stat -c '%a' store.db 2>/dev/null || echo "unknown")
-    FINAL_OWNER=$(stat -c '%U:%G' store.db 2>/dev/null || echo "unknown")
-    print_success "Database permissions set: $FINAL_PERMS ($FINAL_OWNER)"
-fi
+done
 
 # Set proper permissions for uploads directories
 print_status "Setting uploads directory permissions..."
@@ -151,18 +154,20 @@ sleep 3
 print_status "Running post-deployment permission checks..."
 
 # Fix any permission issues that might have occurred during Docker volume mounting
-if [ -f "store.db" ]; then
-    # Ensure database is still writable after Docker mount
-    DB_WRITABLE=$(test -w store.db && echo "yes" || echo "no")
-    if [ "$DB_WRITABLE" = "no" ]; then
-        print_warning "Database is not writable after container start, fixing..."
-        chmod 664 store.db
-        if command -v sudo >/dev/null 2>&1 && [ "$(stat -c '%U' store.db)" = "root" ]; then
-            sudo chown $(whoami):$(whoami) store.db
+for db_path in "instance/store.db" "store.db"; do
+    if [ -f "$db_path" ]; then
+        # Ensure database is still writable after Docker mount
+        DB_WRITABLE=$(test -w "$db_path" && echo "yes" || echo "no")
+        if [ "$DB_WRITABLE" = "no" ]; then
+            print_warning "Database $db_path is not writable after container start, fixing..."
+            chmod 664 "$db_path"
+            if command -v sudo >/dev/null 2>&1 && [ "$(stat -c '%U' "$db_path")" = "root" ]; then
+                sudo chown $(whoami):$(whoami) "$db_path"
+            fi
         fi
+        print_status "Database $db_path writable: $DB_WRITABLE"
     fi
-    print_status "Database writable: $DB_WRITABLE"
-fi
+done
 
 # Ensure uploads directories are writable
 for dir in "static/uploads" "uploads" "instance"; do
@@ -197,10 +202,16 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo ""
         echo "📋 Deployment Summary:"
         echo "   • Application URL: http://localhost:5000"
-        if [ -f "store.db" ]; then
+        
+        # Check for database in correct location (instance/store.db is primary)
+        if [ -f "instance/store.db" ]; then
+            DB_PERMS=$(stat -c '%a' instance/store.db 2>/dev/null || echo "unknown")
+            DB_OWNER=$(stat -c '%U:%G' instance/store.db 2>/dev/null || echo "unknown")
+            echo "   • Database: ✅ Present at instance/store.db ($DB_PERMS, $DB_OWNER)"
+        elif [ -f "store.db" ]; then
             DB_PERMS=$(stat -c '%a' store.db 2>/dev/null || echo "unknown")
             DB_OWNER=$(stat -c '%U:%G' store.db 2>/dev/null || echo "unknown")
-            echo "   • Database: ✅ Present ($DB_PERMS, $DB_OWNER)"
+            echo "   • Database: ✅ Present at store.db ($DB_PERMS, $DB_OWNER)"
         else
             echo "   • Database: ⚠️  Will be created"
         fi
