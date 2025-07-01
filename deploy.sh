@@ -121,12 +121,54 @@ done
 
 # Set proper permissions for uploads directories
 print_status "Setting uploads directory permissions..."
-chmod -R 755 static/uploads
-chown -R $(whoami):$(whoami) static/uploads 2>/dev/null || true
 
+# Handle static/uploads directory
+if [ -d "static/uploads" ]; then
+    UPLOADS_OWNER=$(stat -c '%U' static/uploads 2>/dev/null || echo "unknown")
+    print_status "Current static/uploads owner: $UPLOADS_OWNER"
+    
+    if [ "$UPLOADS_OWNER" = "root" ]; then
+        print_warning "Uploads directory is owned by root, fixing ownership..."
+        if command -v sudo >/dev/null 2>&1; then
+            sudo chown -R $(whoami):$(whoami) static/uploads
+            print_success "Changed uploads ownership from root to $(whoami)"
+        else
+            print_error "Uploads directory is owned by root but sudo not available. Manual fix required."
+        fi
+    else
+        chown -R $(whoami):$(whoami) static/uploads 2>/dev/null || true
+    fi
+    
+    # Set permissions (775 = rwxrwxr-x allows read/write/execute for owner and group)
+    chmod -R 775 static/uploads
+    
+    FINAL_PERMS=$(stat -c '%a' static/uploads 2>/dev/null || echo "unknown")
+    FINAL_OWNER=$(stat -c '%U:%G' static/uploads 2>/dev/null || echo "unknown")
+    print_success "static/uploads permissions set: $FINAL_PERMS ($FINAL_OWNER)"
+fi
+
+# Handle uploads directory (if it exists)
 if [ -d "uploads" ]; then
-    chmod -R 755 uploads
-    chown -R $(whoami):$(whoami) uploads 2>/dev/null || true
+    UPLOADS_OWNER=$(stat -c '%U' uploads 2>/dev/null || echo "unknown")
+    print_status "Current uploads owner: $UPLOADS_OWNER"
+    
+    if [ "$UPLOADS_OWNER" = "root" ]; then
+        print_warning "uploads directory is owned by root, fixing ownership..."
+        if command -v sudo >/dev/null 2>&1; then
+            sudo chown -R $(whoami):$(whoami) uploads
+            print_success "Changed uploads ownership from root to $(whoami)"
+        else
+            print_error "uploads directory is owned by root but sudo not available. Manual fix required."
+        fi
+    else
+        chown -R $(whoami):$(whoami) uploads 2>/dev/null || true
+    fi
+    
+    chmod -R 775 uploads
+    
+    FINAL_PERMS=$(stat -c '%a' uploads 2>/dev/null || echo "unknown")
+    FINAL_OWNER=$(stat -c '%U:%G' uploads 2>/dev/null || echo "unknown")
+    print_success "uploads permissions set: $FINAL_PERMS ($FINAL_OWNER)"
 fi
 
 # Set proper permissions for instance directory
@@ -174,9 +216,23 @@ for dir in "static/uploads" "uploads" "instance"; do
     if [ -d "$dir" ]; then
         DIR_WRITABLE=$(test -w "$dir" && echo "yes" || echo "no")
         if [ "$DIR_WRITABLE" = "no" ]; then
-            print_warning "$dir is not writable, fixing..."
-            chmod -R 755 "$dir"
-            chown -R $(whoami):$(whoami) "$dir" 2>/dev/null || true
+            print_warning "$dir is not writable after container start, fixing..."
+            
+            # Check if owned by root and fix with sudo if needed
+            DIR_OWNER=$(stat -c '%U' "$dir" 2>/dev/null || echo "unknown")
+            if [ "$DIR_OWNER" = "root" ] && command -v sudo >/dev/null 2>&1; then
+                sudo chown -R $(whoami):$(whoami) "$dir"
+                print_status "Fixed root ownership for $dir"
+            else
+                chown -R $(whoami):$(whoami) "$dir" 2>/dev/null || true
+            fi
+            
+            # Set appropriate permissions (775 for uploads, 755 for instance)
+            if [[ "$dir" == *"uploads"* ]]; then
+                chmod -R 775 "$dir"  # Upload directories need write access
+            else
+                chmod -R 755 "$dir"  # Other directories
+            fi
         fi
         print_status "$dir writable: $DIR_WRITABLE"
     fi
@@ -217,6 +273,13 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         fi
         echo "   • Static Uploads: ✅ $STATIC_UPLOAD_COUNT files mounted"
         echo "   • Upload Directory: ✅ $UPLOAD_COUNT files mounted"
+        
+        # Check upload capability
+        UPLOAD_WRITABLE="❌"
+        if [ -d "static/uploads" ] && [ -w "static/uploads" ]; then
+            UPLOAD_WRITABLE="✅"
+        fi
+        echo "   • Upload Capability: $UPLOAD_WRITABLE $([ "$UPLOAD_WRITABLE" = "✅" ] && echo "Ready" || echo "Check permissions")"
         echo "   • Permissions: ✅ Verified and fixed"
         echo ""
         echo "📊 Container Status:"
