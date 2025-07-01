@@ -226,6 +226,36 @@ if __name__ == "__main__":
         print("   This may cause file upload issues. Check directory permissions manually.")
         print("   Continuing with application startup...")
     
+    # Ensure database files have proper permissions
+    print("🔧 Checking database file permissions...")
+    try:
+        db_files = ['store.db', 'instance/store.db']
+        
+        for db_file in db_files:
+            if os.path.exists(db_file):
+                # Set proper permissions (664 = rw-rw-r--)
+                # This allows the owner and group to read and write
+                os.chmod(db_file, 0o664)
+                print(f"✅ Set database file permissions to 664: {db_file}")
+                
+                # Verify permissions
+                stat_info = os.stat(db_file)
+                perms = oct(stat_info.st_mode)[-3:]
+                print(f"📋 Current database file permissions: {perms} for {db_file}")
+            else:
+                print(f"📝 Database file does not exist yet: {db_file}")
+        
+        # Check instance directory permissions
+        instance_dir = 'instance'
+        if os.path.exists(instance_dir):
+            os.chmod(instance_dir, 0o775)
+            print(f"✅ Set instance directory permissions to 775: {instance_dir}")
+        
+    except Exception as e:
+        print(f"⚠️ Warning: Could not set database file permissions: {e}")
+        print("   This may cause database write issues. Check file permissions manually.")
+        print("   Continuing with application startup...")
+    
     # Start the bot in a separate thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
