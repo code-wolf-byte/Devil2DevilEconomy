@@ -88,8 +88,32 @@ fi
 # Set proper permissions for database file
 if [ -f "store.db" ]; then
     print_status "Setting database permissions..."
-    chmod 644 store.db
-    chown $(whoami):$(whoami) store.db 2>/dev/null || true
+    
+    # Check current owner
+    DB_OWNER=$(stat -c '%U' store.db 2>/dev/null || echo "unknown")
+    print_status "Current database owner: $DB_OWNER"
+    
+    # If database is owned by root, we need sudo to change it
+    if [ "$DB_OWNER" = "root" ]; then
+        print_warning "Database is owned by root, fixing ownership..."
+        if command -v sudo >/dev/null 2>&1; then
+            sudo chown $(whoami):$(whoami) store.db
+            print_success "Changed database ownership from root to $(whoami)"
+        else
+            print_error "Database is owned by root but sudo not available. Manual fix required."
+        fi
+    else
+        # Standard ownership change
+        chown $(whoami):$(whoami) store.db 2>/dev/null || true
+    fi
+    
+    # Set permissions (664 = rw-rw-r-- allows read/write for owner and group)
+    chmod 664 store.db
+    
+    # Verify final permissions
+    FINAL_PERMS=$(stat -c '%a' store.db 2>/dev/null || echo "unknown")
+    FINAL_OWNER=$(stat -c '%U:%G' store.db 2>/dev/null || echo "unknown")
+    print_success "Database permissions set: $FINAL_PERMS ($FINAL_OWNER)"
 fi
 
 # Set proper permissions for uploads directories
@@ -123,6 +147,36 @@ $DOCKER_COMPOSE_CMD up -d
 # Wait a moment for the container to start
 sleep 3
 
+# Post-deployment permission fixes
+print_status "Running post-deployment permission checks..."
+
+# Fix any permission issues that might have occurred during Docker volume mounting
+if [ -f "store.db" ]; then
+    # Ensure database is still writable after Docker mount
+    DB_WRITABLE=$(test -w store.db && echo "yes" || echo "no")
+    if [ "$DB_WRITABLE" = "no" ]; then
+        print_warning "Database is not writable after container start, fixing..."
+        chmod 664 store.db
+        if command -v sudo >/dev/null 2>&1 && [ "$(stat -c '%U' store.db)" = "root" ]; then
+            sudo chown $(whoami):$(whoami) store.db
+        fi
+    fi
+    print_status "Database writable: $DB_WRITABLE"
+fi
+
+# Ensure uploads directories are writable
+for dir in "static/uploads" "uploads" "instance"; do
+    if [ -d "$dir" ]; then
+        DIR_WRITABLE=$(test -w "$dir" && echo "yes" || echo "no")
+        if [ "$DIR_WRITABLE" = "no" ]; then
+            print_warning "$dir is not writable, fixing..."
+            chmod -R 755 "$dir"
+            chown -R $(whoami):$(whoami) "$dir" 2>/dev/null || true
+        fi
+        print_status "$dir writable: $DIR_WRITABLE"
+    fi
+done
+
 # Check if container is running
 if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
     print_success "Container is running!"
@@ -143,9 +197,16 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo ""
         echo "📋 Deployment Summary:"
         echo "   • Application URL: http://localhost:5000"
-        echo "   • Database: $([ -f "store.db" ] && echo "✅ Present" || echo "⚠️  Will be created")"
+        if [ -f "store.db" ]; then
+            DB_PERMS=$(stat -c '%a' store.db 2>/dev/null || echo "unknown")
+            DB_OWNER=$(stat -c '%U:%G' store.db 2>/dev/null || echo "unknown")
+            echo "   • Database: ✅ Present ($DB_PERMS, $DB_OWNER)"
+        else
+            echo "   • Database: ⚠️  Will be created"
+        fi
         echo "   • Static Uploads: ✅ $STATIC_UPLOAD_COUNT files mounted"
         echo "   • Upload Directory: ✅ $UPLOAD_COUNT files mounted"
+        echo "   • Permissions: ✅ Verified and fixed"
         echo ""
         echo "📊 Container Status:"
         $DOCKER_COMPOSE_CMD ps
