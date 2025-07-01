@@ -30,15 +30,17 @@ RUN pip install --no-cache-dir \
 # Create a non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Create necessary directories
+# Create necessary directories with proper ownership
 RUN mkdir -p instance static/uploads
 
 # Copy application code
 COPY . .
 
 # Set proper ownership and permissions for non-root user
-RUN chmod -R 755 static/uploads && \
-    chown -R appuser:appuser /app
+# Make sure uploads directory is writable by appuser
+RUN chown -R appuser:appuser /app && \
+    chmod -R 755 /app && \
+    chmod -R 775 static/uploads
 
 # Switch to non-root user
 USER appuser

@@ -200,6 +200,32 @@ if __name__ == "__main__":
         print(f"⚠️ Warning: Image path fix failed: {e}")
         print("   Continuing with application startup...")
     
+    # Ensure uploads directory has proper permissions
+    print("🔧 Checking uploads directory permissions...")
+    try:
+        uploads_dir = os.path.join('static', 'uploads')
+        
+        # Create directory if it doesn't exist
+        if not os.path.exists(uploads_dir):
+            os.makedirs(uploads_dir, mode=0o775)
+            print(f"📁 Created uploads directory: {uploads_dir}")
+        
+        # Set proper permissions (775 = rwxrwxr-x)
+        # This allows the owner and group to read, write, and execute
+        # and others to read and execute
+        os.chmod(uploads_dir, 0o775)
+        print(f"✅ Set uploads directory permissions to 775: {uploads_dir}")
+        
+        # Verify permissions
+        stat_info = os.stat(uploads_dir)
+        perms = oct(stat_info.st_mode)[-3:]
+        print(f"📋 Current uploads directory permissions: {perms}")
+        
+    except Exception as e:
+        print(f"⚠️ Warning: Could not set uploads directory permissions: {e}")
+        print("   This may cause file upload issues. Check directory permissions manually.")
+        print("   Continuing with application startup...")
+    
     # Start the bot in a separate thread
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
