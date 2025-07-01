@@ -41,8 +41,7 @@ def dashboard():
 @login_required
 def shop():
     """Shop page"""
-    products = Product.query.filter_by(is_active=True).all()
-    return render_template('shop.html', products=products, user=current_user)
+    return redirect(url_for('main.index'))
 
 @main.route('/purchase/<int:product_id>', methods=['POST'])
 @login_required
