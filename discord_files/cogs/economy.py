@@ -35,8 +35,18 @@ ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.gete
 BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:30')
 
 # Role management constants
-RESTRICTED_ROLE_ID = 1356257786563920023  # Role to remove/prevent
-TRIGGER_ROLE_ID = 1207441184218161182     # Role that triggers removal
+UNVERIFIED_ROLE_NAME = os.getenv('UNVERIFIED_ROLE_NAME', 'Unverified')  # Role that triggers removal
+COMMITTED_ROLE_NAME = os.getenv('COMMITTED_ROLE_NAME', 'Committed')  # Role to remove/prevent from unverified users
+
+def get_role_by_name(guild, role_name):
+    """Helper function to get a role by name"""
+    if not guild or not role_name:
+        return None
+    
+    for role in guild.roles:
+        if role.name.lower() == role_name.lower():
+            return role
+    return None
 
 class RoleRemovalConfirmationView(discord.ui.View):
     def __init__(self, cog, admin_user_id, affected_users):
@@ -62,9 +72,9 @@ class RoleRemovalConfirmationView(discord.ui.View):
             for user_data in self.affected_users:
                 member = user_data['member']
                 try:
-                    restricted_role = member.guild.get_role(RESTRICTED_ROLE_ID)
-                    if restricted_role and restricted_role in member.roles:
-                        await member.remove_roles(restricted_role, reason="Admin confirmed bulk removal")
+                    committed_role = get_role_by_name(member.guild, COMMITTED_ROLE_NAME)
+                    if committed_role and committed_role in member.roles:
+                        await member.remove_roles(committed_role, reason="Admin confirmed bulk removal")
                         await self.cog.log_role_removal(member, "Admin confirmed bulk removal")
                         removed_count += 1
                 except Exception as e:
@@ -78,7 +88,7 @@ class RoleRemovalConfirmationView(discord.ui.View):
             )
             embed.add_field(
                 name="Details",
-                value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                value=f"• Committed Role: `{COMMITTED_ROLE_NAME}`\n• Unverified Role: `{UNVERIFIED_ROLE_NAME}`",
                 inline=False
             )
             embed.add_field(
@@ -296,26 +306,27 @@ class EconomyCog(commands.Cog):
                 cog_logger.error(f"Error processing member update: {e}")
     
     async def monitor_restricted_role(self, before, after):
-        """Monitor and prevent assignment of restricted role"""
+        """Monitor and prevent assignment of committed role to unverified users"""
         try:
-            restricted_role = after.guild.get_role(RESTRICTED_ROLE_ID)
-            trigger_role = after.guild.get_role(TRIGGER_ROLE_ID)
+            committed_role = get_role_by_name(after.guild, COMMITTED_ROLE_NAME)
+            unverified_role = get_role_by_name(after.guild, UNVERIFIED_ROLE_NAME)
             
-            if not restricted_role or not trigger_role:
+            if not committed_role or not unverified_role:
                 return
             
-            # Check if the restricted role was just added
-            if restricted_role in after.roles and restricted_role not in before.roles:
-                # Someone just got the restricted role, remove it immediately
-                await after.remove_roles(restricted_role, reason="Restricted role automatically removed")
-                await self.log_role_removal(after, "Restricted role prevented from being assigned")
-                cog_logger.info(f"Prevented restricted role assignment to {after.name} ({after.id})")
+            # Check if the committed role was just added
+            if committed_role in after.roles and committed_role not in before.roles:
+                # Someone just got the committed role, remove it immediately if they're unverified
+                if unverified_role in after.roles:
+                    await after.remove_roles(committed_role, reason="Committed role automatically removed from unverified user")
+                    await self.log_role_removal(after, "Committed role prevented from being assigned to unverified user")
+                    cog_logger.info(f"Prevented committed role assignment to unverified user {after.name} ({after.id})")
             
-            # Check if someone with the trigger role has the restricted role
-            if trigger_role in after.roles and restricted_role in after.roles:
-                await after.remove_roles(restricted_role, reason="Restricted role removed due to trigger role")
-                await self.log_role_removal(after, "Has trigger role")
-                cog_logger.info(f"Removed restricted role from {after.name} ({after.id}) due to trigger role")
+            # Check if someone with the unverified role has the committed role
+            if unverified_role in after.roles and committed_role in after.roles:
+                await after.remove_roles(committed_role, reason="Committed role removed due to unverified status")
+                await self.log_role_removal(after, "Has unverified role")
+                cog_logger.info(f"Removed committed role from unverified user {after.name} ({after.id})")
                 
         except Exception as e:
             cog_logger.error(f"Error monitoring restricted role: {e}")
@@ -340,25 +351,25 @@ class EconomyCog(commands.Cog):
         #         await channel.send(f"🚫 **Role Removed**: {member.mention} - {reason}")
     
     async def scan_and_remove_restricted_roles(self):
-        """Scan all members and remove restricted role from those with trigger role"""
+        """Scan all members and remove committed role from those with unverified role"""
         removed_count = 0
         for guild in self.bot.guilds:
             try:
-                restricted_role = guild.get_role(RESTRICTED_ROLE_ID)
-                trigger_role = guild.get_role(TRIGGER_ROLE_ID)
+                committed_role = get_role_by_name(guild, COMMITTED_ROLE_NAME)
+                unverified_role = get_role_by_name(guild, UNVERIFIED_ROLE_NAME)
                 
-                if not restricted_role or not trigger_role:
+                if not committed_role or not unverified_role:
                     continue
                 
                 for member in guild.members:
                     if member.bot:
                         continue
                     
-                    # If member has both trigger role and restricted role, remove restricted role
-                    if trigger_role in member.roles and restricted_role in member.roles:
+                    # If member has both unverified role and committed role, remove committed role
+                    if unverified_role in member.roles and committed_role in member.roles:
                         try:
-                            await member.remove_roles(restricted_role, reason="Bulk removal: has trigger role")
-                            await self.log_role_removal(member, "Bulk scan - has trigger role")
+                            await member.remove_roles(committed_role, reason="Bulk removal: has unverified role")
+                            await self.log_role_removal(member, "Bulk scan - has unverified role")
                             removed_count += 1
                         except Exception as e:
                             cog_logger.error(f"Failed to remove role from {member.name}: {e}")
@@ -373,18 +384,18 @@ class EconomyCog(commands.Cog):
         affected_users = []
         for guild in self.bot.guilds:
             try:
-                restricted_role = guild.get_role(RESTRICTED_ROLE_ID)
-                trigger_role = guild.get_role(TRIGGER_ROLE_ID)
+                committed_role = get_role_by_name(guild, COMMITTED_ROLE_NAME)
+                unverified_role = get_role_by_name(guild, UNVERIFIED_ROLE_NAME)
                 
-                if not restricted_role or not trigger_role:
+                if not committed_role or not unverified_role:
                     continue
                 
                 for member in guild.members:
                     if member.bot:
                         continue
                     
-                    # If member has both trigger role and restricted role
-                    if trigger_role in member.roles and restricted_role in member.roles:
+                    # If member has both unverified role and committed role
+                    if unverified_role in member.roles and committed_role in member.roles:
                         affected_users.append({
                             'name': f"{member.name}#{member.discriminator}",
                             'id': member.id,
@@ -1477,9 +1488,9 @@ class EconomyCog(commands.Cog):
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
-    @app_commands.command(name="remove_restricted_roles", description="Remove restricted role from users with trigger role (Admin only)")
+    @app_commands.command(name="remove_restricted_roles", description="Remove committed role from unverified users (Admin only)")
     async def remove_restricted_roles(self, interaction: discord.Interaction):
-        """Remove restricted role from users with trigger role (Admin only)"""
+        """Remove committed role from unverified users (Admin only)"""
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
             return
@@ -1493,12 +1504,12 @@ class EconomyCog(commands.Cog):
             if not affected_users:
                 embed = discord.Embed(
                     title="ℹ️ No Action Needed",
-                    description="No users found with both the restricted role and trigger role.",
+                    description="No unverified users found with the committed role.",
                     color=0x3498db
                 )
                 embed.add_field(
                     name="Details",
-                    value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                    value=f"• Committed Role: `{COMMITTED_ROLE_NAME}`\n• Unverified Role: `{UNVERIFIED_ROLE_NAME}`",
                     inline=False
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
@@ -1521,7 +1532,7 @@ class EconomyCog(commands.Cog):
             )
             embed.add_field(
                 name="Details",
-                value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                value=f"• Committed Role: `{COMMITTED_ROLE_NAME}`\n• Unverified Role: `{UNVERIFIED_ROLE_NAME}`",
                 inline=False
             )
             embed.add_field(

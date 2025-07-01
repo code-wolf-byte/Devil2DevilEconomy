@@ -74,6 +74,10 @@ GUILD_ID=your_discord_server_id_here
 VERIFIED_ROLE_ID=your_verified_role_id_here
 ONBOARDING_ROLE_IDS=role_id_1,role_id_2,role_id_3
 
+# Role Management Configuration
+UNVERIFIED_ROLE_NAME=Unverified
+COMMITTED_ROLE_NAME=Committed
+
 # Flask Configuration
 SECRET_KEY=your_secret_key_here
 FLASK_ENV=development
@@ -119,6 +123,26 @@ python main.py
 
 The web interface will be available at `http://localhost:6000`
 
+## 🛡️ Role Management System
+
+The bot includes an automatic role management system that prevents unverified users from having access to committed member roles.
+
+### How It Works
+- **Unverified Role**: Users with this role are considered unverified
+- **Committed Role**: A restricted role that unverified users cannot have
+- **Automatic Enforcement**: The bot automatically removes the committed role from anyone with the unverified role
+- **Real-time Monitoring**: Role changes are monitored in real-time to enforce restrictions
+
+### Configuration
+Set these environment variables to configure role names:
+```env
+UNVERIFIED_ROLE_NAME=Unverified
+COMMITTED_ROLE_NAME=Committed
+```
+
+### Admin Commands for Role Management
+- `/remove_restricted_roles` - Bulk remove committed role from all unverified users
+
 ## 🎮 Discord Commands
 
 ### User Commands
@@ -132,6 +156,7 @@ The web interface will be available at `http://localhost:6000`
 ### Admin Commands
 - `/give_all <amount>` - Give points to all users
 - `/emoji_system` - View emoji reward system information
+- `/remove_restricted_roles` - Remove committed role from unverified users
 
 ## 🌐 Web Features
 
