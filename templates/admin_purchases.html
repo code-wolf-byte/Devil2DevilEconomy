@@ -82,7 +82,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             {% if purchase.product.image_url %}
-                                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
+                                                <img src="{{ purchase.product.image_url }}" 
                                                      alt="{{ purchase.product.name }}" 
                                                      class="w-10 h-10 rounded object-cover mr-3">
                                             {% else %}
@@ -151,7 +151,7 @@
                     
                     <div class="flex items-center mb-3">
                         {% if purchase.product.image_url %}
-                            <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
+                            <img src="{{ purchase.product.image_url }}" 
                                  alt="{{ purchase.product.name }}" 
                                  class="w-12 h-12 rounded object-cover mr-3">
                         {% else %}

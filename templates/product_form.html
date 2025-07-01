@@ -117,7 +117,7 @@
                 {% if product and product.image_url %}
                     <div class="mb-4 p-4 bg-gray-800 border border-gray-600 rounded-lg">
                         <div class="flex items-center space-x-4">
-                            <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                            <img src="{{ product.image_url }}" 
                                  alt="Current image" 
                                  class="w-24 h-24 object-cover rounded-lg border border-gray-600">
                             <div>
@@ -159,7 +159,7 @@
                     {% if product and product.preview_image_url %}
                         <div class="mb-4 p-4 bg-gray-800 border border-gray-600 rounded-lg">
                             <div class="flex items-center space-x-4">
-                                <img src="{{ url_for('static', filename='uploads/' + product.preview_image_url) }}" 
+                                <img src="{{ product.preview_image_url }}" 
                                      alt="Current preview" 
                                      class="w-24 h-24 object-cover rounded-lg border border-gray-600">
                                 <div>
