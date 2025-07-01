@@ -23,8 +23,8 @@ def fix_image_paths():
         
         for product in products_to_fix:
             old_path = product.image_url
-            # Remove the '/static/' prefix, keeping just 'uploads/filename'
-            new_path = product.image_url.replace('/static/', '', 1)
+            # Remove the '/static/uploads/' prefix, keeping just 'filename'
+            new_path = product.image_url.replace('/static/uploads/', '', 1)
             product.image_url = new_path
             
             print(f"   - Product '{product.name}': {old_path} → {new_path}")

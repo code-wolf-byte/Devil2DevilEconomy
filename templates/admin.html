@@ -107,7 +107,7 @@
                             <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors {% if not product.is_active %}opacity-60 bg-gray-850{% endif %}">
                                 <td class="py-4 px-2">
                                     {% if product.image_url %}
-                                        <img src="{{ product.image_url }}" 
+                                        <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
                                              alt="{{ product.name }}" 
                                              class="w-16 h-16 object-cover rounded-lg {% if not product.is_active %}grayscale{% endif %}">
                                     {% else %}
@@ -189,7 +189,7 @@
                     <div class="card p-4 {% if not product.is_active %}opacity-60 bg-gray-850{% endif %}">
                         <div class="flex items-start space-x-4">
                             {% if product.image_url %}
-                                <img src="{{ product.image_url }}" 
+                                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
                                      alt="{{ product.name }}" 
                                      class="w-16 h-16 object-cover rounded-lg flex-shrink-0 {% if not product.is_active %}grayscale{% endif %}">
                             {% else %}

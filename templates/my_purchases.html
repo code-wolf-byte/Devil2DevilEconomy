@@ -26,8 +26,8 @@
                         <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
                             <td class="py-4 px-4">
                                 <div class="flex items-center">
-                                    {% if purchase.product.image_url %}
-                                        <img src="{{ purchase.product.image_url }}" 
+                                                                {% if purchase.product.image_url %}
+                                <img src="{{ url_for('static', filename='uploads/' + purchase.product.image_url) }}" 
                                              alt="{{ purchase.product.name }}" 
                                              class="w-12 h-12 rounded-lg object-cover mr-3">
                                     {% else %}

@@ -8,7 +8,7 @@
         <div class="md:flex">
             {% if product.image_url %}
             <div class="md:w-1/2">
-                <img src="{{ product.image_url }}" alt="{{ product.name }}" class="w-full h-96 object-cover">
+                <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" alt="{{ product.name }}" class="w-full h-96 object-cover">
             </div>
             {% endif %}
             <div class="p-6 md:w-1/2">

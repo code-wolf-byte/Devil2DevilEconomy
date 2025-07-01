@@ -26,7 +26,7 @@
                     <!-- Product Image -->
                     <div class="mb-4">
                         {% if product.image_url %}
-                            <img src="{{ product.image_url }}" alt="{{ product.name }}" class="w-full h-48 object-cover rounded-lg">
+                            <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" alt="{{ product.name }}" class="w-full h-48 object-cover rounded-lg">
                         {% else %}
                             <div class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-box text-4xl text-gray-400"></i>

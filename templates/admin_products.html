@@ -37,9 +37,9 @@
                         {% for product in products %}
                             <tr class="border-b border-gray-800 hover:bg-gray-800/50">
                                 <td class="px-4 py-4">
-                                    {% if product.image_url %}
-                                        <img src="{{ product.image_url }}" alt="{{ product.name }}" class="w-12 h-12 rounded-lg object-cover">
-                                    {% else %}
+                                                                    {% if product.image_url %}
+                                    <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" alt="{{ product.name }}" class="w-12 h-12 rounded-lg object-cover">
+                                {% else %}
                                         <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
                                             <i class="fas fa-box text-gray-400"></i>
                                         </div>

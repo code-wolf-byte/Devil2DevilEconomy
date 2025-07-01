@@ -1,8 +1,9 @@
-from shared import app, bot, db, User, EconomySettings, Achievement, UserAchievement, login_manager
+from shared import app, bot, db, User, EconomySettings, Achievement, UserAchievement, login_manager, Product
 from discord_files.cogs.economy import EconomyCog
 from routes.auth import auth, handle_callback
 from routes.main import main
 from utils import fix_balance_consistency
+from fix_image_paths import fix_image_paths
 import dotenv
 import os
 import time
@@ -171,6 +172,15 @@ if __name__ == "__main__":
         print("✅ Balance consistency check completed!")
     except Exception as e:
         print(f"⚠️ Warning: Balance consistency check failed: {e}")
+        print("   Continuing with application startup...")
+    
+    # Fix image paths before starting the application
+    print("🔧 Running image path fix...")
+    try:
+        fix_image_paths()
+        print("✅ Image path fix completed!")
+    except Exception as e:
+        print(f"⚠️ Warning: Image path fix failed: {e}")
         print("   Continuing with application startup...")
     
     # Start the bot in a separate thread
