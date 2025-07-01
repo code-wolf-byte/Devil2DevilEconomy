@@ -27,8 +27,8 @@ RUN pip install --no-cache-dir \
     Pillow==10.0.1 \
     cryptography==41.0.7
 
-# Create a non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create a non-root user with matching UID/GID to host ubuntu user (1000:1000)
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 appuser
 
 # Create necessary directories with proper ownership
 RUN mkdir -p instance static/uploads
