@@ -1,74 +1,213 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Product - Discord Store{% endblock %}
+{% block title %}Edit Product - Devil2Devil Store{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8">Edit Product</h1>
+<div class="max-w-2xl mx-auto animate-fade-in">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold flex items-center justify-center animate-slide-up">
+            <i class="fas fa-edit text-yellow-400 mr-3"></i>
+            Edit Product
+        </h1>
+        <p class="text-muted mt-2 animate-fade-in-delay">
+            Update product details for your Devil2Devil store
+        </p>
+    </div>
 
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <form method="POST" action="{{ url_for('edit_product', product_id=product.id) }}">
-            <div class="mb-4">
-                <label for="name" class="block text-sm font-medium text-gray-700">Product Name</label>
+    <!-- Product Form -->
+    <div class="card p-8 animate-slide-up-delay">
+        <form method="POST" action="{{ url_for('main.edit_product', product_id=product.id) }}" enctype="multipart/form-data" class="space-y-6">
+            <!-- Product Name -->
+            <div class="animate-fade-in-1">
+                <label for="name" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-tag mr-2"></i>Product Name *
+                </label>
                 <input type="text" 
-                       name="name" 
                        id="name" 
+                       name="name" 
                        value="{{ product.name }}"
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                       required 
+                       maxlength="100"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
+                       placeholder="Enter product name">
+                <p class="text-sm text-muted mt-1">Enter a clear, descriptive name for your product</p>
             </div>
 
-            <div class="mb-4">
-                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-                <textarea name="description" 
-                          id="description" 
-                          rows="4" 
-                          required
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ product.description }}</textarea>
+            <!-- Description -->
+            <div class="animate-fade-in-2">
+                <label for="description" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-align-left mr-2"></i>Description
+                </label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="4"
+                          class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 resize-vertical transition-all duration-300"
+                          placeholder="Describe your product...">{{ product.description }}</textarea>
+                <p class="text-sm text-muted mt-1">Provide details about what customers will receive</p>
             </div>
 
-            <div class="mb-4">
-                <label for="price" class="block text-sm font-medium text-gray-700">Price (points)</label>
+            <!-- Price -->
+            <div class="animate-fade-in-3">
+                <label for="price" class="block text-sm font-semibold mb-2 asu-gold">
+                    <span class="coin-icon coin-gold coin-lg mr-2"></span>Price (Pitchforks) *
+                </label>
                 <input type="number" 
-                       name="price" 
                        id="price" 
+                       name="price" 
                        value="{{ product.price }}"
-                       min="0" 
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                       required 
+                       min="1" 
+                       step="1"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300">
+                <p class="text-sm text-muted mt-1">How many pitchforks will this product cost?</p>
             </div>
 
-            <div class="mb-4">
-                <label for="stock" class="block text-sm font-medium text-gray-700">Stock</label>
+            <!-- Stock -->
+            <div class="animate-fade-in-1">
+                <label for="stock" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-boxes mr-2"></i>Stock Quantity
+                </label>
                 <input type="number" 
-                       name="stock" 
                        id="stock" 
-                       value="{{ product.stock }}"
+                       name="stock" 
+                       value="{{ product.stock or 0 }}" 
                        min="0" 
-                       required
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                       step="1"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
+                       placeholder="0">
+                <p class="text-sm text-muted mt-1">How many of this product are available? (0 for unlimited)</p>
             </div>
 
-            <div class="mb-4">
-                <label for="image_url" class="block text-sm font-medium text-gray-700">Image URL</label>
-                <input type="url" 
-                       name="image_url" 
-                       id="image_url"
-                       value="{{ product.image_url }}"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <!-- Product Type Selection -->
+            <div class="animate-fade-in-2">
+                <label for="product_type" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-cube mr-2"></i>Product Type
+                </label>
+                <select id="product_type" 
+                        name="product_type" 
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white transition-all duration-300"
+                        onchange="toggleFileUploads()">
+                    <option value="physical" {{ 'selected' if product.product_type == 'physical' else '' }}>Physical Product</option>
+                    <option value="role" {{ 'selected' if product.product_type == 'role' else '' }}>Discord Role</option>
+                    <option value="minecraft_skin" {{ 'selected' if product.product_type == 'minecraft_skin' else '' }}>Minecraft Skin</option>
+                    <option value="game_code" {{ 'selected' if product.product_type == 'game_code' else '' }}>Game Code</option>
+                    <option value="custom" {{ 'selected' if product.product_type == 'custom' else '' }}>Custom Digital</option>
+                </select>
+                <p class="text-sm text-muted mt-1">Select the type of product you're editing</p>
             </div>
 
-            <div class="flex justify-end space-x-4">
-                <a href="{{ url_for('main.admin') }}" 
-                   class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-                    Cancel
+            <!-- Current Image Display -->
+            {% if product.image_url %}
+            <div class="animate-fade-in-1">
+                <label class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-image mr-2"></i>Current Image
+                </label>
+                <div class="p-4 bg-gray-800 border border-gray-600 rounded-lg">
+                    <div class="flex items-center space-x-4">
+                        <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
+                             alt="{{ product.name }}" 
+                             class="w-24 h-24 object-cover rounded-lg border border-gray-600">
+                        <div>
+                            <p class="font-semibold">Current Product Image</p>
+                            <p class="text-sm text-muted">{{ product.image_url }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Regular Image Upload -->
+            <div id="regular-image-upload" class="animate-fade-in-1">
+                <label for="image" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-image mr-2"></i>{% if product.image_url %}Update Product Image{% else %}Add Product Image{% endif %}
+                </label>
+                
+                <!-- File Upload Area -->
+                <div class="file-upload-wrapper">
+                    <input type="file" 
+                           id="image" 
+                           name="image" 
+                           accept="image/*"
+                           class="hidden"
+                           onchange="handleImagePreview(this)">
+                    <label for="image" 
+                           class="file-upload-label block w-full p-6 border-2 border-dashed border-gray-600 rounded-lg text-center cursor-pointer transition-all duration-300 hover:border-yellow-400 hover:bg-gray-800">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-500 mb-3"></i>
+                        <div class="text-lg font-semibold mb-2">Click to upload new image</div>
+                        <div class="text-sm text-muted">
+                            <span class="selected-file-name">PNG, JPG, JPEG, GIF, WebP up to 16MB</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Image Preview -->
+                <div id="image-preview" class="mt-4 hidden">
+                    <div class="p-4 bg-gray-800 border border-gray-600 rounded-lg">
+                        <div class="flex items-center space-x-4">
+                            <img id="preview-img" src="" alt="Preview" class="w-24 h-24 object-cover rounded-lg border border-gray-600">
+                            <div>
+                                <p class="font-semibold">New Image Preview</p>
+                                <p class="text-sm text-muted">This will replace the current image</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-muted mt-2">{% if product.image_url %}Upload a new image to replace the current one{% else %}Add an attractive image to showcase your product{% endif %}</p>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex justify-end space-x-4 pt-6 animate-slide-up-delay-2">
+                <a href="{{ url_for('main.admin_products') }}" class="btn-secondary">
+                    <i class="fas fa-arrow-left mr-2"></i>Cancel
                 </a>
-                <button type="submit" 
-                        class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-                    Update Product
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>Update Product
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function handleImagePreview(input) {
+    const preview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const fileNameSpan = document.querySelector('.selected-file-name');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Update file name display
+        fileNameSpan.textContent = file.name;
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.classList.remove('hidden');
+        }
+        reader.readAsDataURL(file);
+    } else {
+        // Reset if no file selected
+        preview.classList.add('hidden');
+        fileNameSpan.textContent = 'PNG, JPG, JPEG, GIF, WebP up to 16MB';
+    }
+}
+
+function toggleFileUploads() {
+    const productType = document.getElementById('product_type').value;
+    const regularUpload = document.getElementById('regular-image-upload');
+    
+    // For now, just show regular upload for all types
+    // This can be extended later for specialized uploads like minecraft skins
+    regularUpload.style.display = 'block';
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFileUploads();
+});
+</script>
 {% endblock %} 
