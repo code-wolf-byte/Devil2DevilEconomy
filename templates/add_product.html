@@ -1,110 +1,217 @@
 {% extends "base.html" %}
 
-{% block title %}Add Product - D2D Economy{% endblock %}
+{% block title %}Add New Product - Devil2Devil Store{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-2xl mx-auto animate-fade-in">
     <!-- Header -->
-    <div class="card p-6 mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-white">Add New Product</h1>
-                <p class="text-gray-300">Create a new product for the shop</p>
-            </div>
-            <a href="{{ url_for('main.admin_products') }}" class="btn-secondary">
-                <i class="fas fa-arrow-left mr-2"></i>Back to Products
-            </a>
-        </div>
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold flex items-center justify-center animate-slide-up">
+            <i class="fas fa-plus text-yellow-400 mr-3"></i>
+            Add New Product
+        </h1>
+        <p class="text-muted mt-2 animate-fade-in-delay">
+            Create a new product for your Devil2Devil store
+        </p>
     </div>
 
-    <!-- Form -->
-    <div class="card p-8">
+    <!-- Product Form -->
+    <div class="card p-8 animate-slide-up-delay">
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
-            <!-- Basic Info -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="name" class="block text-white font-bold mb-2">Product Name *</label>
-                    <input type="text" id="name" name="name" required
-                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500">
-                </div>
-                
-                <div>
-                    <label for="price" class="block text-white font-bold mb-2">Price (points) *</label>
-                    <input type="number" id="price" name="price" min="1" required
-                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500">
-                </div>
+            <!-- Product Name -->
+            <div class="animate-fade-in-1">
+                <label for="name" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-tag mr-2"></i>Product Name *
+                </label>
+                <input type="text" 
+                       id="name" 
+                       name="name" 
+                       required 
+                       maxlength="100"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
+                       placeholder="Enter product name">
+                <p class="text-sm text-muted mt-1">Enter a clear, descriptive name for your product</p>
             </div>
 
             <!-- Description -->
-            <div>
-                <label for="description" class="block text-white font-bold mb-2">Description</label>
-                <textarea id="description" name="description" rows="4"
-                          class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+            <div class="animate-fade-in-2">
+                <label for="description" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-align-left mr-2"></i>Description
+                </label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="4"
+                          class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 resize-vertical transition-all duration-300"
                           placeholder="Describe your product..."></textarea>
+                <p class="text-sm text-muted mt-1">Provide details about what customers will receive</p>
             </div>
 
-            <!-- Product Type and Stock -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label for="product_type" class="block text-white font-bold mb-2">Product Type</label>
-                    <select id="product_type" name="product_type"
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500">
-                        <option value="physical">Physical Product</option>
-                        <option value="role">Discord Role</option>
-                        <option value="minecraft_skin">Minecraft Skin</option>
-                        <option value="game_code">Game Code</option>
-                        <option value="custom">Custom Digital</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="stock" class="block text-white font-bold mb-2">Stock</label>
-                    <select id="stock" name="stock"
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500">
-                        <option value="unlimited">Unlimited</option>
-                        <option value="1">1</option>
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="category" class="block text-white font-bold mb-2">Category</label>
-                    <select id="category" name="category"
-                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500">
-                        <option value="general">General</option>
-                        <option value="gaming">Gaming</option>
-                        <option value="digital">Digital</option>
-                        <option value="physical">Physical</option>
-                        <option value="exclusive">Exclusive</option>
-                    </select>
-                </div>
+            <!-- Price -->
+            <div class="animate-fade-in-3">
+                <label for="price" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-coins mr-2"></i>Price (Pitchforks) *
+                </label>
+                <input type="number" 
+                       id="price" 
+                       name="price" 
+                       required 
+                       min="1" 
+                       step="1"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
+                       placeholder="0">
+                <p class="text-sm text-muted mt-1">How many pitchforks will this product cost?</p>
             </div>
 
-            <!-- Image Upload -->
-            <div>
-                <label for="image" class="block text-white font-bold mb-2">Product Image</label>
-                <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
-                    <input type="file" id="image" name="image" accept="image/*"
-                           class="hidden" onchange="previewImage(this)">
-                    <label for="image" class="cursor-pointer">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
-                        <p class="text-gray-300">Click to upload an image</p>
-                        <p class="text-gray-500 text-sm">PNG, JPG, GIF up to 10MB</p>
+            <!-- Stock -->
+            <div class="animate-fade-in-1">
+                <label for="stock" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-boxes mr-2"></i>Stock Quantity
+                </label>
+                <input type="number" 
+                       id="stock" 
+                       name="stock" 
+                       value="0" 
+                       min="0" 
+                       step="1"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
+                       placeholder="0">
+                <p class="text-sm text-muted mt-1">How many of this product are available? (0 for unlimited)</p>
+            </div>
+
+            <!-- Product Type Selection -->
+            <div class="animate-fade-in-2">
+                <label for="product_type" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-cube mr-2"></i>Product Type
+                </label>
+                <select id="product_type" 
+                        name="product_type" 
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white transition-all duration-300"
+                        onchange="toggleFileUploads()">
+                    <option value="physical">Physical Product</option>
+                    <option value="role">Discord Role</option>
+                    <option value="minecraft_skin">Minecraft Skin</option>
+                    <option value="game_code">Game Code</option>
+                    <option value="custom">Custom Digital</option>
+                </select>
+                <p class="text-sm text-muted mt-1">Select the type of product you're creating</p>
+            </div>
+
+            <!-- Category -->
+            <div class="animate-fade-in-3">
+                <label for="category" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-folder mr-2"></i>Category
+                </label>
+                <select id="category" 
+                        name="category"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white transition-all duration-300">
+                    <option value="general">General</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="digital">Digital</option>
+                    <option value="physical">Physical</option>
+                    <option value="exclusive">Exclusive</option>
+                </select>
+                <p class="text-sm text-muted mt-1">Choose the most appropriate category for your product</p>
+            </div>
+
+            <!-- Regular Image Upload (for non-minecraft products) -->
+            <div id="regular-image-upload" class="animate-fade-in-1">
+                <label for="image" class="block text-sm font-semibold mb-2 asu-gold">
+                    <i class="fas fa-image mr-2"></i>Product Image
+                </label>
+                
+                <!-- File Upload Area -->
+                <div class="file-upload-wrapper">
+                    <input type="file" 
+                           id="image" 
+                           name="image" 
+                           accept="image/*"
+                           class="hidden"
+                           onchange="handleImagePreview(this)">
+                    <label for="image" 
+                           class="file-upload-label block w-full p-8 border-2 border-dashed border-gray-600 rounded-lg text-center cursor-pointer transition-all duration-300 hover:border-yellow-400 hover:bg-gray-800">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-4"></i>
+                        <div class="text-lg font-semibold mb-2">Click to upload image</div>
+                        <div class="text-sm text-muted">
+                            <span class="selected-file-name">PNG, JPG, JPEG, GIF, WebP up to 16MB</span>
+                        </div>
                     </label>
                 </div>
+                
+                <!-- Image Preview -->
                 <div id="image-preview" class="mt-4 hidden">
-                    <img id="preview" src="" alt="Preview" class="max-w-xs rounded-lg">
+                    <div class="p-4 bg-gray-800 border border-gray-600 rounded-lg">
+                        <div class="flex items-center space-x-4">
+                            <img id="preview-img" src="" alt="Preview" class="w-24 h-24 object-cover rounded-lg border border-gray-600">
+                            <div>
+                                <p class="font-semibold">Preview</p>
+                                <p class="text-sm text-muted">This is how your image will appear</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-muted mt-2">Add an attractive image to showcase your product</p>
+            </div>
+
+            <!-- Minecraft Skin Dual File Upload -->
+            <div id="minecraft-skin-uploads" style="display: none;" class="space-y-6">
+                <!-- Preview Image Upload -->
+                <div class="animate-fade-in-2">
+                    <label for="preview_image" class="block text-sm font-semibold mb-2 asu-gold">
+                        <i class="fas fa-eye mr-2"></i>Preview Image *
+                    </label>
+                    
+                    <!-- Preview Upload Area -->
+                    <div class="file-upload-wrapper">
+                        <input type="file" 
+                               id="preview_image" 
+                               name="preview_image" 
+                               accept="image/*"
+                               class="hidden"
+                               onchange="handlePreviewImageUpload(this)">
+                        <label for="preview_image" 
+                               class="file-upload-label block w-full p-6 border-2 border-dashed border-blue-600 rounded-lg text-center cursor-pointer transition-all duration-300 hover:border-blue-400 hover:bg-blue-900 hover:bg-opacity-20">
+                            <i class="fas fa-image text-3xl text-blue-500 mb-3"></i>
+                            <div class="text-lg font-semibold mb-2">Upload Preview Image</div>
+                            <div class="text-sm text-muted">
+                                <span class="preview-file-name">PNG, JPG, JPEG - Shows customers what the skin looks like</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-sm text-muted mt-2">This image will be displayed to customers as a preview</p>
+                </div>
+
+                <!-- Download File Upload -->
+                <div class="animate-fade-in-3">
+                    <label for="download_file" class="block text-sm font-semibold mb-2 asu-gold">
+                        <i class="fas fa-download mr-2"></i>Downloadable Skin File *
+                    </label>
+                    
+                    <!-- Download File Upload Area -->
+                    <div class="file-upload-wrapper">
+                        <input type="file" 
+                               id="download_file" 
+                               name="download_file" 
+                               accept=".png"
+                               class="hidden"
+                               onchange="handleDownloadFileUpload(this)">
+                        <label for="download_file" 
+                               class="file-upload-label block w-full p-6 border-2 border-dashed border-green-600 rounded-lg text-center cursor-pointer transition-all duration-300 hover:border-green-400 hover:bg-green-900 hover:bg-opacity-20">
+                            <i class="fas fa-file-download text-3xl text-green-500 mb-3"></i>
+                            <div class="text-lg font-semibold mb-2">Upload Skin File</div>
+                            <div class="text-sm text-muted">
+                                <span class="download-file-name">PNG files only - The actual Minecraft skin file</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-sm text-muted mt-2">This file will be available for download after purchase</p>
                 </div>
             </div>
 
             <!-- Submit Buttons -->
-            <div class="flex justify-end space-x-4 pt-6">
+            <div class="flex justify-end space-x-4 pt-6 animate-slide-up-delay-2">
                 <a href="{{ url_for('main.admin_products') }}" class="btn-secondary">
-                    Cancel
+                    <i class="fas fa-arrow-left mr-2"></i>Cancel
                 </a>
                 <button type="submit" class="btn-primary">
                     <i class="fas fa-plus mr-2"></i>Add Product
@@ -115,22 +222,107 @@
 </div>
 
 <script>
-function previewImage(input) {
-    const preview = document.getElementById('preview');
-    const previewDiv = document.getElementById('image-preview');
+function toggleFileUploads() {
+    const productType = document.getElementById('product_type').value;
+    const regularUpload = document.getElementById('regular-image-upload');
+    const minecraftUploads = document.getElementById('minecraft-skin-uploads');
+    
+    if (productType === 'minecraft_skin') {
+        regularUpload.style.display = 'none';
+        minecraftUploads.style.display = 'block';
+        
+        // Make minecraft skin uploads required
+        document.getElementById('preview_image').required = true;
+        document.getElementById('download_file').required = true;
+        document.getElementById('image').required = false;
+    } else {
+        regularUpload.style.display = 'block';
+        minecraftUploads.style.display = 'none';
+        
+        // Make regular upload optional, minecraft uploads not required
+        document.getElementById('image').required = false;
+        document.getElementById('preview_image').required = false;
+        document.getElementById('download_file').required = false;
+    }
+}
+
+function handleImagePreview(input) {
+    const preview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const fileName = document.querySelector('.selected-file-name');
     
     if (input.files && input.files[0]) {
+        const file = input.files[0];
         const reader = new FileReader();
         
         reader.onload = function(e) {
-            preview.src = e.target.result;
-            previewDiv.classList.remove('hidden');
+            previewImg.src = e.target.result;
+            preview.classList.remove('hidden');
+            fileName.textContent = file.name;
         }
         
-        reader.readAsDataURL(input.files[0]);
+        reader.readAsDataURL(file);
     } else {
-        previewDiv.classList.add('hidden');
+        preview.classList.add('hidden');
+        fileName.textContent = 'PNG, JPG, JPEG, GIF, WebP up to 16MB';
     }
 }
+
+function handlePreviewImageUpload(input) {
+    const fileName = document.querySelector('.preview-file-name');
+    
+    if (input.files && input.files[0]) {
+        fileName.textContent = input.files[0].name;
+    } else {
+        fileName.textContent = 'PNG, JPG, JPEG - Shows customers what the skin looks like';
+    }
+}
+
+function handleDownloadFileUpload(input) {
+    const fileName = document.querySelector('.download-file-name');
+    
+    if (input.files && input.files[0]) {
+        fileName.textContent = input.files[0].name;
+    } else {
+        fileName.textContent = 'PNG files only - The actual Minecraft skin file';
+    }
+}
+
+// Initialize the form
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFileUploads();
+});
 </script>
+
+<style>
+.file-upload-wrapper:hover .file-upload-label {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.file-upload-label {
+    transition: all 0.3s ease;
+}
+
+/* Enhanced form styling */
+input:focus, textarea:focus, select:focus {
+    box-shadow: 0 0 0 3px rgba(255, 198, 39, 0.1);
+}
+
+/* Smooth transitions for all form elements */
+input, textarea, select {
+    transition: all 0.3s ease;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 640px) {
+    .file-upload-label {
+        padding: 1.5rem;
+    }
+    
+    .file-upload-label i {
+        font-size: 2rem;
+    }
+}
+</style>
 {% endblock %} 
