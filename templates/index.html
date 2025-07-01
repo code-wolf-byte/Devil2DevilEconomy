@@ -52,13 +52,13 @@
                             <div class="relative h-40 sm:h-48 bg-gray-800 overflow-hidden">
                                 {% set file_ext = product.display_image.split('.')[-1].lower() %}
                                 {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
-                                    <video src="{{ product.display_image }}" 
+                                    <video src="{{ url_for('static', filename='uploads/' + product.display_image) }}" 
                                            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                            autoplay muted loop playsinline>
                                         Your browser does not support the video tag.
                                     </video>
                                 {% else %}
-                                    <img src="{{ product.display_image }}" 
+                                    <img src="{{ url_for('static', filename='uploads/' + product.display_image) }}" 
                                          alt="{{ product.name }}" 
                                          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                                 {% endif %}

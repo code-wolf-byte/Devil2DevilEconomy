@@ -10,7 +10,7 @@ NOTE: This function is now automatically run on application startup.
 
 import os
 import sys
-from models import User, db
+from shared import User, db
 from utils import fix_balance_consistency
 
 def main():
