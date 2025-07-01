@@ -34,6 +34,100 @@ VERIFIED_ROLE_ID = os.getenv('VERIFIED_ROLE_ID')
 ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.getenv('ONBOARDING_ROLE_IDS') else []
 BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:30')
 
+# Role management constants
+RESTRICTED_ROLE_ID = 1356257786563920023  # Role to remove/prevent
+TRIGGER_ROLE_ID = 1207441184218161182     # Role that triggers removal
+
+class RoleRemovalConfirmationView(discord.ui.View):
+    def __init__(self, cog, admin_user_id, affected_users):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.cog = cog
+        self.admin_user_id = admin_user_id
+        self.affected_users = affected_users
+
+    @discord.ui.button(label='✅ Confirm Removal', style=discord.ButtonStyle.danger)
+    async def confirm_removal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Check if the user clicking is the same admin who initiated the command
+        if interaction.user.id != self.admin_user_id:
+            await interaction.response.send_message("❌ Only the admin who initiated this command can confirm.", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            print(f"Confirmed bulk role removal initiated by {interaction.user.name}")
+            
+            # Remove roles from affected users
+            removed_count = 0
+            for user_data in self.affected_users:
+                member = user_data['member']
+                try:
+                    restricted_role = member.guild.get_role(RESTRICTED_ROLE_ID)
+                    if restricted_role and restricted_role in member.roles:
+                        await member.remove_roles(restricted_role, reason="Admin confirmed bulk removal")
+                        await self.cog.log_role_removal(member, "Admin confirmed bulk removal")
+                        removed_count += 1
+                except Exception as e:
+                    cog_logger.error(f"Failed to remove role from {member.name}: {e}")
+            
+            # Create success embed
+            embed = discord.Embed(
+                title="🚫 Role Removal Complete",
+                description=f"Successfully removed restricted role from **{removed_count}** users.",
+                color=0xff4444
+            )
+            embed.add_field(
+                name="Details",
+                value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                inline=False
+            )
+            embed.add_field(
+                name="Action Taken",
+                value="✅ All affected users have been processed and logged.",
+                inline=False
+            )
+            
+            # Disable all buttons
+            for item in self.children:
+                item.disabled = True
+            
+            await interaction.followup.edit_message(interaction.message.id, embed=embed, view=self)
+            print(f"Bulk role removal completed. {removed_count} roles removed.")
+            
+        except Exception as e:
+            error_embed = discord.Embed(
+                title="❌ Error",
+                description=f"An error occurred during role removal: {str(e)}",
+                color=0xff0000
+            )
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
+            cog_logger.error(f"Error in confirmed role removal: {e}")
+
+    @discord.ui.button(label='❌ Cancel', style=discord.ButtonStyle.secondary)
+    async def cancel_removal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Check if the user clicking is the same admin who initiated the command
+        if interaction.user.id != self.admin_user_id:
+            await interaction.response.send_message("❌ Only the admin who initiated this command can cancel.", ephemeral=True)
+            return
+        
+        embed = discord.Embed(
+            title="❌ Operation Cancelled",
+            description="Role removal operation has been cancelled. No roles were removed.",
+            color=0x95a5a6
+        )
+        
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+        print(f"Role removal cancelled by {interaction.user.name}")
+
+    async def on_timeout(self):
+        # Disable all buttons when view times out
+        for item in self.children:
+            item.disabled = True
+
 class EconomyCog(commands.Cog):
     def __init__(self, bot, app, db, User, EconomySettings, Achievement, UserAchievement):
         self.bot = bot
@@ -53,6 +147,7 @@ class EconomyCog(commands.Cog):
         try:
             self.daily_birthday_check.cancel()
             self.process_role_assignments.cancel()
+            self.monitor_restricted_role_task.cancel()
         except:
             pass
 
@@ -67,6 +162,8 @@ class EconomyCog(commands.Cog):
                 self.daily_birthday_check.start()
             if not self.process_role_assignments.is_running():
                 self.process_role_assignments.start()
+            if not self.monitor_restricted_role_task.is_running():
+                self.monitor_restricted_role_task.start()
             print("Background tasks started successfully!")
         except Exception as e:
             print(f"Warning: Could not start background tasks: {e}")
@@ -192,8 +289,112 @@ class EconomyCog(commands.Cog):
                                 await self.handle_onboarding_bonus(after)
                                 break
                 
+                # Monitor and prevent restricted role assignment
+                await self.monitor_restricted_role(before, after)
+                
             except Exception as e:
                 cog_logger.error(f"Error processing member update: {e}")
+    
+    async def monitor_restricted_role(self, before, after):
+        """Monitor and prevent assignment of restricted role"""
+        try:
+            restricted_role = after.guild.get_role(RESTRICTED_ROLE_ID)
+            trigger_role = after.guild.get_role(TRIGGER_ROLE_ID)
+            
+            if not restricted_role or not trigger_role:
+                return
+            
+            # Check if the restricted role was just added
+            if restricted_role in after.roles and restricted_role not in before.roles:
+                # Someone just got the restricted role, remove it immediately
+                await after.remove_roles(restricted_role, reason="Restricted role automatically removed")
+                await self.log_role_removal(after, "Restricted role prevented from being assigned")
+                cog_logger.info(f"Prevented restricted role assignment to {after.name} ({after.id})")
+            
+            # Check if someone with the trigger role has the restricted role
+            if trigger_role in after.roles and restricted_role in after.roles:
+                await after.remove_roles(restricted_role, reason="Restricted role removed due to trigger role")
+                await self.log_role_removal(after, "Has trigger role")
+                cog_logger.info(f"Removed restricted role from {after.name} ({after.id}) due to trigger role")
+                
+        except Exception as e:
+            cog_logger.error(f"Error monitoring restricted role: {e}")
+    
+    async def log_role_removal(self, member, reason):
+        """Log role removal with member details"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"[{timestamp}] ROLE REMOVED: {member.name}#{member.discriminator} (ID: {member.id}) - Reason: {reason}"
+        
+        # Print to console
+        print(log_message)
+        
+        # Log to file if needed
+        cog_logger.info(log_message)
+        
+        # Optionally, you can send to a specific channel for admin monitoring
+        # Uncomment and set ADMIN_LOG_CHANNEL_ID in .env if you want channel logging
+        # admin_log_channel_id = os.getenv('ADMIN_LOG_CHANNEL_ID')
+        # if admin_log_channel_id:
+        #     channel = self.bot.get_channel(int(admin_log_channel_id))
+        #     if channel:
+        #         await channel.send(f"🚫 **Role Removed**: {member.mention} - {reason}")
+    
+    async def scan_and_remove_restricted_roles(self):
+        """Scan all members and remove restricted role from those with trigger role"""
+        removed_count = 0
+        for guild in self.bot.guilds:
+            try:
+                restricted_role = guild.get_role(RESTRICTED_ROLE_ID)
+                trigger_role = guild.get_role(TRIGGER_ROLE_ID)
+                
+                if not restricted_role or not trigger_role:
+                    continue
+                
+                for member in guild.members:
+                    if member.bot:
+                        continue
+                    
+                    # If member has both trigger role and restricted role, remove restricted role
+                    if trigger_role in member.roles and restricted_role in member.roles:
+                        try:
+                            await member.remove_roles(restricted_role, reason="Bulk removal: has trigger role")
+                            await self.log_role_removal(member, "Bulk scan - has trigger role")
+                            removed_count += 1
+                        except Exception as e:
+                            cog_logger.error(f"Failed to remove role from {member.name}: {e}")
+                            
+            except Exception as e:
+                cog_logger.error(f"Error scanning guild {guild.name}: {e}")
+        
+        return removed_count
+    
+    async def get_affected_users(self):
+        """Get list of users who would be affected by role removal (for confirmation)"""
+        affected_users = []
+        for guild in self.bot.guilds:
+            try:
+                restricted_role = guild.get_role(RESTRICTED_ROLE_ID)
+                trigger_role = guild.get_role(TRIGGER_ROLE_ID)
+                
+                if not restricted_role or not trigger_role:
+                    continue
+                
+                for member in guild.members:
+                    if member.bot:
+                        continue
+                    
+                    # If member has both trigger role and restricted role
+                    if trigger_role in member.roles and restricted_role in member.roles:
+                        affected_users.append({
+                            'name': f"{member.name}#{member.discriminator}",
+                            'id': member.id,
+                            'member': member
+                        })
+                        
+            except Exception as e:
+                cog_logger.error(f"Error scanning guild {guild.name}: {e}")
+        
+        return affected_users
 
     async def handle_verification_bonus(self, member):
         """Handle verification role bonus"""
@@ -561,6 +762,22 @@ class EconomyCog(commands.Cog):
     @process_role_assignments.before_loop
     async def before_role_assignments(self):
         """Wait until bot is ready before processing role assignments"""
+        await self.bot.wait_until_ready()
+    
+    @tasks.loop(minutes=10)
+    async def monitor_restricted_role_task(self):
+        """Periodically check and remove restricted roles from users with trigger role"""
+        try:
+            removed_count = await self.scan_and_remove_restricted_roles()
+            if removed_count > 0:
+                print(f"Periodic role monitoring: Removed restricted role from {removed_count} users")
+                cog_logger.info(f"Periodic monitoring removed restricted role from {removed_count} users")
+        except Exception as e:
+            cog_logger.error(f"Error in periodic role monitoring: {e}")
+
+    @monitor_restricted_role_task.before_loop
+    async def before_restricted_role_monitor(self):
+        """Wait until bot is ready before starting role monitoring"""
         await self.bot.wait_until_ready()
 
     async def check_achievements(self, user, achievement_type, count=None):
@@ -1259,6 +1476,72 @@ class EconomyCog(commands.Cog):
         )
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @app_commands.command(name="remove_restricted_roles", description="Remove restricted role from users with trigger role (Admin only)")
+    async def remove_restricted_roles(self, interaction: discord.Interaction):
+        """Remove restricted role from users with trigger role (Admin only)"""
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # First, scan to see how many users would be affected
+            affected_users = await self.get_affected_users()
+            
+            if not affected_users:
+                embed = discord.Embed(
+                    title="ℹ️ No Action Needed",
+                    description="No users found with both the restricted role and trigger role.",
+                    color=0x3498db
+                )
+                embed.add_field(
+                    name="Details",
+                    value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                    inline=False
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            
+            # Show confirmation with affected users
+            user_list = "\n".join([f"• {user['name']} ({user['id']})" for user in affected_users[:10]])
+            if len(affected_users) > 10:
+                user_list += f"\n... and {len(affected_users) - 10} more users"
+            
+            embed = discord.Embed(
+                title="⚠️ Confirmation Required",
+                description=f"Found **{len(affected_users)}** users with both roles who will have the restricted role removed.",
+                color=0xff9900
+            )
+            embed.add_field(
+                name="Affected Users",
+                value=user_list,
+                inline=False
+            )
+            embed.add_field(
+                name="Details",
+                value=f"• Restricted Role ID: `{RESTRICTED_ROLE_ID}`\n• Trigger Role ID: `{TRIGGER_ROLE_ID}`",
+                inline=False
+            )
+            embed.add_field(
+                name="⚠️ Warning",
+                value="This action cannot be undone. Please confirm to proceed.",
+                inline=False
+            )
+            
+            # Create confirmation view
+            view = RoleRemovalConfirmationView(self, interaction.user.id, affected_users)
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            
+        except Exception as e:
+            error_embed = discord.Embed(
+                title="❌ Error",
+                description=f"An error occurred while checking users: {str(e)}",
+                color=0xff0000
+            )
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
+            cog_logger.error(f"Error in remove_restricted_roles command: {e}")
 
 def setup(bot, app, db, User, EconomySettings, Achievement, UserAchievement):
     bot.add_cog(EconomyCog(bot, app, db, User, EconomySettings, Achievement, UserAchievement)) 
