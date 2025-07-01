@@ -27,15 +27,21 @@ RUN pip install --no-cache-dir \
     Pillow==10.0.1 \
     cryptography==41.0.7
 
+# Create a non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 # Create necessary directories
 RUN mkdir -p instance static/uploads
 
 # Copy application code
 COPY . .
 
-# Ensure upload directory exists and has proper permissions
+# Set proper ownership and permissions for non-root user
 RUN chmod -R 755 static/uploads && \
-    chown -R root:root static/uploads
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 5000
