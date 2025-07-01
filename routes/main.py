@@ -150,7 +150,8 @@ def add_product():
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                image_url = unique_filename
+                # Ensure we only store the filename, not the full path
+                image_url = os.path.basename(unique_filename)
         
         product = Product(
             name=name,
@@ -201,7 +202,8 @@ def edit_product(product_id):
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                product.image_url = unique_filename
+                # Ensure we only store the filename, not the full path
+                product.image_url = os.path.basename(unique_filename)
         
         db.session.commit()
         
@@ -305,7 +307,8 @@ def new_product():
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                image_url = unique_filename
+                # Ensure we only store the filename, not the full path
+                image_url = os.path.basename(unique_filename)
         
         product = Product(
             name=name,
