@@ -12,12 +12,12 @@ main = Blueprint('main', __name__)
 @main.route('/')
 def index():
     """Home page"""
-    # Get all products for debugging
-    all_products = Product.query.all()
-    active_products = Product.query.filter_by(is_active=True).all()
-    
-    # For debugging, let's show all products for now
-    products = all_products
+    # Get only active products that are not out of stock
+    # Show products that are either unlimited (stock=None) or have stock available (stock>0)
+    products = Product.query.filter(
+        Product.is_active == True,
+        (Product.stock.is_(None)) | (Product.stock > 0)
+    ).all()
     
     return render_template('index.html', products=products)
 
