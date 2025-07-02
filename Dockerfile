@@ -27,23 +27,18 @@ RUN pip install --no-cache-dir \
     Pillow==10.0.1 \
     cryptography==41.0.7
 
-# Create a non-root user with matching UID/GID to host ubuntu user (1000:1000)
-RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 appuser
-
-# Create necessary directories with proper ownership
+# Create necessary directories
 RUN mkdir -p instance static/uploads
 
 # Copy application code
 COPY . .
 
-# Set proper ownership and permissions for non-root user
-# Make sure uploads directory is writable by appuser
-RUN chown -R appuser:appuser /app && \
-    chmod -R 755 /app && \
-    chmod -R 775 static/uploads
+# Set proper permissions for directories
+RUN chmod -R 755 /app && \
+    chmod -R 777 static/uploads && \
+    chmod -R 777 instance
 
-# Switch to non-root user
-USER appuser
+# Run as root (traditional Docker approach) - avoids all permission issues
 
 # Expose port
 EXPOSE 5000

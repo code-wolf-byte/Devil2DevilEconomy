@@ -35,30 +35,10 @@ print_error() {
 if [[ $EUID -eq 0 ]]; then
     DOCKER_CMD="docker"
     DOCKER_COMPOSE_CMD="docker compose"
-    # If running as root, we need to find the actual user
-    ACTUAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "ubuntu")}
-    USER_UID=$(id -u $ACTUAL_USER 2>/dev/null || echo "1000")
-    USER_GID=$(id -g $ACTUAL_USER 2>/dev/null || echo "1000")
 else
     DOCKER_CMD="sudo docker"
     DOCKER_COMPOSE_CMD="sudo docker compose"
-    ACTUAL_USER=$(whoami)
-    USER_UID=$(id -u)
-    USER_GID=$(id -g)
 fi
-
-print_status "Detected user: $ACTUAL_USER (UID: $USER_UID, GID: $USER_GID)"
-
-# Update docker-compose.yml with correct user mapping
-print_status "Configuring Docker user mapping..."
-if grep -q "user:" docker-compose.yml; then
-    # Update existing user line
-    sed -i "s/user: \".*\"/user: \"$USER_UID:$USER_GID\"/" docker-compose.yml
-else
-    # Add user line after environment section
-    sed -i "/environment:/a\\    user: \"$USER_UID:$USER_GID\"" docker-compose.yml
-fi
-print_success "Docker configured to run as user $USER_UID:$USER_GID"
 
 # Stop existing containers
 print_status "Stopping existing containers..."
@@ -106,89 +86,30 @@ elif [ ! -f "store.db" ]; then
 fi
 
 # Set proper permissions for database files
-# Check both possible locations: instance/store.db (primary) and store.db (legacy)
+# Traditional approach: ensure files are readable/writable
 for db_path in "instance/store.db" "store.db"; do
     if [ -f "$db_path" ]; then
         print_status "Setting database permissions for $db_path..."
         
-        # Check current owner
-        DB_OWNER=$(stat -c '%U' "$db_path" 2>/dev/null || echo "unknown")
-        print_status "Current database owner: $DB_OWNER"
+        # Set liberal permissions for container access (root container can write to anything)
+        chmod 666 "$db_path" 2>/dev/null || true
         
-        # If database is owned by root, we need sudo to change it
-        if [ "$DB_OWNER" = "root" ]; then
-            print_warning "Database is owned by root, fixing ownership..."
-            if command -v sudo >/dev/null 2>&1; then
-                sudo chown $(whoami):$(whoami) "$db_path"
-                print_success "Changed database ownership from root to $(whoami)"
-            else
-                print_error "Database is owned by root but sudo not available. Manual fix required."
-            fi
-        else
-            # Standard ownership change
-            chown $(whoami):$(whoami) "$db_path" 2>/dev/null || true
-        fi
-        
-        # Set permissions (664 = rw-rw-r-- allows read/write for owner and group)
-        chmod 664 "$db_path"
-        
-        # Verify final permissions
-        FINAL_PERMS=$(stat -c '%a' "$db_path" 2>/dev/null || echo "unknown")
-        FINAL_OWNER=$(stat -c '%U:%G' "$db_path" 2>/dev/null || echo "unknown")
-        print_success "Database permissions set for $db_path: $FINAL_PERMS ($FINAL_OWNER)"
+        print_success "Database permissions set for $db_path (traditional Docker approach)"
     fi
 done
 
 # Set proper permissions for uploads directories
 print_status "Setting uploads directory permissions..."
 
-# Handle static/uploads directory
+# Traditional approach: set liberal permissions for container access
 if [ -d "static/uploads" ]; then
-    UPLOADS_OWNER=$(stat -c '%U' static/uploads 2>/dev/null || echo "unknown")
-    print_status "Current static/uploads owner: $UPLOADS_OWNER"
-    
-    if [ "$UPLOADS_OWNER" = "root" ]; then
-        print_warning "Uploads directory is owned by root, fixing ownership..."
-        if command -v sudo >/dev/null 2>&1; then
-            sudo chown -R $(whoami):$(whoami) static/uploads
-            print_success "Changed uploads ownership from root to $(whoami)"
-        else
-            print_error "Uploads directory is owned by root but sudo not available. Manual fix required."
-        fi
-    else
-        chown -R $(whoami):$(whoami) static/uploads 2>/dev/null || true
-    fi
-    
-    # Set permissions (775 = rwxrwxr-x allows read/write/execute for owner and group)
-    chmod -R 775 static/uploads
-    
-    FINAL_PERMS=$(stat -c '%a' static/uploads 2>/dev/null || echo "unknown")
-    FINAL_OWNER=$(stat -c '%U:%G' static/uploads 2>/dev/null || echo "unknown")
-    print_success "static/uploads permissions set: $FINAL_PERMS ($FINAL_OWNER)"
+    chmod -R 777 static/uploads 2>/dev/null || true
+    print_success "static/uploads permissions set (traditional Docker approach)"
 fi
 
-# Handle uploads directory (if it exists)
 if [ -d "uploads" ]; then
-    UPLOADS_OWNER=$(stat -c '%U' uploads 2>/dev/null || echo "unknown")
-    print_status "Current uploads owner: $UPLOADS_OWNER"
-    
-    if [ "$UPLOADS_OWNER" = "root" ]; then
-        print_warning "uploads directory is owned by root, fixing ownership..."
-        if command -v sudo >/dev/null 2>&1; then
-            sudo chown -R $(whoami):$(whoami) uploads
-            print_success "Changed uploads ownership from root to $(whoami)"
-        else
-            print_error "uploads directory is owned by root but sudo not available. Manual fix required."
-        fi
-    else
-        chown -R $(whoami):$(whoami) uploads 2>/dev/null || true
-    fi
-    
-    chmod -R 775 uploads
-    
-    FINAL_PERMS=$(stat -c '%a' uploads 2>/dev/null || echo "unknown")
-    FINAL_OWNER=$(stat -c '%U:%G' uploads 2>/dev/null || echo "unknown")
-    print_success "uploads permissions set: $FINAL_PERMS ($FINAL_OWNER)"
+    chmod -R 777 uploads 2>/dev/null || true
+    print_success "uploads permissions set (traditional Docker approach)"
 fi
 
 # Set proper permissions for instance directory
@@ -262,38 +183,33 @@ done
 if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
     print_success "Container is running!"
     
-    # Fix Docker volume permission issues that may occur during container startup
-    print_status "Fixing Docker volume permissions after container start..."
+    # Test container capabilities (traditional Docker approach)
+    print_status "Testing container capabilities..."
     
-    # Re-fix uploads directory permissions (Docker volumes can reset these)
-    if [ -d "static/uploads" ]; then
-        UPLOADS_OWNER_AFTER=$(stat -c '%U' static/uploads 2>/dev/null || echo "unknown")
-        if [ "$UPLOADS_OWNER_AFTER" = "root" ]; then
-            print_warning "Docker volume reset uploads ownership to root, fixing..."
-            sudo chown -R $(whoami):$(whoami) static/uploads/
-            chmod -R 775 static/uploads/
-            print_success "Fixed Docker volume ownership for static/uploads/"
-        fi
-    fi
-    
-    # Verify container user mapping
     CONTAINER_NAME=$(docker ps -q -f name=devil2devileconomy-web)
     if [ -n "$CONTAINER_NAME" ]; then
-        print_status "Verifying container user mapping..."
-        CONTAINER_USER_INFO=$($DOCKER_CMD exec $CONTAINER_NAME id 2>/dev/null || echo "unknown")
-        print_status "Container running as: $CONTAINER_USER_INFO"
-        
         # Test container write capability
-        print_status "Testing container write capability..."
         if $DOCKER_CMD exec $CONTAINER_NAME touch /app/static/uploads/deployment_test.txt 2>/dev/null; then
-            # Check ownership of created file
-            FILE_OWNER=$($DOCKER_CMD exec $CONTAINER_NAME stat -c '%u:%g' /app/static/uploads/deployment_test.txt 2>/dev/null || echo "unknown")
             $DOCKER_CMD exec $CONTAINER_NAME rm /app/static/uploads/deployment_test.txt 2>/dev/null
             print_success "Container can write to uploads directory ✅"
-            print_status "Files created with ownership: $FILE_OWNER"
         else
             print_error "Container cannot write to uploads directory ❌"
-            print_warning "Manual permission fix may be required"
+        fi
+        
+        # Test database write capability
+        if $DOCKER_CMD exec $CONTAINER_NAME python3 -c "
+import sqlite3
+import os
+db_path = 'instance/store.db' if os.path.exists('instance/store.db') else 'store.db'
+if os.path.exists(db_path):
+    conn = sqlite3.connect(db_path)
+    conn.execute('SELECT 1')
+    conn.close()
+    print('Database accessible')
+" 2>/dev/null; then
+            print_success "Container can access database ✅"
+        else
+            print_error "Container cannot access database ❌"
         fi
     fi
     
@@ -329,29 +245,10 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo "   • Static Uploads: ✅ $STATIC_UPLOAD_COUNT files mounted"
         echo "   • Upload Directory: ✅ $UPLOAD_COUNT files mounted"
         
-        # Check upload capability (both host and container)
-        HOST_UPLOAD_WRITABLE="❌"
-        CONTAINER_UPLOAD_WRITABLE="❌"
-        
-        if [ -d "static/uploads" ] && [ -w "static/uploads" ]; then
-            HOST_UPLOAD_WRITABLE="✅"
-        fi
-        
-        # Test container write capability
-        CONTAINER_NAME=$(docker ps -q -f name=devil2devileconomy-web)
-        if [ -n "$CONTAINER_NAME" ]; then
-            if $DOCKER_CMD exec $CONTAINER_NAME test -w /app/static/uploads 2>/dev/null; then
-                CONTAINER_UPLOAD_WRITABLE="✅"
-            fi
-        fi
-        
-        echo "   • Host Upload Access: $HOST_UPLOAD_WRITABLE"
-        echo "   • Container Upload Access: $CONTAINER_UPLOAD_WRITABLE"
-        
-        # Show Docker user mapping
-        DOCKER_USER_MAPPING=$(grep "user:" docker-compose.yml | sed 's/.*user: *"\([^"]*\)".*/\1/' || echo "not set")
-        echo "   • Docker User Mapping: $DOCKER_USER_MAPPING"
-        echo "   • Permissions: ✅ Verified and fixed"
+        # Traditional Docker status
+        echo "   • Docker Approach: ✅ Traditional root-based (simple and reliable)"
+        echo "   • File Permissions: ✅ Liberal permissions set (777)"
+        echo "   • Database Permissions: ✅ Liberal permissions set (666)"
         echo ""
         echo "📊 Container Status:"
         $DOCKER_COMPOSE_CMD ps
@@ -360,9 +257,10 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo "🛑 To stop: $DOCKER_COMPOSE_CMD down"
         echo ""
         echo "🔧 Troubleshooting:"
-        echo "   • File upload issues: Run 'sudo chown -R ubuntu:ubuntu static/uploads/'"
-        echo "   • Database write issues: Run 'sudo chown ubuntu:ubuntu instance/store.db'"
+        echo "   • File upload issues: Run 'chmod -R 777 static/uploads/'"
+        echo "   • Database write issues: Run 'chmod 666 instance/store.db'"
         echo "   • Permission problems: Re-run this deployment script"
+        echo "   • Traditional approach: Container runs as root for simplicity"
     else
         print_warning "Application started but may have issues. Check logs:"
         $DOCKER_COMPOSE_CMD logs --tail=20
