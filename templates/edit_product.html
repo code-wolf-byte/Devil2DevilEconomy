@@ -75,7 +75,8 @@
                        min="0" 
                        step="1"
                        class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-white placeholder-gray-400 transition-all duration-300"
-                       placeholder="Leave empty for unlimited">
+                       placeholder="Leave empty for unlimited" 
+                       data-debug="stock-field-v2">
                 <p class="text-sm text-muted mt-1">Leave empty for unlimited stock, or enter a number for limited stock</p>
             </div>
 
@@ -208,6 +209,28 @@ function toggleFileUploads() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     toggleFileUploads();
+    
+    // Debug stock field
+    const stockField = document.getElementById('stock');
+    console.log('Stock field initial value:', stockField.value);
+    
+    stockField.addEventListener('change', function() {
+        console.log('Stock field changed to:', this.value);
+    });
+    
+    // Debug form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const stockValue = document.getElementById('stock').value;
+        console.log('Form submitting with stock value:', stockValue);
+        
+        // Also check if there are multiple stock fields
+        const allStockFields = document.querySelectorAll('[name="stock"]');
+        console.log('Number of stock fields found:', allStockFields.length);
+        allStockFields.forEach((field, index) => {
+            console.log(`Stock field ${index}:`, field.value);
+        });
+    });
 });
 </script>
 {% endblock %} 
