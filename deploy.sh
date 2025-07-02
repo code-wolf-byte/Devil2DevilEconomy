@@ -242,6 +242,33 @@ done
 if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
     print_success "Container is running!"
     
+    # Fix Docker volume permission issues that may occur during container startup
+    print_status "Fixing Docker volume permissions after container start..."
+    
+    # Re-fix uploads directory permissions (Docker volumes can reset these)
+    if [ -d "static/uploads" ]; then
+        UPLOADS_OWNER_AFTER=$(stat -c '%U' static/uploads 2>/dev/null || echo "unknown")
+        if [ "$UPLOADS_OWNER_AFTER" = "root" ]; then
+            print_warning "Docker volume reset uploads ownership to root, fixing..."
+            sudo chown -R $(whoami):$(whoami) static/uploads/
+            chmod -R 775 static/uploads/
+            print_success "Fixed Docker volume ownership for static/uploads/"
+        fi
+    fi
+    
+    # Test container write capability
+    CONTAINER_NAME=$(docker ps -q -f name=devil2devileconomy-web)
+    if [ -n "$CONTAINER_NAME" ]; then
+        print_status "Testing container write capability..."
+        if $DOCKER_CMD exec $CONTAINER_NAME touch /app/static/uploads/deployment_test.txt 2>/dev/null; then
+            $DOCKER_CMD exec $CONTAINER_NAME rm /app/static/uploads/deployment_test.txt 2>/dev/null
+            print_success "Container can write to uploads directory ✅"
+        else
+            print_error "Container cannot write to uploads directory ❌"
+            print_warning "Manual permission fix may be required"
+        fi
+    fi
+    
     # Verify uploads are mounted correctly
     print_status "Verifying upload files are accessible in container..."
     CONTAINER_STATIC_COUNT=$($DOCKER_CMD exec $(docker ps -q -f name=devil2devileconomy-web) find /app/static/uploads -type f 2>/dev/null | wc -l || echo "0")
@@ -274,12 +301,24 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo "   • Static Uploads: ✅ $STATIC_UPLOAD_COUNT files mounted"
         echo "   • Upload Directory: ✅ $UPLOAD_COUNT files mounted"
         
-        # Check upload capability
-        UPLOAD_WRITABLE="❌"
+        # Check upload capability (both host and container)
+        HOST_UPLOAD_WRITABLE="❌"
+        CONTAINER_UPLOAD_WRITABLE="❌"
+        
         if [ -d "static/uploads" ] && [ -w "static/uploads" ]; then
-            UPLOAD_WRITABLE="✅"
+            HOST_UPLOAD_WRITABLE="✅"
         fi
-        echo "   • Upload Capability: $UPLOAD_WRITABLE $([ "$UPLOAD_WRITABLE" = "✅" ] && echo "Ready" || echo "Check permissions")"
+        
+        # Test container write capability
+        CONTAINER_NAME=$(docker ps -q -f name=devil2devileconomy-web)
+        if [ -n "$CONTAINER_NAME" ]; then
+            if $DOCKER_CMD exec $CONTAINER_NAME test -w /app/static/uploads 2>/dev/null; then
+                CONTAINER_UPLOAD_WRITABLE="✅"
+            fi
+        fi
+        
+        echo "   • Host Upload Access: $HOST_UPLOAD_WRITABLE"
+        echo "   • Container Upload Access: $CONTAINER_UPLOAD_WRITABLE"
         echo "   • Permissions: ✅ Verified and fixed"
         echo ""
         echo "📊 Container Status:"
@@ -287,6 +326,11 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         echo ""
         echo "📝 To view logs: $DOCKER_COMPOSE_CMD logs -f"
         echo "🛑 To stop: $DOCKER_COMPOSE_CMD down"
+        echo ""
+        echo "🔧 Troubleshooting:"
+        echo "   • File upload issues: Run 'sudo chown -R ubuntu:ubuntu static/uploads/'"
+        echo "   • Database write issues: Run 'sudo chown ubuntu:ubuntu instance/store.db'"
+        echo "   • Permission problems: Re-run this deployment script"
     else
         print_warning "Application started but may have issues. Check logs:"
         $DOCKER_COMPOSE_CMD logs --tail=20
