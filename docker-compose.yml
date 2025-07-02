@@ -13,4 +13,6 @@ services:
     environment:
       - FLASK_APP=main.py
       - FLASK_ENV=production
+    # Run container with same UID/GID as host ubuntu user (1000:1000)
+    user: "1000:1000"
     restart: unless-stopped 

@@ -35,10 +35,30 @@ print_error() {
 if [[ $EUID -eq 0 ]]; then
     DOCKER_CMD="docker"
     DOCKER_COMPOSE_CMD="docker compose"
+    # If running as root, we need to find the actual user
+    ACTUAL_USER=${SUDO_USER:-$(logname 2>/dev/null || echo "ubuntu")}
+    USER_UID=$(id -u $ACTUAL_USER 2>/dev/null || echo "1000")
+    USER_GID=$(id -g $ACTUAL_USER 2>/dev/null || echo "1000")
 else
     DOCKER_CMD="sudo docker"
     DOCKER_COMPOSE_CMD="sudo docker compose"
+    ACTUAL_USER=$(whoami)
+    USER_UID=$(id -u)
+    USER_GID=$(id -g)
 fi
+
+print_status "Detected user: $ACTUAL_USER (UID: $USER_UID, GID: $USER_GID)"
+
+# Update docker-compose.yml with correct user mapping
+print_status "Configuring Docker user mapping..."
+if grep -q "user:" docker-compose.yml; then
+    # Update existing user line
+    sed -i "s/user: \".*\"/user: \"$USER_UID:$USER_GID\"/" docker-compose.yml
+else
+    # Add user line after environment section
+    sed -i "/environment:/a\\    user: \"$USER_UID:$USER_GID\"" docker-compose.yml
+fi
+print_success "Docker configured to run as user $USER_UID:$USER_GID"
 
 # Stop existing containers
 print_status "Stopping existing containers..."
@@ -256,13 +276,21 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         fi
     fi
     
-    # Test container write capability
+    # Verify container user mapping
     CONTAINER_NAME=$(docker ps -q -f name=devil2devileconomy-web)
     if [ -n "$CONTAINER_NAME" ]; then
+        print_status "Verifying container user mapping..."
+        CONTAINER_USER_INFO=$($DOCKER_CMD exec $CONTAINER_NAME id 2>/dev/null || echo "unknown")
+        print_status "Container running as: $CONTAINER_USER_INFO"
+        
+        # Test container write capability
         print_status "Testing container write capability..."
         if $DOCKER_CMD exec $CONTAINER_NAME touch /app/static/uploads/deployment_test.txt 2>/dev/null; then
+            # Check ownership of created file
+            FILE_OWNER=$($DOCKER_CMD exec $CONTAINER_NAME stat -c '%u:%g' /app/static/uploads/deployment_test.txt 2>/dev/null || echo "unknown")
             $DOCKER_CMD exec $CONTAINER_NAME rm /app/static/uploads/deployment_test.txt 2>/dev/null
             print_success "Container can write to uploads directory ✅"
+            print_status "Files created with ownership: $FILE_OWNER"
         else
             print_error "Container cannot write to uploads directory ❌"
             print_warning "Manual permission fix may be required"
@@ -319,6 +347,10 @@ if $DOCKER_COMPOSE_CMD ps | grep -q "Up"; then
         
         echo "   • Host Upload Access: $HOST_UPLOAD_WRITABLE"
         echo "   • Container Upload Access: $CONTAINER_UPLOAD_WRITABLE"
+        
+        # Show Docker user mapping
+        DOCKER_USER_MAPPING=$(grep "user:" docker-compose.yml | sed 's/.*user: *"\([^"]*\)".*/\1/' || echo "not set")
+        echo "   • Docker User Mapping: $DOCKER_USER_MAPPING"
         echo "   • Permissions: ✅ Verified and fixed"
         echo ""
         echo "📊 Container Status:"
