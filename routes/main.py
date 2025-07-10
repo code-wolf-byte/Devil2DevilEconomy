@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, abort
 from flask_login import login_required, current_user
-from shared import db, User, Product, Purchase, Achievement, UserAchievement, EconomySettings
+from shared import db, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken
 from werkzeug.utils import secure_filename
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 main = Blueprint('main', __name__)
@@ -32,10 +32,22 @@ def dashboard():
     # Get recent purchases
     recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).limit(5).all()
     
+    # Get download tokens for recent purchases
+    purchase_tokens = {}
+    for purchase in recent_purchases:
+        if purchase.product.product_type == 'minecraft_skin':
+            token = DownloadToken.query.filter_by(
+                purchase_id=purchase.id, 
+                user_id=current_user.id
+            ).first()
+            if token and token.expires_at > datetime.utcnow():
+                purchase_tokens[purchase.id] = token
+    
     return render_template('dashboard.html', 
                          user=current_user, 
                          achievements=achievements,
-                         recent_purchases=recent_purchases)
+                         recent_purchases=recent_purchases,
+                         purchase_tokens=purchase_tokens)
 
 @main.route('/shop')
 @login_required
@@ -79,8 +91,118 @@ def purchase_product(product_id):
     db.session.add(purchase)
     db.session.commit()
     
-    flash(f'Successfully purchased {product.name}!', 'success')
+    # Handle digital product delivery
+    if product.product_type == 'minecraft_skin' and product.download_file_url:
+        # Create download token for minecraft skin
+        token = str(uuid.uuid4())
+        expires_at = datetime.utcnow() + timedelta(days=30)  # Token expires in 30 days
+        
+        download_token = DownloadToken(
+            token=token,
+            user_id=current_user.id,
+            purchase_id=purchase.id,
+            file_path=product.download_file_url,
+            expires_at=expires_at
+        )
+        
+        db.session.add(download_token)
+        db.session.commit()
+        
+        # Update purchase with delivery info
+        purchase.delivery_info = f"Download token created: {token}"
+        db.session.commit()
+        
+        flash(f'Successfully purchased {product.name}! Your download is now available.', 'success')
+    else:
+        flash(f'Successfully purchased {product.name}!', 'success')
+    
     return redirect(url_for('main.dashboard'))
+
+@main.route('/admin/create-missing-download-tokens')
+@login_required
+def create_missing_download_tokens():
+    """Create download tokens for existing minecraft skin purchases that don't have them"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        # Find all minecraft skin purchases without download tokens
+        minecraft_purchases = db.session.query(Purchase).join(Product).filter(
+            Product.product_type == 'minecraft_skin',
+            Product.download_file_url.isnot(None)
+        ).all()
+        
+        created_count = 0
+        for purchase in minecraft_purchases:
+            # Check if token already exists
+            existing_token = DownloadToken.query.filter_by(purchase_id=purchase.id).first()
+            if not existing_token:
+                # Create new token
+                token = str(uuid.uuid4())
+                expires_at = datetime.utcnow() + timedelta(days=30)
+                
+                download_token = DownloadToken(
+                    token=token,
+                    user_id=purchase.user_id,
+                    purchase_id=purchase.id,
+                    file_path=purchase.product.download_file_url,
+                    expires_at=expires_at
+                )
+                
+                db.session.add(download_token)
+                
+                # Update purchase with delivery info if not already set
+                if not purchase.delivery_info:
+                    purchase.delivery_info = f"Download token created: {token}"
+                
+                created_count += 1
+        
+        db.session.commit()
+        flash(f'Successfully created {created_count} download tokens for existing purchases!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating download tokens: {str(e)}', 'error')
+    
+    return redirect(url_for('main.admin'))
+
+@main.route('/download/<token>')
+@login_required
+def download_file(token):
+    """Download a digital product using a secure token"""
+    download_token = DownloadToken.query.filter_by(token=token).first()
+    
+    if not download_token:
+        flash('Invalid download token.', 'error')
+        abort(404)
+    
+    # Check if token has expired
+    if download_token.expires_at < datetime.utcnow():
+        flash('Download token has expired.', 'error')
+        abort(404)
+    
+    # Check if user owns this token
+    if download_token.user_id != current_user.id:
+        flash('Access denied.', 'error')
+        abort(403)
+    
+    # Update download count
+    download_token.download_count += 1
+    download_token.downloaded = True
+    db.session.commit()
+    
+    # Serve the file
+    try:
+        file_path = os.path.join('static', 'uploads', download_token.file_path)
+        if os.path.exists(file_path):
+            return send_from_directory('static/uploads', download_token.file_path, as_attachment=True)
+        else:
+            flash('File not found.', 'error')
+            abort(404)
+    except Exception as e:
+        flash(f'Error downloading file: {str(e)}', 'error')
+        abort(500)
 
 @main.route('/admin')
 @login_required
@@ -140,18 +262,40 @@ def add_product():
         else:
             stock = int(stock)
         
-        # Handle file upload
+        # Handle file uploads
         image_url = None
+        preview_image_url = None
+        download_file_url = None
+        
+        # Regular image upload
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                # Generate unique filename
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                # Ensure we only store the filename, not the full path
                 image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin preview image
+        if 'preview_image' in request.files:
+            file = request.files['preview_image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                preview_image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin download file
+        if 'download_file' in request.files:
+            file = request.files['download_file']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                download_file_url = os.path.basename(unique_filename)
         
         product = Product(
             name=name,
@@ -160,6 +304,8 @@ def add_product():
             stock=stock,
             image_url=image_url,
             product_type=product_type,
+            preview_image_url=preview_image_url,
+            download_file_url=download_file_url,
             created_at=datetime.utcnow()
         )
         
@@ -194,7 +340,8 @@ def edit_product(product_id):
         else:
             product.stock = int(stock)
         
-        # Handle file upload
+        # Handle file uploads
+        # Regular image upload
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
@@ -202,8 +349,27 @@ def edit_product(product_id):
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                # Ensure we only store the filename, not the full path
                 product.image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin preview image
+        if 'preview_image' in request.files:
+            file = request.files['preview_image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                product.preview_image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin download file
+        if 'download_file' in request.files:
+            file = request.files['download_file']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                product.download_file_url = os.path.basename(unique_filename)
         
         db.session.commit()
         
@@ -274,7 +440,19 @@ def how_to_earn():
 def my_purchases():
     """User's purchase history"""
     purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).all()
-    return render_template('my_purchases.html', purchases=purchases)
+    
+    # Get download tokens for each purchase
+    purchase_tokens = {}
+    for purchase in purchases:
+        if purchase.product.product_type == 'minecraft_skin':
+            token = DownloadToken.query.filter_by(
+                purchase_id=purchase.id, 
+                user_id=current_user.id
+            ).first()
+            if token and token.expires_at > datetime.utcnow():
+                purchase_tokens[purchase.id] = token
+    
+    return render_template('my_purchases.html', purchases=purchases, purchase_tokens=purchase_tokens)
 
 @main.route('/new_product', methods=['GET', 'POST'])
 @login_required
@@ -297,18 +475,40 @@ def new_product():
         else:
             stock = int(stock)
         
-        # Handle file upload
+        # Handle file uploads
         image_url = None
+        preview_image_url = None
+        download_file_url = None
+        
+        # Regular image upload
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                # Generate unique filename
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join('static', 'uploads', unique_filename)
                 file.save(file_path)
-                # Ensure we only store the filename, not the full path
                 image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin preview image
+        if 'preview_image' in request.files:
+            file = request.files['preview_image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                preview_image_url = os.path.basename(unique_filename)
+        
+        # Minecraft skin download file
+        if 'download_file' in request.files:
+            file = request.files['download_file']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join('static', 'uploads', unique_filename)
+                file.save(file_path)
+                download_file_url = os.path.basename(unique_filename)
         
         product = Product(
             name=name,
@@ -317,6 +517,8 @@ def new_product():
             stock=stock,
             image_url=image_url,
             product_type=product_type,
+            preview_image_url=preview_image_url,
+            download_file_url=download_file_url,
             created_at=datetime.utcnow()
         )
         

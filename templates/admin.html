@@ -32,6 +32,9 @@
             <a href="{{ url_for('main.economy_config') }}" class="btn-primary">
                 <i class="fas fa-cog mr-2"></i>Economy Config
             </a>
+            <a href="{{ url_for('main.create_missing_download_tokens') }}" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors inline-flex items-center">
+                <i class="fas fa-download mr-2"></i>Fix Download Tokens
+            </a>
             <a href="{{ url_for('main.admin_purchases') }}" class="btn-secondary">
                 <i class="fas fa-shopping-cart mr-2"></i>View Purchases
             </a>
@@ -63,13 +66,13 @@
             </div>
             <div class="bg-gray-800 p-4 rounded-lg text-center">
                 <div class="text-2xl font-bold text-green-400">
-                    {{ (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'greaterthan', 0)|list|length) + (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'equalto', -1)|list|length) }}
+                    {{ (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'ne', none)|selectattr('stock', 'greaterthan', 0)|list|length) + (products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'equalto', -1)|list|length) }}
                 </div>
                 <div class="text-sm text-muted">In Stock (Active)</div>
             </div>
             <div class="bg-gray-800 p-4 rounded-lg text-center">
                 <div class="text-2xl font-bold text-blue-400">
-                    {{ products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'greaterthan', 0)|sum(attribute='stock') if products else 0 }}
+                    {{ products|selectattr('is_active', 'equalto', true)|selectattr('stock', 'ne', none)|selectattr('stock', 'greaterthan', 0)|sum(attribute='stock') if products else 0 }}
                 </div>
                 <div class="text-sm text-muted">Total Stock</div>
             </div>
@@ -133,7 +136,7 @@
                                     </span>
                                 </td>
                                 <td class="py-4 px-2">
-                                    {% if product.stock > 0 %}
+                                    {% if product.stock is not none and product.stock > 0 %}
                                         <span class="bg-green-600 text-white px-2 py-1 rounded-full text-xs">
                                             {{ product.stock }} available
                                         </span>
@@ -213,7 +216,7 @@
                                     <span class="font-bold asu-gold">
                                         <span class="coin-icon coin-gold coin-md mr-1"></span>{{ product.price }}
                                     </span>
-                                    {% if product.stock > 0 %}
+                                    {% if product.stock is not none and product.stock > 0 %}
                                         <span class="bg-green-600 text-white px-2 py-1 rounded-full text-xs">
                                             {{ product.stock }} available
                                         </span>

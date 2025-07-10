@@ -19,6 +19,7 @@
                             <th class="py-3 px-4 text-white font-semibold">Price</th>
                             <th class="py-3 px-4 text-white font-semibold">Date</th>
                             <th class="py-3 px-4 text-white font-semibold">Status</th>
+                            <th class="py-3 px-4 text-white font-semibold">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,9 +49,33 @@
                                 {{ purchase.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
                             </td>
                             <td class="py-4 px-4">
-                                <span class="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm font-medium">
-                                    Pending Pickup
-                                </span>
+                                {% if purchase.product.product_type == 'minecraft_skin' %}
+                                    <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
+                                        Digital Download
+                                    </span>
+                                {% else %}
+                                    <span class="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm font-medium">
+                                        Pending Pickup
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-4">
+                                {% if purchase.id in purchase_tokens %}
+                                    <a href="{{ url_for('main.download_file', token=purchase_tokens[purchase.id].token) }}" 
+                                       class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center">
+                                        <i class="fas fa-download mr-2"></i>
+                                        Download
+                                    </a>
+                                {% elif purchase.product.product_type == 'minecraft_skin' %}
+                                    <span class="text-gray-400 text-sm">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Processing...
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400 text-sm">
+                                        Physical Item
+                                    </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

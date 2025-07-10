@@ -118,6 +118,18 @@
                                 <h3 class="text-lg font-bold text-white">{{ purchase.product.name }}</h3>
                                 <p class="text-gray-300 text-sm">{{ purchase.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
                                 <p class="text-red-400 text-sm font-bold">-{{ purchase.points_spent }} points</p>
+                                {% if purchase.id in purchase_tokens %}
+                                    <a href="{{ url_for('main.download_file', token=purchase_tokens[purchase.id].token) }}" 
+                                       class="inline-flex items-center mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                        <i class="fas fa-download mr-1"></i>
+                                        Download
+                                    </a>
+                                {% elif purchase.product.product_type == 'minecraft_skin' %}
+                                    <span class="inline-flex items-center mt-2 text-gray-400 text-sm">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Processing download...
+                                    </span>
+                                {% endif %}
                             </div>
                         </div>
                     {% endfor %}
