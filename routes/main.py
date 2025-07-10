@@ -116,7 +116,7 @@ def purchase_product(product_id):
     else:
         flash(f'Successfully purchased {product.name}!', 'success')
     
-    return redirect(url_for('main.dashboard'))
+    return redirect(url_for('main.my_purchases'))
 
 @main.route('/admin/create-missing-download-tokens')
 @login_required
