@@ -26,7 +26,7 @@
         </div>
         <div class="card p-4 text-center">
             <div class="text-2xl font-bold text-green-400">
-                {{ purchases|sum(attribute='points_spent') if purchases else 0 }}
+                {{ pagination.items|sum(attribute='points_spent') if pagination.items else 0 }}
             </div>
             <div class="text-sm text-muted">Points Spent</div>
         </div>
@@ -41,7 +41,7 @@
     </div>
 
     <!-- Purchases Table/Cards -->
-    {% if purchases %}
+    {% if pagination.items %}
         <!-- Desktop Table View -->
         <div class="hidden md:block">
             <div class="card overflow-hidden">
@@ -60,7 +60,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-700">
-                            {% for purchase in purchases %}
+                            {% for purchase in pagination.items %}
                                 <tr class="hover:bg-gray-800 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
@@ -124,7 +124,7 @@
 
         <!-- Mobile Card View -->
         <div class="md:hidden space-y-4">
-            {% for purchase in purchases %}
+            {% for purchase in pagination.items %}
                 <div class="card p-4">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex items-center">
@@ -188,7 +188,7 @@
                     <div class="flex items-center space-x-2">
                         <!-- First Page -->
                         {% if pagination.has_prev %}
-                            <a href="{{ url_for('admin_purchases', page=1) }}" 
+                            <a href="{{ url_for('main.admin_purchases', page=1) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-double-left"></i>
                             </a>
@@ -196,7 +196,7 @@
                         
                         <!-- Previous Page -->
                         {% if pagination.has_prev %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.prev_num) }}" 
+                            <a href="{{ url_for('main.admin_purchases', page=pagination.prev_num) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-left"></i>
                             </a>
@@ -206,7 +206,7 @@
                         {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                             {% if page_num %}
                                 {% if page_num != pagination.page %}
-                                    <a href="{{ url_for('admin_purchases', page=page_num) }}" 
+                                    <a href="{{ url_for('main.admin_purchases', page=page_num) }}" 
                                        class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                         {{ page_num }}
                                     </a>
@@ -222,7 +222,7 @@
                         
                         <!-- Next Page -->
                         {% if pagination.has_next %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.next_num) }}" 
+                            <a href="{{ url_for('main.admin_purchases', page=pagination.next_num) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-right"></i>
                             </a>
@@ -230,7 +230,7 @@
                         
                         <!-- Last Page -->
                         {% if pagination.has_next %}
-                            <a href="{{ url_for('admin_purchases', page=pagination.pages) }}" 
+                            <a href="{{ url_for('main.admin_purchases', page=pagination.pages) }}" 
                                class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-angle-double-right"></i>
                             </a>
