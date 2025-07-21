@@ -802,7 +802,7 @@ class EconomyCog(commands.Cog):
                 cog_logger.error(f"Error checking achievements: {e}")
 
     async def send_achievement_announcement(self, user, achievement):
-        """Send achievement announcement to general channel"""
+        """Send achievement announcement"""
         if GENERAL_CHANNEL_ID:
             try:
                 channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
@@ -811,11 +811,6 @@ class EconomyCog(commands.Cog):
                         title="🏆 Achievement Unlocked!",
                         description=f"Congratulations {user.username}! You've unlocked the **{achievement.name}** achievement!",
                         color=discord.Color.gold()
-                    )
-                    embed.add_field(
-                        name="🎖️ Achievement",
-                        value=achievement.description,
-                        inline=False
                     )
                     embed.add_field(
                         name="💰 Points Earned",
@@ -827,12 +822,101 @@ class EconomyCog(commands.Cog):
                         value=f"{user.balance} pitchforks",
                         inline=True
                     )
-                    embed.set_footer(text="Keep participating to unlock more achievements!")
+                    embed.add_field(
+                        name="🎯 Description",
+                        value=achievement.description or "Great job!",
+                        inline=False
+                    )
                     
                     await channel.send(embed=embed)
                     
             except Exception as e:
                 cog_logger.error(f"Error sending achievement announcement: {e}")
+    
+    async def send_purchase_notification(self, purchaser_user, product, points_spent, purchase_id):
+        """Send purchase notification to the specified admin user"""
+        try:
+            # The Discord user ID to notify
+            ADMIN_USER_ID = 689510313971810437
+            
+            # Get the admin user
+            admin_user = self.bot.get_user(ADMIN_USER_ID)
+            if not admin_user:
+                cog_logger.warning(f"Could not find admin user {ADMIN_USER_ID}")
+                return
+            
+            # Create purchase notification embed
+            embed = discord.Embed(
+                title="🛒 New Purchase Alert!",
+                description=f"A new purchase has been made in the Devil2Devil Store!",
+                color=discord.Color.blue()
+            )
+            
+            embed.add_field(
+                name="👤 Customer",
+                value=f"{purchaser_user.username} (ID: {purchaser_user.id})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🛍️ Product",
+                value=f"{product.name}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="💰 Price",
+                value=f"{points_spent} pitchforks",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📋 Product Type",
+                value=f"{product.product_type.replace('_', ' ').title()}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📦 Purchase ID",
+                value=f"#{purchase_id}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🕐 Timestamp",
+                value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
+                inline=True
+            )
+            
+            if product.description:
+                embed.add_field(
+                    name="📝 Description",
+                    value=f"{product.description[:100]}{'...' if len(product.description) > 100 else ''}",
+                    inline=False
+                )
+            
+            # Add stock information if applicable
+            if product.stock is not None:
+                remaining_stock = product.stock
+                embed.add_field(
+                    name="📊 Remaining Stock",
+                    value=f"{remaining_stock} items" if remaining_stock > 0 else "Out of stock",
+                    inline=True
+                )
+            
+            embed.set_footer(
+                text="Devil2Devil Economy System",
+                icon_url="https://cdn.discordapp.com/emojis/1234567890123456789.png"  # Optional: Add a footer icon
+            )
+            
+            # Send the notification
+            await admin_user.send(embed=embed)
+            cog_logger.info(f"Purchase notification sent to admin {ADMIN_USER_ID} for purchase {purchase_id}")
+            
+        except discord.Forbidden:
+            cog_logger.error(f"Could not send DM to admin user {ADMIN_USER_ID} - DMs may be disabled")
+        except Exception as e:
+            cog_logger.error(f"Error sending purchase notification: {e}")
 
     async def send_enrollment_deposit_announcement(self, user):
         """Send enrollment deposit announcement"""

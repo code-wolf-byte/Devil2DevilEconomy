@@ -91,6 +91,29 @@ def purchase_product(product_id):
     db.session.add(purchase)
     db.session.commit()
     
+    # Send Discord purchase notification
+    try:
+        import json
+        import asyncio
+        from shared import bot
+        
+        if bot.is_ready():
+            economy_cog = bot.get_cog('EconomyCog')
+            if economy_cog:
+                # Schedule the purchase notification in the bot's event loop
+                future = asyncio.run_coroutine_threadsafe(
+                    economy_cog.send_purchase_notification(current_user, product, product.price, purchase.id),
+                    bot.loop
+                )
+                # Don't wait for the notification to complete to avoid blocking the purchase
+                try:
+                    future.result(timeout=2)  # Quick timeout to avoid hanging
+                except:
+                    pass  # Notification failure shouldn't affect purchase
+    except Exception as e:
+        # Log error but don't fail the purchase
+        print(f"Warning: Could not send Discord purchase notification: {e}")
+
     # Handle digital product delivery
     if product.product_type == 'minecraft_skin' and product.download_file_url:
         # Create download token for minecraft skin
