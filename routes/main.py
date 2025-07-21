@@ -113,10 +113,67 @@ def purchase_product(product_id):
         db.session.commit()
         
         flash(f'Successfully purchased {product.name}! Your download is now available.', 'success')
+    elif product.product_type == 'role' and product.delivery_method == 'auto_role':
+        # Handle role assignment directly
+        try:
+            import json
+            import asyncio
+            from shared import bot
+            
+            # Parse the role ID from delivery_data
+            delivery_config = json.loads(product.delivery_data) if product.delivery_data else {}
+            role_id = delivery_config.get('role_id')
+            
+            if role_id and bot.is_ready():
+                # Get the economy cog and call its role assignment method
+                economy_cog = bot.get_cog('EconomyCog')
+                if economy_cog:
+                    # Schedule the coroutine in the bot's event loop
+                    future = asyncio.run_coroutine_threadsafe(
+                        economy_cog.assign_role_to_user(current_user.id, role_id, purchase.id),
+                        bot.loop
+                    )
+                    # Wait for completion with timeout
+                    success, message = future.result(timeout=10)
+                    
+                    if success:
+                        purchase.delivery_info = f"Role assigned successfully: {message}"
+                        purchase.status = 'completed'
+                        flash(f'Successfully purchased {product.name}! Your Discord role has been assigned.', 'success')
+                    else:
+                        purchase.delivery_info = f"Role assignment failed: {message}"
+                        purchase.status = 'failed'
+                        flash(f'Purchase successful, but role assignment failed: {message}', 'warning')
+                else:
+                    purchase.delivery_info = "Economy cog not found"
+                    purchase.status = 'failed' 
+                    flash(f'Purchase successful, but Discord bot is not properly configured. Please contact an admin.', 'warning')
+            elif not bot.is_ready():
+                purchase.delivery_info = "Discord bot not ready"
+                purchase.status = 'pending'
+                flash(f'Successfully purchased {product.name}! Discord bot is starting up - your role will be assigned shortly.', 'info')
+            else:
+                purchase.delivery_info = "No role ID configured"
+                purchase.status = 'failed'
+                flash(f'Successfully purchased {product.name}! Please contact an admin for role assignment.', 'warning')
+                
+            db.session.commit()
+                
+        except asyncio.TimeoutError:
+            purchase.delivery_info = "Role assignment timed out"
+            purchase.status = 'failed'
+            db.session.commit()
+            flash(f'Purchase successful, but role assignment timed out. Please contact an admin.', 'warning')
+        except Exception as e:
+            purchase.delivery_info = f"Role assignment error: {str(e)}"
+            purchase.status = 'failed'
+            db.session.commit()
+            flash(f'Purchase successful, but role assignment failed. Please contact an admin.', 'error')
     else:
         flash(f'Successfully purchased {product.name}!', 'success')
     
     return redirect(url_for('main.my_purchases'))
+
 
 @main.route('/admin/create-missing-download-tokens')
 @login_required

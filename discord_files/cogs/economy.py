@@ -147,16 +147,12 @@ class EconomyCog(commands.Cog):
         self.EconomySettings = EconomySettings
         self.Achievement = Achievement
         self.UserAchievement = UserAchievement
-        self.role_assignment_queue = asyncio.Queue()
-        # Do NOT start background tasks here!
-        # self.daily_birthday_check.start()
-        # self.process_role_assignments.start()
+        # Removed role_assignment_queue since we're using direct function calls now
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
         try:
             self.daily_birthday_check.cancel()
-            self.process_role_assignments.cancel()
             self.monitor_restricted_role_task.cancel()
         except:
             pass
@@ -170,8 +166,6 @@ class EconomyCog(commands.Cog):
         try:
             if not self.daily_birthday_check.is_running():
                 self.daily_birthday_check.start()
-            if not self.process_role_assignments.is_running():
-                self.process_role_assignments.start()
             if not self.monitor_restricted_role_task.is_running():
                 self.monitor_restricted_role_task.start()
             print("Background tasks started successfully!")
@@ -700,81 +694,6 @@ class EconomyCog(commands.Cog):
         
         await asyncio.sleep((target_datetime - now).total_seconds())
 
-    @tasks.loop(seconds=30)
-    async def process_role_assignments(self):
-        """Process Discord role assignments"""
-        with self.app.app_context():
-            try:
-                # Process role assignments from the queue
-                while not self.role_assignment_queue.empty():
-                    try:
-                        assignment_data = await asyncio.wait_for(self.role_assignment_queue.get(), timeout=1.0)
-                        
-                        user_id = assignment_data['user_id']
-                        role_id = assignment_data['role_id']
-                        purchase_id = assignment_data['purchase_id']
-                        
-                        # Get the guild and member
-                        guild = None
-                        for g in self.bot.guilds:
-                            member = g.get_member(int(user_id))
-                            if member:
-                                guild = g
-                                break
-                        
-                        if not guild:
-                            cog_logger.error(f"Could not find guild for user {user_id}")
-                            continue
-                        
-                        member = guild.get_member(int(user_id))
-                        role = guild.get_role(int(role_id))
-                        
-                        if not member:
-                            cog_logger.error(f"Could not find member {user_id} in guild {guild.name}")
-                            continue
-                        
-                        if not role:
-                            cog_logger.error(f"Could not find role {role_id} in guild {guild.name}")
-                            continue
-                        
-                        # Assign the role
-                        try:
-                            await member.add_roles(role, reason=f"Economy purchase {purchase_id}")
-                            
-                            # Update assignment status
-                            assignment = self.db.session.query(RoleAssignment).filter_by(
-                                user_id=user_id,
-                                role_id=role_id,
-                                purchase_id=purchase_id
-                            ).first()
-                            
-                            if assignment:
-                                assignment.status = 'completed'
-                                assignment.completed_at = datetime.utcnow()
-                                self.db.session.commit()
-                            
-                            cog_logger.info(f"Role {role.name} assigned to {member.name}")
-                            
-                        except discord.Forbidden:
-                            cog_logger.error(f"Bot doesn't have permission to assign role {role.name}")
-                        except discord.HTTPException as e:
-                            cog_logger.error(f"HTTP error assigning role: {e}")
-                        except Exception as e:
-                            cog_logger.error(f"Error assigning role: {e}")
-                            
-                    except asyncio.TimeoutError:
-                        break
-                    except Exception as e:
-                        cog_logger.error(f"Error processing role assignment: {e}")
-                        
-            except Exception as e:
-                cog_logger.error(f"Error in process_role_assignments: {e}")
-
-    @process_role_assignments.before_loop
-    async def before_role_assignments(self):
-        """Wait until bot is ready before processing role assignments"""
-        await self.bot.wait_until_ready()
-    
     @tasks.loop(minutes=10)
     async def monitor_restricted_role_task(self):
         """Periodically check and remove restricted roles from users with trigger role"""
@@ -790,6 +709,63 @@ class EconomyCog(commands.Cog):
     async def before_restricted_role_monitor(self):
         """Wait until bot is ready before starting role monitoring"""
         await self.bot.wait_until_ready()
+
+    async def assign_role_to_user(self, user_id, role_id, purchase_id):
+        """
+        Directly assign a Discord role to a user
+        Returns: (success: bool, message: str)
+        """
+        try:
+            # Convert string IDs to integers
+            user_id = int(user_id)
+            role_id = int(role_id)
+            
+            # Find the guild and member
+            guild = None
+            member = None
+            
+            for g in self.bot.guilds:
+                temp_member = g.get_member(user_id)
+                if temp_member:
+                    guild = g
+                    member = temp_member
+                    break
+            
+            if not guild:
+                return False, f"Could not find user {user_id} in any Discord server"
+            
+            if not member:
+                return False, f"Could not find member {user_id} in guild {guild.name}"
+            
+            # Get the role
+            role = guild.get_role(role_id)
+            if not role:
+                return False, f"Could not find role {role_id} in guild {guild.name}"
+            
+            # Check if user already has the role
+            if role in member.roles:
+                return True, f"User already has role {role.name}"
+            
+            # Assign the role
+            try:
+                await member.add_roles(role, reason=f"Economy purchase {purchase_id}")
+                cog_logger.info(f"Role {role.name} assigned to {member.name} for purchase {purchase_id}")
+                return True, f"Successfully assigned role {role.name}"
+                
+            except discord.Forbidden:
+                error_msg = f"Bot doesn't have permission to assign role {role.name}"
+                cog_logger.error(error_msg)
+                return False, error_msg
+                
+            except discord.HTTPException as e:
+                error_msg = f"Discord HTTP error: {str(e)}"
+                cog_logger.error(error_msg)
+                return False, error_msg
+                
+        except Exception as e:
+            error_msg = f"Error in role assignment: {str(e)}"
+            cog_logger.error(error_msg)
+            return False, error_msg
 
     async def check_achievements(self, user, achievement_type, count=None):
         """Check and award achievements based on user activity"""
@@ -1446,7 +1422,7 @@ class EconomyCog(commands.Cog):
         
         embed.add_field(
             name="🛒 Shop",
-            value="Spend your pitchforks in the web shop at http://localhost:5000/shop",
+            value="Spend your pitchforks in the web shop at https://shop.devil2devil.asu.edu",
             inline=False
         )
         
@@ -1482,7 +1458,7 @@ class EconomyCog(commands.Cog):
         )
         embed.add_field(
             name="🌐 Web Server",
-            value="Running on http://localhost:5000",
+            value="Running on https://shop.devil2devil.asu.edu",
             inline=True
         )
         
