@@ -665,15 +665,63 @@ def create_role_product():
         return redirect(url_for('main.dashboard'))
     
     # Basic role product creation logic
-    name = request.form.get('name')
+    name = request.form.get('product_name')  # Fixed field name to match the HTML form
     description = request.form.get('description')
-    price = int(request.form.get('price'))
+    price_str = request.form.get('price')
     role_id = request.form.get('role_id')
+    stock_str = request.form.get('stock')
+    
+    # Validate required fields
+    if not name or not name.strip():
+        flash('Product name is required.', 'error')
+        return redirect(url_for('main.admin_products'))
+    
+    if not price_str or not price_str.strip():
+        flash('Price is required.', 'error')
+        return redirect(url_for('main.admin_products'))
+    
+    if not role_id or not role_id.strip():
+        flash('Discord role selection is required.', 'error')
+        return redirect(url_for('main.admin_products'))
+    
+    try:
+        price = int(price_str)
+        if price < 0:
+            flash('Price must be a positive number.', 'error')
+            return redirect(url_for('main.admin_products'))
+    except (ValueError, TypeError):
+        flash('Price must be a valid number.', 'error')
+        return redirect(url_for('main.admin_products'))
+    
+    # Handle stock (optional)
+    stock = None
+    if stock_str and stock_str.strip():
+        try:
+            stock = int(stock_str)
+            if stock < 0:
+                flash('Stock quantity must be a positive number.', 'error')
+                return redirect(url_for('main.admin_products'))
+        except (ValueError, TypeError):
+            flash('Stock quantity must be a valid number.', 'error')
+            return redirect(url_for('main.admin_products'))
+    
+    # Handle role image upload (optional)
+    image_url = None
+    if 'role_image' in request.files:
+        file = request.files['role_image']
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4()}_{filename}"
+            file_path = os.path.join('static', 'uploads', unique_filename)
+            file.save(file_path)
+            image_url = f"uploads/{unique_filename}"
     
     product = Product(
-        name=name,
-        description=description,
+        name=name.strip(),
+        description=description.strip() if description else '',
         price=price,
+        stock=stock,
+        image_url=image_url,
         product_type='role',
         delivery_method='auto_role',
         delivery_data=f'{{"role_id": "{role_id}"}}',
