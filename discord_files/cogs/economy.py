@@ -720,22 +720,18 @@ class EconomyCog(commands.Cog):
             user_id = int(user_id)
             role_id = int(role_id)
             
-            # Find the guild and member
-            guild = None
-            member = None
+            # Get the specific guild from DISCORD_GUILD_ID environment variable
+            guild_id = os.getenv('DISCORD_GUILD_ID')
+            if not guild_id:
+                return False, "DISCORD_GUILD_ID not configured in environment"
             
-            for g in self.bot.guilds:
-                temp_member = g.get_member(user_id)
-                if temp_member:
-                    guild = g
-                    member = temp_member
-                    break
-            
+            guild = self.bot.get_guild(int(guild_id))
             if not guild:
-                return False, f"Could not find user {user_id} in any Discord server"
+                return False, f"Bot is not in the configured Discord server (ID: {guild_id})"
             
+            member = guild.get_member(user_id)
             if not member:
-                return False, f"Could not find member {user_id} in guild {guild.name}"
+                return False, f"Could not find user {user_id} in the configured Discord server"
             
             # Get the role
             role = guild.get_role(role_id)

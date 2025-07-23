@@ -792,14 +792,14 @@ def get_discord_roles():
         if not bot.is_ready():
             return jsonify({'error': 'Discord bot is not ready. Please try again in a few moments.'}), 503
         
-        # Get the first guild (server) the bot is in
-        guild = None
-        for g in bot.guilds:
-            guild = g
-            break
+        # Get the specific guild from DISCORD_GUILD_ID environment variable
+        guild_id = os.getenv('DISCORD_GUILD_ID')
+        if not guild_id:
+            return jsonify({'error': 'DISCORD_GUILD_ID not configured in environment'}), 500
         
+        guild = bot.get_guild(int(guild_id))
         if not guild:
-            return jsonify({'error': 'Bot is not in any Discord server'}), 404
+            return jsonify({'error': f'Bot is not in the configured Discord server (ID: {guild_id})'}), 404
         
         # Get all roles that the bot can manage
         roles = []
