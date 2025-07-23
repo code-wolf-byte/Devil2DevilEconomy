@@ -280,6 +280,69 @@ For support and questions:
 - Mobile app integration
 - Multi-server support
 
+## 📋 TODO - Next Development Cycle
+
+### 🔧 Database Maintenance Tasks
+- [ ] **Remove deprecated `models.py` file** - All models have been moved to `shared.py`, the legacy file should be deleted
+- [ ] **Database migration to PostgreSQL** - Current SQLite setup needs upgrade for production scalability  
+- [ ] **Automated balance consistency monitoring** - Currently runs on startup but could benefit from periodic health checks
+- [ ] **Clean up image path inconsistencies** - Some products still have `/static/uploads/` prefixes that need ongoing monitoring
+- [ ] **Review download token expiration logic** - 30-day expiration may need adjustment based on usage patterns
+
+### 🐳 Docker & Deployment Improvements  
+- [ ] **Implement proper user mapping** - Currently using root container approach, should migrate to proper UID/GID mapping
+- [ ] **Automate backup retention policy** - `deploy.sh` creates timestamped backups but no cleanup mechanism
+- [ ] **Container health checks** - Add proper Docker health check endpoints beyond basic connectivity tests
+- [ ] **Permission persistence testing** - Ensure file permissions survive container restarts and updates
+- [ ] **Multi-stage Docker build optimization** - Current Dockerfile could be optimized for smaller image size
+
+### 🧹 Code Cleanup & Refactoring
+- [ ] **Requirements.txt cleanup** - Remove all commented packages and unused dependencies 
+- [ ] **Consolidate startup checks** - Multiple permission/database checks in `main.py` could be modularized
+- [ ] **Remove hardcoded paths** - Several scripts have hardcoded `/app/` paths that should be configurable
+- [ ] **Centralize file upload logic** - Upload handling is scattered across multiple routes
+- [ ] **Abstract permission management** - File permission logic is duplicated in `deploy.sh` and `main.py`
+
+### 🗂️ File System Organization
+- [ ] **Implement upload file cleanup job** - No mechanism for cleaning old/unused uploaded files
+- [ ] **Standardize directory structure** - Mix of `uploads/` and `static/uploads/` directories needs consolidation
+- [ ] **Add file size monitoring** - No alerts for when upload directories grow too large
+- [ ] **Create staging environment** - All testing currently done on production data
+
+### 🚦 Testing & Monitoring
+- [ ] **Expand `test_bot_connection.py`** - Current test is basic, needs comprehensive Discord API testing
+- [ ] **Add database integrity checks** - Beyond balance consistency, need referential integrity validation
+- [ ] **Container resource monitoring** - No monitoring of memory/CPU usage within containers
+- [ ] **Implement logging rotation** - Application logs could grow indefinitely
+- [ ] **Add performance benchmarking** - No baseline metrics for response times or throughput
+
+### 🔐 Security & Compliance  
+- [ ] **Audit file permissions strategy** - Current 777/666 permissions are overly permissive
+- [ ] **Review Discord token security** - Ensure proper token rotation procedures are documented
+- [ ] **Implement rate limiting** - No protection against API abuse on web endpoints
+- [ ] **Add input validation audit** - File upload and form inputs need security review
+- [ ] **Environment variable validation** - Missing .env variables fail silently
+
+### 📊 Data Management
+- [ ] **Implement data export functionality** - No easy way to export user/purchase data
+- [ ] **Add database schema versioning** - Current migrations lack proper version control
+- [ ] **Create data anonymization scripts** - For GDPR compliance and testing
+- [ ] **Establish backup verification process** - Backups created but never tested for restoration
+- [ ] **Plan for data archival** - Old purchases and inactive users should be archived
+
+### 🎯 Priority Items (Next Sprint)
+1. **Remove deprecated `models.py`** (Low risk, quick win)
+2. **Clean up `requirements.txt`** (Reduces Docker build time)  
+3. **Consolidate upload directories** (Fixes user confusion)
+4. **Add container health checks** (Production stability)
+5. **Implement proper Docker user mapping** (Security improvement)
+
+### 💡 Notes for Maintainers
+- Many tasks marked with 🔧 in startup logs indicate technical debt
+- `deploy.sh` script contains significant deployment logic that should be CI/CD automated
+- Permission fixes appear in multiple places indicating a systematic issue
+- Testing currently requires manual setup - automation needed
+
 ---
 
 **Made with ❤️ for Discord communities seeking engaging economy systems.** 
