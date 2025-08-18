@@ -18,6 +18,23 @@
         </div>
     </div>
 
+    <!-- 20% Discount Banner -->
+    <div class="card p-4 sm:p-6 mb-8 nav-gradient border-2 border-yellow-400 animate-pulse">
+        <div class="text-center">
+            <div class="flex items-center justify-center mb-3">
+                <i class="fas fa-fire text-3xl sm:text-4xl asu-gold mr-3"></i>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white">🔥 LIMITED TIME SALE! 🔥</h2>
+                <i class="fas fa-fire text-3xl sm:text-4xl asu-gold ml-3"></i>
+            </div>
+            <div class="text-lg sm:text-xl text-yellow-200 font-semibold mb-2">
+                <span class="text-3xl sm:text-4xl font-bold asu-gold">20% OFF</span> ALL ITEMS!
+            </div>
+            <p class="text-white text-sm sm:text-base opacity-90">
+                <i class="fas fa-clock mr-2"></i>Get your favorite items at discounted prices - limited time only!
+            </p>
+        </div>
+    </div>
+
     <!-- Products Grid -->
     {% if products %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -66,9 +83,21 @@
                         </div>
 
                         <!-- Price -->
-                        <div class="flex items-center justify-between">
-                            <span class="text-2xl font-bold text-yellow-400">{{ product.price }} pts</span>
-                            {% if user.balance >= product.price and (product.stock is none or product.stock > 0) %}
+                        <div class="flex flex-col mb-4">
+                            <!-- Original Price (Strikethrough) -->
+                            <div class="text-sm text-gray-400 line-through">
+                                {{ product.price }} pts
+                            </div>
+                            <!-- Discounted Price -->
+                            <div class="text-2xl font-bold asu-gold flex items-center">
+                                {{ (product.price * 0.8) | int }} pts
+                                <span class="ml-2 asu-gold-bg px-2 py-1 rounded text-xs font-bold">20% OFF</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-center">
+                            {% set discounted_price = (product.price * 0.8) | int %}
+                            {% if user.balance >= discounted_price and (product.stock is none or product.stock > 0) %}
                                 <form method="POST" action="{{ url_for('main.purchase_product', product_id=product.id) }}" class="inline">
                                     <button type="submit" class="btn-primary">
                                         <i class="fas fa-shopping-cart mr-2"></i>Buy Now
@@ -76,7 +105,7 @@
                                 </form>
                             {% else %}
                                 <button class="bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>
-                                    {% if user.balance < product.price %}
+                                    {% if user.balance < discounted_price %}
                                         Insufficient Balance
                                     {% elif product.stock == 0 %}
                                         Out of Stock

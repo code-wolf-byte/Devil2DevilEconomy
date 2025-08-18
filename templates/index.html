@@ -30,12 +30,30 @@
         </div>
     {% endif %}
 
+    <!-- 20% Discount Banner -->
+    <div class="card p-4 sm:p-6 mb-8 nav-gradient border-2 border-yellow-400 animate-pulse-subtle">
+        <div class="text-center">
+            <div class="flex items-center justify-center mb-3">
+                <i class="fas fa-fire text-3xl sm:text-4xl asu-gold mr-3 animate-bounce-subtle"></i>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white">🔥 LIMITED TIME SALE! 🔥</h2>
+                <i class="fas fa-fire text-3xl sm:text-4xl asu-gold ml-3 animate-bounce-subtle"></i>
+            </div>
+            <div class="text-lg sm:text-xl text-yellow-200 font-semibold mb-2">
+                <span class="text-3xl sm:text-4xl font-bold asu-gold">20% OFF</span> ALL ITEMS!
+            </div>
+            <p class="text-white text-sm sm:text-base opacity-90">
+                <i class="fas fa-clock mr-2"></i>Get your favorite items at discounted prices - limited time only!
+            </p>
+        </div>
+    </div>
+
     <!-- Products Section -->
     <div class="animate-slide-up-delay">
         <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-2 sm:space-y-0">
             <h2 class="text-2xl sm:text-3xl font-bold flex items-center">
                 <i class="fas fa-box-open text-yellow-400 mr-3"></i>
                 Available Products
+                <span class="ml-3 asu-gold-bg px-3 py-1 rounded-full text-sm font-bold animate-pulse">20% OFF</span>
             </h2>
             <div class="text-muted text-sm sm:text-base">
                 {{ products|length }} item{{ 's' if products|length != 1 else '' }} available
@@ -45,7 +63,7 @@
         {% if products %}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {% for product in products %}
-                    <div class="card overflow-hidden group animate-scale-in" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+                    <div class="card overflow-hidden group animate-scale-in" style="animation-delay: {{ (loop.index0 * 0.1)|string }}s;">
                         {% if product.display_image %}
                             {% set file_ext = product.display_image.split('.')[-1].lower() %}
                             {% if file_ext in ['mp4', 'webm', 'ogv', 'mov'] %}
@@ -96,9 +114,18 @@
                             <p class="text-muted mb-4 text-sm leading-relaxed">{{ product.description }}</p>
                             
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
-                                <div class="text-xl sm:text-2xl font-bold asu-gold flex items-center">
-                                    <span class="coin-icon coin-gold coin-lg mr-1"></span>
-                                    {{ product.price }}
+                                <div class="flex flex-col items-start">
+                                    <!-- Original Price (Strikethrough) -->
+                                    <div class="text-sm text-gray-400 line-through flex items-center">
+                                        <span class="coin-icon coin-gold coin-sm mr-1"></span>
+                                        {{ product.price }}
+                                    </div>
+                                    <!-- Discounted Price -->
+                                    <div class="text-xl sm:text-2xl font-bold asu-gold flex items-center">
+                                        <span class="coin-icon coin-gold coin-lg mr-1"></span>
+                                        {{ (product.price * 0.8) | int }}
+                                        <span class="ml-2 asu-gold-bg px-2 py-1 rounded text-xs font-bold">20% OFF</span>
+                                    </div>
                                 </div>
                                 <div class="text-xs sm:text-sm text-muted">
                                     Stock: {% if product.stock is none %}Unlimited{% elif product.stock == 0 %}Out of Stock{% else %}{{ product.stock }}{% endif %}
@@ -106,8 +133,9 @@
                             </div>
                             
                             {% if current_user.is_authenticated %}
-                                {% if (product.stock is none or product.stock > 0) and (current_user.balance or 0) >= product.price %}
-                                    <form method="POST" action="{{ url_for('main.purchase_product', product_id=product.id) }}" onsubmit="return confirmPurchase(event, '{{ product.name }}', {{ product.price }}, '{{ product.product_type }}')">
+                                {% set discounted_price = (product.price * 0.8) | int %}
+                                {% if (product.stock is none or product.stock > 0) and (current_user.balance or 0) >= discounted_price %}
+                                    <form method="POST" action="{{ url_for('main.purchase_product', product_id=product.id) }}" onsubmit="return confirmPurchase(event, '{{ product.name|e }}', {{ discounted_price }}, '{{ product.product_type|e }}', {{ product.price }})">
                                         <button type="submit" class="btn-primary w-full transform hover:scale-105 transition-transform duration-200">
                                             <i class="fas fa-shopping-cart mr-2"></i>
                                             {% if product.product_type == 'minecraft_skin' %}
@@ -179,7 +207,20 @@
 <div id="purchaseConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
         <h3 class="text-xl font-bold mb-4">Confirm Purchase</h3>
-        <p class="mb-4">Are you sure you want to purchase <span id="productName" class="font-semibold"></span> for <span id="productPrice" class="font-semibold asu-gold"></span> points?</p>
+        <p class="mb-4">Are you sure you want to purchase <span id="productName" class="font-semibold"></span>?</p>
+        
+        <!-- Discount Pricing Display -->
+        <div class="nav-gradient rounded-lg p-4 mb-4 border border-yellow-400">
+            <div class="text-center">
+                <div class="text-sm text-yellow-200 mb-1">🔥 LIMITED TIME DISCOUNT!</div>
+                <div class="flex items-center justify-center space-x-3">
+                    <span class="text-gray-300 line-through text-sm" id="originalPrice"></span>
+                    <span class="text-xl font-bold asu-gold" id="discountedPrice"></span>
+                </div>
+                <div class="text-xs text-yellow-200 mt-1">You save <span id="savings" class="font-semibold asu-gold"></span> points!</div>
+            </div>
+        </div>
+        
         <div class="text-sm text-gray-400 mb-4" id="purchaseInfo">
             <p><i class="fas fa-info-circle mr-2"></i><strong>All purchased items can be collected during the Devil2Devil in-person event during Welcome Week in the upcoming fall semester.</strong></p>
         </div>
@@ -188,7 +229,7 @@
         </div>
         <div class="flex justify-end space-x-4">
             <button onclick="closePurchaseConfirmation()" class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
-            <button onclick="confirmPurchaseSubmit()" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">Confirm Purchase</button>
+            <button onclick="confirmPurchaseSubmit()" class="btn-primary">Confirm Purchase</button>
         </div>
     </div>
 </div>
@@ -196,11 +237,15 @@
 <script>
     let currentForm = null;
 
-    function confirmPurchase(event, productName, price, productType) {
+    function confirmPurchase(event, productName, discountedPrice, productType, originalPrice) {
         event.preventDefault();
         currentForm = event.target;
         document.getElementById('productName').textContent = productName;
-        document.getElementById('productPrice').textContent = price;
+        
+        // Set pricing information
+        document.getElementById('originalPrice').textContent = originalPrice + ' points';
+        document.getElementById('discountedPrice').textContent = discountedPrice + ' points';
+        document.getElementById('savings').textContent = (originalPrice - discountedPrice);
         
         // Show/hide appropriate info based on product type
         const purchaseInfo = document.getElementById('purchaseInfo');

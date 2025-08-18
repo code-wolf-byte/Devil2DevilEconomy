@@ -69,20 +69,23 @@ def purchase_product(product_id):
         flash('This product is out of stock.', 'error')
         return redirect(url_for('main.shop'))
     
-    if current_user.balance < product.price:
+    # Calculate 20% discount
+    discounted_price = int(product.price * 0.8)
+    
+    if current_user.balance < discounted_price:
         flash('Insufficient balance to purchase this item.', 'error')
         return redirect(url_for('main.shop'))
     
-    # Create purchase
+    # Create purchase with discounted price
     purchase = Purchase(
         user_id=current_user.id,
         product_id=product.id,
-        points_spent=product.price,
+        points_spent=discounted_price,
         timestamp=datetime.utcnow()
     )
     
-    # Update user balance
-    current_user.balance -= product.price
+    # Update user balance with discounted price
+    current_user.balance -= discounted_price
     
     # Update product stock
     if product.stock is not None:
@@ -102,7 +105,7 @@ def purchase_product(product_id):
             if economy_cog:
                 # Schedule the purchase notification in the bot's event loop
                 future = asyncio.run_coroutine_threadsafe(
-                    economy_cog.send_purchase_notification(current_user, product, product.price, purchase.id),
+                    economy_cog.send_purchase_notification(current_user, product, discounted_price, purchase.id),
                     bot.loop
                 )
                 # Don't wait for the notification to complete to avoid blocking the purchase
