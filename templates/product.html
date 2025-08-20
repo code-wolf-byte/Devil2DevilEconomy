@@ -36,7 +36,11 @@
                     </span>
                 </div>
 
-                {% if current_user.is_authenticated %}
+                {% if PURCHASES_DISABLED %}
+                    <button class="w-full btn-primary opacity-50 cursor-not-allowed" disabled>
+                        <i class="fas fa-ban mr-2"></i>Purchases Closed
+                    </button>
+                {% elif current_user.is_authenticated %}
                     {% set discounted_price = (product.price * 0.8) | int %}
                     {% if (product.stock is none or product.stock > 0) %}
                         <form action="{{ url_for('main.purchase_product', product_id=product.id) }}" method="POST" onsubmit="return confirmPurchase(event, '{{ product.name|e }}', {{ discounted_price }}, {{ product.price }})">

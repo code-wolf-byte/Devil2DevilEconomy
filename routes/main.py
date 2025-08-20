@@ -9,6 +9,13 @@ import time
 
 main = Blueprint('main', __name__)
 
+# Global toggle to disable purchases (set to False to re-enable)
+PURCHASES_DISABLED = True
+
+@main.context_processor
+def inject_purchase_flag():
+    return {'PURCHASES_DISABLED': PURCHASES_DISABLED}
+
 @main.route('/')
 def index():
     """Home page"""
@@ -59,6 +66,11 @@ def shop():
 @login_required
 def purchase_product(product_id):
     """Purchase a product"""
+    # Block all purchases while the server is closed
+    if PURCHASES_DISABLED:
+        flash('Purchases are currently closed for the year. Please check back next year.', 'info')
+        return redirect(url_for('main.index'))
+
     product = Product.query.get_or_404(product_id)
     
     if not product.is_active:

@@ -96,23 +96,29 @@
                         </div>
                         
                         <div class="flex items-center justify-center">
-                            {% set discounted_price = (product.price * 0.8) | int %}
-                            {% if user.balance >= discounted_price and (product.stock is none or product.stock > 0) %}
-                                <form method="POST" action="{{ url_for('main.purchase_product', product_id=product.id) }}" class="inline">
-                                    <button type="submit" class="btn-primary">
-                                        <i class="fas fa-shopping-cart mr-2"></i>Buy Now
-                                    </button>
-                                </form>
-                            {% else %}
+                            {% if PURCHASES_DISABLED %}
                                 <button class="bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>
-                                    {% if user.balance < discounted_price %}
-                                        Insufficient Balance
-                                    {% elif product.stock == 0 %}
-                                        Out of Stock
-                                    {% else %}
-                                        Unavailable
-                                    {% endif %}
+                                    <i class="fas fa-ban mr-2"></i>Purchases Closed
                                 </button>
+                            {% else %}
+                                {% set discounted_price = (product.price * 0.8) | int %}
+                                {% if user.balance >= discounted_price and (product.stock is none or product.stock > 0) %}
+                                    <form method="POST" action="{{ url_for('main.purchase_product', product_id=product.id) }}" class="inline">
+                                        <button type="submit" class="btn-primary">
+                                            <i class="fas fa-shopping-cart mr-2"></i>Buy Now
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <button class="bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>
+                                        {% if user.balance < discounted_price %}
+                                            Insufficient Balance
+                                        {% elif product.stock == 0 %}
+                                            Out of Stock
+                                        {% else %}
+                                            Unavailable
+                                        {% endif %}
+                                    </button>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
