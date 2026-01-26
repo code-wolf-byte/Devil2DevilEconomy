@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, abort
 from flask_login import login_required, current_user
-from shared import db, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken
+from shared import db, bot, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -40,146 +40,6 @@ def index(path):
     ).all()
     return render_template('index.html', products=products)
 
-@main.route('/api/store')
-def store():
-    """Store data API for React client"""
-    products = Product.query.filter(
-        Product.is_active == True,
-        (Product.stock.is_(None)) | (Product.stock > 0)
-    ).all()
-
-    store_products = []
-    for product in products:
-        image_url = None
-        if product.display_image:
-            if product.display_image.startswith("http"):
-                image_url = product.display_image
-            else:
-                image_url = url_for('static', filename=f"uploads/{product.display_image}", _external=True)
-
-        store_products.append({
-            'id': product.id,
-            'name': product.name,
-            'description': product.description,
-            'price': product.price,
-            'stock': product.stock,
-            'is_unlimited': product.stock is None,
-            'in_stock': product.stock is None or product.stock > 0,
-            'product_type': product.product_type,
-            'image_url': image_url
-        })
-
-    response = jsonify({'products': store_products})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
-
-
-@main.route('/api/product/<int:product_id>')
-def product_details_api(product_id):
-    """Product details API for React client"""
-    product = Product.query.get_or_404(product_id)
-
-    image_url = None
-    if product.display_image:
-        if product.display_image.startswith("http"):
-            image_url = product.display_image
-        else:
-            image_url = url_for('static', filename=f"uploads/{product.display_image}", _external=True)
-
-    media_items = []
-    for media in product.media:
-        media_url = media.url
-        if media_url and not media_url.startswith("http") and not media_url.startswith("/"):
-            media_url = url_for('static', filename=f"uploads/{media_url}", _external=True)
-        media_items.append({
-            'id': media.id,
-            'type': media.media_type,
-            'url': media_url,
-            'alt_text': media.alt_text,
-            'sort_order': media.sort_order,
-            'is_primary': media.is_primary
-        })
-
-    if not media_items and image_url:
-        media_items.append({
-            'id': None,
-            'type': 'image',
-            'url': image_url,
-            'alt_text': product.name,
-            'sort_order': 0,
-            'is_primary': True
-        })
-
-    product_data = {
-        'id': product.id,
-        'name': product.name,
-        'description': product.description,
-        'price': product.price,
-        'stock': product.stock,
-        'is_unlimited': product.stock is None,
-        'in_stock': product.stock is None or product.stock > 0,
-        'product_type': product.product_type,
-        'image_url': image_url,
-        'media': media_items
-    }
-
-    response = jsonify({'product': product_data})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
-
-@main.route('/api/me')
-def current_user_api():
-    """Return current user session info for the React client."""
-    if current_user.is_authenticated:
-        payload = {
-            'authenticated': True,
-            'user': {
-                'id': current_user.id,
-                'username': current_user.username,
-                'avatar_url': current_user.avatar_url,
-                'balance': current_user.balance,
-                'is_admin': current_user.is_admin
-            }
-        }
-    else:
-        payload = {'authenticated': False, 'user': None}
-
-    response = jsonify(payload)
-    origin = request.headers.get('Origin')
-    if origin:
-        response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-    else:
-        response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
-
-@main.route('/dashboard')
-@login_required
-def dashboard():
-    """User dashboard"""
-    # Get user's achievements
-    user_achievements = UserAchievement.query.filter_by(user_id=current_user.id).all()
-    achievements = [ua.achievement for ua in user_achievements]
-    
-    # Get recent purchases
-    recent_purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).limit(5).all()
-    
-    # Get download tokens for recent purchases
-    purchase_tokens = {}
-    for purchase in recent_purchases:
-        if purchase.product.product_type == 'minecraft_skin':
-            token = DownloadToken.query.filter_by(
-                purchase_id=purchase.id, 
-                user_id=current_user.id
-            ).first()
-            if token and token.expires_at > datetime.utcnow():
-                purchase_tokens[purchase.id] = token
-    
-    return render_template('dashboard.html', 
-                         user=current_user, 
-                         achievements=achievements,
-                         recent_purchases=recent_purchases,
-                         purchase_tokens=purchase_tokens)
 
 @main.route('/shop')
 @login_required
@@ -457,145 +317,71 @@ def admin_products():
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     products = Product.query.all()
     return render_template('admin_products.html', products=products)
 
-@main.route('/admin/products/add', methods=['GET', 'POST'])
+
+@main.route('/admin/products/new')
+@login_required
+def admin_products_new():
+    """Admin product create (React)."""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+    return redirect(url_for('main.add_product'))
+
+
+@main.route('/admin/products/<int:product_id>')
+@login_required
+def admin_products_edit_react(product_id):
+    """Admin product edit (React)."""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+    return redirect(url_for('main.edit_product', product_id=product_id))
+
+@main.route('/admin/products/add', methods=['GET'])
 @login_required
 def add_product():
     """Add new product"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
-    if request.method == 'POST':
-        name = request.form.get('name')
-        description = request.form.get('description')
-        price = int(request.form.get('price'))
-        stock = request.form.get('stock')
-        product_type = request.form.get('product_type', 'physical')
-        
-        # Handle stock
-        if stock == '' or stock == 'unlimited':
-            stock = None
-        else:
-            stock = int(stock)
-        
-        # Handle file uploads
-        image_url = None
-        preview_image_url = None
-        download_file_url = None
-        
-        # Regular image upload
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin preview image
-        if 'preview_image' in request.files:
-            file = request.files['preview_image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                preview_image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin download file
-        if 'download_file' in request.files:
-            file = request.files['download_file']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                download_file_url = os.path.basename(unique_filename)
-        
-        product = Product(
-            name=name,
-            description=description,
-            price=price,
-            stock=stock,
-            image_url=image_url,
-            product_type=product_type,
-            preview_image_url=preview_image_url,
-            download_file_url=download_file_url,
-            created_at=datetime.utcnow()
-        )
-        
-        db.session.add(product)
-        db.session.commit()
-        
-        flash('Product added successfully!', 'success')
-        return redirect(url_for('main.admin_products'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     return render_template('add_product.html')
 
-@main.route('/admin/products/edit/<int:product_id>', methods=['GET', 'POST'])
+@main.route('/admin/products/edit/<int:product_id>', methods=['GET'])
 @login_required
 def edit_product(product_id):
     """Edit product"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     product = Product.query.get_or_404(product_id)
-    
-    if request.method == 'POST':
-        product.name = request.form.get('name')
-        product.description = request.form.get('description')
-        product.price = int(request.form.get('price'))
-        stock = request.form.get('stock')
-        product.product_type = request.form.get('product_type', 'physical')
-        
-        # Handle stock
-        if stock == '' or stock == 'unlimited':
-            product.stock = None
-        else:
-            product.stock = int(stock)
-        
-        # Handle file uploads
-        # Regular image upload
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                product.image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin preview image
-        if 'preview_image' in request.files:
-            file = request.files['preview_image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                product.preview_image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin download file
-        if 'download_file' in request.files:
-            file = request.files['download_file']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                product.download_file_url = os.path.basename(unique_filename)
-        
-        db.session.commit()
-        
-        flash('Product updated successfully!', 'success')
-        return redirect(url_for('main.admin_products'))
-    
     return render_template('edit_product.html', product=product)
 
 @main.route('/admin/products/delete/<int:product_id>', methods=['POST'])
@@ -630,6 +416,8 @@ def restore_product(product_id):
     flash('Product restored successfully!', 'success')
     return redirect(url_for('main.admin_products'))
 
+
+
 @main.route('/admin/purchases')
 @login_required
 def admin_purchases():
@@ -647,6 +435,10 @@ def admin_purchases():
 @main.route('/leaderboard')
 def leaderboard():
     """Leaderboard page"""
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     top_users = User.query.order_by(User.balance.desc()).limit(10).all()
     return render_template('leaderboard.html', users=top_users)
 
@@ -674,80 +466,18 @@ def my_purchases():
     
     return render_template('my_purchases.html', purchases=purchases, purchase_tokens=purchase_tokens)
 
-@main.route('/new_product', methods=['GET', 'POST'])
+@main.route('/new_product', methods=['GET'])
 @login_required
 def new_product():
     """Add new product (alias for add_product)"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
-    if request.method == 'POST':
-        name = request.form.get('name')
-        description = request.form.get('description')
-        price = int(request.form.get('price'))
-        stock = request.form.get('stock')
-        product_type = request.form.get('product_type', 'physical')
-        
-        # Handle stock
-        if stock == '' or stock == 'unlimited':
-            stock = None
-        else:
-            stock = int(stock)
-        
-        # Handle file uploads
-        image_url = None
-        preview_image_url = None
-        download_file_url = None
-        
-        # Regular image upload
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin preview image
-        if 'preview_image' in request.files:
-            file = request.files['preview_image']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                preview_image_url = os.path.basename(unique_filename)
-        
-        # Minecraft skin download file
-        if 'download_file' in request.files:
-            file = request.files['download_file']
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join('static', 'uploads', unique_filename)
-                file.save(file_path)
-                download_file_url = os.path.basename(unique_filename)
-        
-        product = Product(
-            name=name,
-            description=description,
-            price=price,
-            stock=stock,
-            image_url=image_url,
-            product_type=product_type,
-            preview_image_url=preview_image_url,
-            download_file_url=download_file_url,
-            created_at=datetime.utcnow()
-        )
-        
-        db.session.add(product)
-        db.session.commit()
-        
-        flash('Product added successfully!', 'success')
-        return redirect(url_for('main.admin_products'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     return render_template('new_product.html')
 
 @main.route('/digital_templates')

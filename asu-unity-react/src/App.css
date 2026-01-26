@@ -63,3 +63,19 @@
 .product-page .product-media {
   background: #ffffff;
 }
+
+.store-card .card-tags .btn-tag:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.store-card .card-tags .btn-tag:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-image: url("/static/Coin_Gold.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+}

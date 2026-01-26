@@ -2,6 +2,7 @@ from shared import app, bot, db, User, EconomySettings, Achievement, UserAchieve
 from discord_files.cogs.economy import EconomyCog
 from routes.auth import auth, handle_callback
 from routes.main import main
+from routes.api import api as api_bp
 from utils import fix_balance_consistency
 import dotenv
 import os
@@ -16,6 +17,7 @@ dotenv.load_dotenv()
 # Register blueprints
 app.register_blueprint(auth, url_prefix='/auth')
 app.register_blueprint(main)
+app.register_blueprint(api_bp)
 
 # User loader for Flask-Login
 @login_manager.user_loader
@@ -38,36 +40,6 @@ def logout_redirect():
     """Shortcut for auth logout to support frontend routing."""
     return redirect(url_for('auth.logout'))
 
-@app.route('/api/store')
-def api_store():
-    """Return store data for the React app."""
-    products = Product.query.filter(
-        Product.is_active == True,
-        (Product.stock.is_(None)) | (Product.stock > 0)
-    ).all()
-
-    store_products = []
-    for product in products:
-        image_url = None
-        display_image = product.display_image or product.image_url
-        if display_image:
-            image_url = url_for('static', filename=f"uploads/{display_image}", _external=True)
-
-        store_products.append({
-            'id': product.id,
-            'name': product.name,
-            'description': product.description,
-            'price': product.price,
-            'stock': product.stock,
-            'is_unlimited': product.stock is None,
-            'in_stock': product.stock is None or product.stock > 0,
-            'product_type': product.product_type,
-            'image_url': image_url
-        })
-
-    response = jsonify({'products': store_products})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response
 
 # Discord bot setup
 token = os.getenv("DISCORD_TOKEN")

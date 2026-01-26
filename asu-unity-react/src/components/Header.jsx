@@ -3,10 +3,6 @@ import asuLogoVertical from "@asu/component-header-footer/dist/assets/img/arizon
 import asuLogoHorizontal from "@asu/component-header-footer/dist/assets/img/arizona-state-university-logo.png";
 
 export default function Header({
-    loggedIn = false,
-    userName = "",
-    loginLink = "/auth/login",
-    logoutLink = "/logout",
 }) {
     const logo = {
         alt: "Arizona State University",
@@ -43,6 +39,11 @@ export default function Header({
     href: "/how-to-earn",
     text: "How to Earn",
   },
+  {
+    id: 3,
+    href: "/leaderboard",
+    text: "Leaderboard",
+  },
 ];
 
 
@@ -55,10 +56,6 @@ export default function Header({
             baseUrl="/"
             partnerLogo={partnerLogo}
             logo={logo}
-            loggedIn={loggedIn}
-            userName={userName}
-            loginLink={loginLink}
-            logoutLink={logoutLink}
             buttons={[]}
             breakpoint="Lg"
             animateTitle={false}

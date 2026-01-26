@@ -2,13 +2,20 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@asu/unity-react-core";
 import { Card, Pagination } from "@asu/unity-react-core";
 
-export default function Store() {
+export default function Store({
+  isAuthenticated = false,
+  isAdmin = false,
+  userName = "",
+  balance = null,
+  avatarUrl = "",
+}) {
   const [products, setProducts] = useState([]);
   const [status, setStatus] = useState({ loading: true, error: null });
 
   const apiBaseUrl = useMemo(() => {
-    const value = import.meta.env.VITE_API_BASE_URL || "";
-    return value ? value.replace(/\/+$/, "") : "";
+    const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+    if (!value) return "";
+    return value.endsWith("/api") ? value.slice(0, -4) : value;
   }, []);
 
   const withBase = (path) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
@@ -59,7 +66,7 @@ export default function Store() {
   const formatTags = (product) => {
     const tags = [
       {
-        label: `Price: ${product.price}`,
+        label: `${product.price}`,
         color: "dark",
         ariaLabel: `Price ${product.price}`,
       },
@@ -114,12 +121,48 @@ export default function Store() {
             Browse rewards curated for the Devil2Devil community.
           </p>
         </div>
-        <Button
-          label="Sign in with Discord"
-          color="gold"
-          href={withBase("/auth/login")}
-          size="default"
-        />
+        {!isAuthenticated ? (
+          <Button
+            label="Sign in with Discord"
+            color="gold"
+            href={withBase("/auth/login")}
+            size="default"
+          />
+        ) : (
+          <>
+            <div
+              className="btn btn-light d-flex align-items-center gap-2"
+              role="button"
+              aria-disabled="true"
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={userName || "User avatar"}
+                  className="rounded-circle"
+                  style={{ width: "28px", height: "28px", objectFit: "cover" }}
+                />
+              ) : null}
+              <span className="fw-semibold">{userName || "Account"}</span>
+              <span className="d-inline-flex align-items-center gap-1 text-muted small">
+                <img
+                  src="/static/Coin_Gold.png"
+                  alt="Balance"
+                  style={{ width: "16px", height: "16px" }}
+                />
+                {balance ?? 0}
+              </span>
+            </div>
+            {isAdmin ? (
+              <Button
+                label="Admin Dashboard"
+                color="gray"
+                href={withBase("/dashboard")}
+                size="default"
+              />
+            ) : null}
+          </>
+        )}
       </div>
       {products.length === 0 ? (
         <p className="text-muted">No products available right now.</p>
@@ -132,7 +175,8 @@ export default function Store() {
                 className="text-decoration-none text-reset d-block h-100"
                 href={`/product/${product.id}`}
               >
-                <Card
+                <div className="store-card">
+                  <Card
                   type="default"
                   horizontal={false}
                   showBorders={true}
@@ -141,7 +185,8 @@ export default function Store() {
                   title={product.name}
                   body={product.description || "No description available."}
                   tags={formatTags(product)}
-                />
+                  />
+                </div>
               </a>
             </div>
             ))}

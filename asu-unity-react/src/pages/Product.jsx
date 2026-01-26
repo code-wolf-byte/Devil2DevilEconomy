@@ -7,8 +7,9 @@ export default function Product({ productId }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   const apiBaseUrl = useMemo(() => {
-    const value = import.meta.env.VITE_API_BASE_URL || "";
-    return value ? value.replace(/\/+$/, "") : "";
+    const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+    if (!value) return "";
+    return value.endsWith("/api") ? value.slice(0, -4) : value;
   }, []);
 
   const withBase = (path) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
@@ -148,8 +149,12 @@ export default function Product({ productId }) {
 
         <div className="col-12 col-lg-5">
           <div className="border rounded p-4 h-100 bg-white">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="text-uppercase text-muted small">Price</span>
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <img
+                src="/static/Coin_Gold.png"
+                alt="Price"
+                style={{ width: "20px", height: "20px" }}
+              />
               <span className="h4 fw-bold mb-0">{product.price}</span>
             </div>
             <p className="text-muted">{product.description || "No description."}</p>

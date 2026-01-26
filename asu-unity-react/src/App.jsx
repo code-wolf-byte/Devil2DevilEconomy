@@ -2,6 +2,10 @@ import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/footer";
 import HowToEarn from "./pages/HowToEarn";
+import AdminProducts from "./pages/AdminProducts";
+import Dashboard from "./pages/Dashboard";
+import Leaderboard from "./pages/Leaderboard";
+import MyPurchases from "./pages/MyPurchases";
 import Product from "./pages/Product";
 import Store from "./pages/Store";
 import "./App.css";
@@ -21,8 +25,9 @@ export default function App() {
     isAdmin: false,
   });
   const apiBaseUrl = useMemo(() => {
-    const value = import.meta.env.VITE_API_BASE_URL || "";
-    return value ? value.replace(/\/+$/, "") : "";
+    const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+    if (!value) return "";
+    return value.endsWith("/api") ? value.slice(0, -4) : value;
   }, []);
 
   const withBase = (path) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
@@ -105,8 +110,61 @@ export default function App() {
       return <HowToEarn />;
     }
 
+    if (path === "/leaderboard") {
+      return <Leaderboard />;
+    }
+
+    if (path === "/my-purchases") {
+      return (
+        <MyPurchases
+          isAuthenticated={authState.authenticated}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
     if (path === "/store" || path === "/") {
-      return <Store />;
+      return (
+        <Store
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          userName={authState.user?.username || ""}
+          balance={authState.user?.balance ?? 0}
+          avatarUrl={authState.user?.avatar_url || ""}
+        />
+      );
+    }
+
+    if (path === "/dashboard") {
+      return (
+        <Dashboard
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          userName={authState.user?.username || ""}
+          loginHref={withBase("/auth/login")}
+          storeHref="/store"
+        />
+      );
+    }
+
+    if (path === "/admin/products" || path === "/admin/products/new") {
+      return (
+        <AdminProducts
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path.startsWith("/admin/products/")) {
+      return (
+        <AdminProducts
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
     }
 
     if (path.startsWith("/product/")) {
@@ -125,15 +183,11 @@ export default function App() {
         </p>
       </div>
     );
-  }, [path]);
+  }, [path, authState.authenticated, authState.isAdmin, authState.user?.username]);
 
   return (
     <div className="main-container">
       <Header
-        loggedIn={authState.authenticated}
-        userName={authState.user?.username || ""}
-        loginLink={withBase("/auth/login")}
-        logoutLink={withBase("/logout")}
       />
       {/* ✅ Push content below sticky/overlay header */}
       <main className="main-content" style={{ paddingTop: headerOffset }}>
