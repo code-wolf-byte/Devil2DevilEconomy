@@ -12,21 +12,146 @@ main = Blueprint('main', __name__)
 # Global toggle to disable purchases (set to False to re-enable)
 PURCHASES_DISABLED = True
 
+REACT_BUILD_DIR = os.getenv(
+    'REACT_BUILD_DIR',
+    os.path.join(os.getcwd(), 'asu-unity-react', 'dist')
+)
+
 @main.context_processor
 def inject_purchase_flag():
     return {'PURCHASES_DISABLED': PURCHASES_DISABLED}
 
-@main.route('/')
-def index():
-    """Home page"""
-    # Get only active products that are not out of stock
-    # Show products that are either unlimited (stock=None) or have stock available (stock>0)
+@main.route('/', defaults={'path': ''})
+@main.route('/<path:path>')
+def index(path):
+    """Serve the React app at / and fall back to Flask templates if the build is missing."""
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        if path and os.path.exists(os.path.join(REACT_BUILD_DIR, path)):
+            return send_from_directory(REACT_BUILD_DIR, path)
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+    if path:
+        abort(404)
+
     products = Product.query.filter(
         Product.is_active == True,
         (Product.stock.is_(None)) | (Product.stock > 0)
     ).all()
-    
     return render_template('index.html', products=products)
+
+@main.route('/api/store')
+def store():
+    """Store data API for React client"""
+    products = Product.query.filter(
+        Product.is_active == True,
+        (Product.stock.is_(None)) | (Product.stock > 0)
+    ).all()
+
+    store_products = []
+    for product in products:
+        image_url = None
+        if product.display_image:
+            if product.display_image.startswith("http"):
+                image_url = product.display_image
+            else:
+                image_url = url_for('static', filename=f"uploads/{product.display_image}", _external=True)
+
+        store_products.append({
+            'id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'price': product.price,
+            'stock': product.stock,
+            'is_unlimited': product.stock is None,
+            'in_stock': product.stock is None or product.stock > 0,
+            'product_type': product.product_type,
+            'image_url': image_url
+        })
+
+    response = jsonify({'products': store_products})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+
+@main.route('/api/product/<int:product_id>')
+def product_details_api(product_id):
+    """Product details API for React client"""
+    product = Product.query.get_or_404(product_id)
+
+    image_url = None
+    if product.display_image:
+        if product.display_image.startswith("http"):
+            image_url = product.display_image
+        else:
+            image_url = url_for('static', filename=f"uploads/{product.display_image}", _external=True)
+
+    media_items = []
+    for media in product.media:
+        media_url = media.url
+        if media_url and not media_url.startswith("http") and not media_url.startswith("/"):
+            media_url = url_for('static', filename=f"uploads/{media_url}", _external=True)
+        media_items.append({
+            'id': media.id,
+            'type': media.media_type,
+            'url': media_url,
+            'alt_text': media.alt_text,
+            'sort_order': media.sort_order,
+            'is_primary': media.is_primary
+        })
+
+    if not media_items and image_url:
+        media_items.append({
+            'id': None,
+            'type': 'image',
+            'url': image_url,
+            'alt_text': product.name,
+            'sort_order': 0,
+            'is_primary': True
+        })
+
+    product_data = {
+        'id': product.id,
+        'name': product.name,
+        'description': product.description,
+        'price': product.price,
+        'stock': product.stock,
+        'is_unlimited': product.stock is None,
+        'in_stock': product.stock is None or product.stock > 0,
+        'product_type': product.product_type,
+        'image_url': image_url,
+        'media': media_items
+    }
+
+    response = jsonify({'product': product_data})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+@main.route('/api/me')
+def current_user_api():
+    """Return current user session info for the React client."""
+    if current_user.is_authenticated:
+        payload = {
+            'authenticated': True,
+            'user': {
+                'id': current_user.id,
+                'username': current_user.username,
+                'avatar_url': current_user.avatar_url,
+                'balance': current_user.balance,
+                'is_admin': current_user.is_admin
+            }
+        }
+    else:
+        payload = {'authenticated': False, 'user': None}
+
+    response = jsonify(payload)
+    origin = request.headers.get('Origin')
+    if origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    else:
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 @main.route('/dashboard')
 @login_required

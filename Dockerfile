@@ -1,3 +1,22 @@
+FROM node:18-alpine AS react-build
+
+WORKDIR /react
+
+COPY asu-unity-react/package.json asu-unity-react/yarn.lock asu-unity-react/.yarnrc.yml /react/
+COPY asu-unity-react/.yarn /react/.yarn
+
+RUN corepack enable && yarn install --immutable
+
+COPY asu-unity-react/public /react/public
+COPY asu-unity-react/src /react/src
+COPY asu-unity-react/index.html /react/index.html
+COPY asu-unity-react/vite.config.js /react/vite.config.js
+
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+RUN yarn build
+
 FROM python:3.11-slim
 
 # Set working directory
@@ -32,6 +51,12 @@ RUN mkdir -p instance static/uploads
 
 # Copy application code
 COPY . .
+
+# Copy React build output
+COPY --from=react-build /react/dist /app/react-dist
+
+# Location of the built React app for Flask to serve
+ENV REACT_BUILD_DIR=/app/react-dist
 
 # Set proper permissions for directories
 RUN chmod -R 755 /app && \

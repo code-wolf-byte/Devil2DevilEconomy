@@ -31,6 +31,8 @@ wheels/
 *.swp
 *.swo
 *~
+node_modules/
+asu-unity-react/node_modules/
 
 # Logs
 logs/

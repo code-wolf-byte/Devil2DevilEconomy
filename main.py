@@ -8,7 +8,7 @@ import os
 import time
 import asyncio
 import threading
-from flask import redirect, url_for
+from flask import redirect, url_for, jsonify
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -27,6 +27,47 @@ def load_user(user_id):
 def callback():
     """Handle Discord OAuth callback"""
     return handle_callback()
+
+@app.route('/login')
+def login_redirect():
+    """Shortcut for auth login to support frontend routing."""
+    return redirect(url_for('auth.login'))
+
+@app.route('/logout')
+def logout_redirect():
+    """Shortcut for auth logout to support frontend routing."""
+    return redirect(url_for('auth.logout'))
+
+@app.route('/api/store')
+def api_store():
+    """Return store data for the React app."""
+    products = Product.query.filter(
+        Product.is_active == True,
+        (Product.stock.is_(None)) | (Product.stock > 0)
+    ).all()
+
+    store_products = []
+    for product in products:
+        image_url = None
+        display_image = product.display_image or product.image_url
+        if display_image:
+            image_url = url_for('static', filename=f"uploads/{display_image}", _external=True)
+
+        store_products.append({
+            'id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'price': product.price,
+            'stock': product.stock,
+            'is_unlimited': product.stock is None,
+            'in_stock': product.stock is None or product.stock > 0,
+            'product_type': product.product_type,
+            'image_url': image_url
+        })
+
+    response = jsonify({'products': store_products})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 # Discord bot setup
 token = os.getenv("DISCORD_TOKEN")
@@ -267,4 +308,3 @@ if __name__ == "__main__":
     # Start the Flask app (this will block)
     print("Starting Flask app...")
     app.run(host = '0.0.0.0', debug=True, use_reloader=False, port=5000)  # use_reloader=False to avoid issues with threading
-

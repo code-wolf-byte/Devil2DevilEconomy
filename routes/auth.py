@@ -12,7 +12,7 @@ auth = Blueprint('auth', __name__)
 def login():
     """Redirect to Discord OAuth"""
     if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
+        return redirect('/store')
     
     # Discord OAuth URL
     client_id = os.getenv('DISCORD_CLIENT_ID')
@@ -37,7 +37,7 @@ def handle_callback():
     # Check if environment variables are set
     if not client_id or not client_secret or not redirect_uri:
         flash('Server configuration error. Please contact an administrator.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect('/store')
     
     data = {
         'client_id': client_id,
@@ -110,7 +110,7 @@ def handle_callback():
         login_user(user)
         
         flash('Successfully logged in!', 'success')
-        return redirect(url_for('main.index'))
+        return redirect('/store')
         
     except Exception as e:
         flash(f'Authentication error: {str(e)}', 'error')
@@ -127,4 +127,4 @@ def logout():
     """Logout user"""
     logout_user()
     flash('Successfully logged out!', 'success')
-    return redirect(url_for('main.index')) 
+    return redirect('/store')

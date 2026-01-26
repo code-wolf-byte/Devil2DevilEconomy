@@ -202,3 +202,5 @@ Thumbs.db
 *.swp
 *.swo
 *~
+.npmrc
+.yarnrc.yml
