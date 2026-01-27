@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, Divider, Image } from "@asu/unity-react-core";
 
-export default function Product({ productId }) {
+export default function Product({ productId, isAuthenticated = false, loginHref = "/auth/login" }) {
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState({ loading: true, error: null });
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [purchaseStatus, setPurchaseStatus] = useState({
+    loading: false,
+    error: null,
+    success: null,
+  });
 
   const apiBaseUrl = useMemo(() => {
     const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -91,6 +96,38 @@ export default function Product({ productId }) {
     );
   }
 
+  const handlePurchase = async () => {
+    if (!isAuthenticated) {
+      window.location.href = loginHref;
+      return;
+    }
+    setPurchaseStatus({ loading: true, error: null, success: null });
+    try {
+      const url = apiBaseUrl
+        ? `${apiBaseUrl}/api/purchase/${productId}`
+        : `/api/purchase/${productId}`;
+      const response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || `Purchase failed (${response.status})`);
+      }
+      setPurchaseStatus({
+        loading: false,
+        error: null,
+        success: data.message || "Purchase completed.",
+      });
+    } catch (error) {
+      setPurchaseStatus({
+        loading: false,
+        error: error.message,
+        success: null,
+      });
+    }
+  };
+
   const activeMedia = media[activeMediaIndex];
 
   return (
@@ -98,7 +135,6 @@ export default function Product({ productId }) {
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
         <div>
           <h1 className="display-6 fw-bold mb-2">{product.name}</h1>
-          <p className="text-muted mb-0">{product.product_type}</p>
         </div>
         <Button label="Back to store" color="gray" href="/" size="small" />
       </div>
@@ -168,6 +204,32 @@ export default function Product({ productId }) {
                   ? `${product.stock} available`
                   : "Out of stock"}
               </span>
+            </div>
+
+            {purchaseStatus.error ? (
+              <div className="alert alert-danger mt-3">
+                {purchaseStatus.error}
+              </div>
+            ) : null}
+            {purchaseStatus.success ? (
+              <div className="alert alert-success mt-3">
+                {purchaseStatus.success}
+              </div>
+            ) : null}
+
+            <div className="mt-3 d-grid gap-2">
+              <Button
+                label={
+                  purchaseStatus.loading
+                    ? "Processing..."
+                    : isAuthenticated
+                    ? "Purchase"
+                    : "Sign in to Purchase"
+                }
+                color="gold"
+                disabled={purchaseStatus.loading || !product.in_stock}
+                onClick={handlePurchase}
+              />
             </div>
           </div>
         </div>

@@ -170,7 +170,13 @@ export default function App() {
     if (path.startsWith("/product/")) {
       const productId = Number.parseInt(path.split("/")[2], 10);
       if (Number.isFinite(productId)) {
-        return <Product productId={productId} />;
+        return (
+          <Product
+            productId={productId}
+            isAuthenticated={authState.authenticated}
+            loginHref={withBase("/auth/login")}
+          />
+        );
       }
     }
 

@@ -11,11 +11,14 @@ from shared import (
     ProductMedia,
 )
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import uuid
+import asyncio
 
 api = Blueprint('api', __name__, url_prefix='/api')
+
+PURCHASES_DISABLED = os.getenv('PURCHASES_DISABLED', 'false').lower() in {'1', 'true', 'yes'}
 
 
 def _json_response(payload, status=200):
@@ -535,6 +538,153 @@ def admin_product_update_api(product_id):
         db.session.commit()
 
     return _json_response({'ok': True})
+
+
+@api.route('/purchase/<int:product_id>', methods=['POST'])
+@login_required
+def purchase_api(product_id):
+    """Purchase a product via API."""
+    if PURCHASES_DISABLED:
+        return _json_response(
+            {'error': 'purchases_disabled', 'message': 'Purchases are currently closed.'},
+            status=403
+        )
+
+    product = Product.query.get_or_404(product_id)
+
+    if not product.is_active:
+        return _json_response(
+            {'error': 'inactive', 'message': 'This product is no longer available.'},
+            status=400
+        )
+
+    if product.stock is not None and product.stock <= 0:
+        return _json_response(
+            {'error': 'out_of_stock', 'message': 'This product is out of stock.'},
+            status=400
+        )
+
+    discounted_price = int(product.price * 0.8)
+
+    if current_user.balance < discounted_price:
+        return _json_response(
+            {'error': 'insufficient_balance', 'message': 'Insufficient balance.'},
+            status=400
+        )
+
+    purchase = Purchase(
+        user_id=current_user.id,
+        product_id=product.id,
+        points_spent=discounted_price,
+        timestamp=datetime.utcnow()
+    )
+
+    current_user.balance -= discounted_price
+
+    if product.stock is not None:
+        product.stock -= 1
+
+    db.session.add(purchase)
+    db.session.commit()
+
+    try:
+        from shared import bot
+        if bot.is_ready():
+            economy_cog = bot.get_cog('EconomyCog')
+            if economy_cog:
+                future = asyncio.run_coroutine_threadsafe(
+                    economy_cog.send_purchase_notification(
+                        current_user, product, discounted_price, purchase.id
+                    ),
+                    bot.loop
+                )
+                try:
+                    future.result(timeout=2)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Warning: Could not send Discord purchase notification: {e}")
+
+    download_url = None
+    delivery_status = 'completed'
+    message = f'Successfully purchased {product.name}!'
+
+    if product.product_type == 'minecraft_skin' and product.download_file_url:
+        token = str(uuid.uuid4())
+        expires_at = datetime.utcnow() + timedelta(days=30)
+        download_token = DownloadToken(
+            token=token,
+            user_id=current_user.id,
+            purchase_id=purchase.id,
+            file_path=product.download_file_url,
+            expires_at=expires_at
+        )
+        db.session.add(download_token)
+        db.session.commit()
+        purchase.delivery_info = f"Download token created: {token}"
+        db.session.commit()
+        download_url = url_for('main.download_file', token=token, _external=True)
+        message = f'Successfully purchased {product.name}! Your download is now available.'
+    elif product.product_type == 'role' and product.delivery_method == 'auto_role':
+        try:
+            import json
+            from shared import bot
+            delivery_config = json.loads(product.delivery_data) if product.delivery_data else {}
+            role_id = delivery_config.get('role_id')
+            if role_id and bot.is_ready():
+                economy_cog = bot.get_cog('EconomyCog')
+                if economy_cog:
+                    future = asyncio.run_coroutine_threadsafe(
+                        economy_cog.assign_role_to_user(current_user.id, role_id, purchase.id),
+                        bot.loop
+                    )
+                    success, role_message = future.result(timeout=10)
+                    if success:
+                        purchase.delivery_info = f"Role assigned successfully: {role_message}"
+                        purchase.status = 'completed'
+                        message = f'Successfully purchased {product.name}! Your Discord role has been assigned.'
+                    else:
+                        purchase.delivery_info = f"Role assignment failed: {role_message}"
+                        purchase.status = 'failed'
+                        delivery_status = 'failed'
+                        message = f'Purchase successful, but role assignment failed: {role_message}'
+                else:
+                    purchase.delivery_info = "Economy cog not found"
+                    purchase.status = 'failed'
+                    delivery_status = 'failed'
+                    message = 'Purchase successful, but Discord bot is not properly configured.'
+            elif not bot.is_ready():
+                purchase.delivery_info = "Discord bot not ready"
+                purchase.status = 'pending'
+                delivery_status = 'pending'
+                message = 'Purchase successful! Discord bot is starting up - role will be assigned shortly.'
+            else:
+                purchase.delivery_info = "No role ID configured"
+                purchase.status = 'failed'
+                delivery_status = 'failed'
+                message = 'Purchase successful! Please contact an admin for role assignment.'
+            db.session.commit()
+        except asyncio.TimeoutError:
+            purchase.delivery_info = "Role assignment timed out"
+            purchase.status = 'failed'
+            delivery_status = 'failed'
+            db.session.commit()
+            message = 'Purchase successful, but role assignment timed out.'
+        except Exception as e:
+            purchase.delivery_info = f"Role assignment error: {str(e)}"
+            purchase.status = 'failed'
+            delivery_status = 'failed'
+            db.session.commit()
+            message = 'Purchase successful, but role assignment failed.'
+
+    return _json_response({
+        'ok': True,
+        'purchase_id': purchase.id,
+        'new_balance': current_user.balance,
+        'download_url': download_url,
+        'status': delivery_status,
+        'message': message
+    })
 
 
 @api.route('/leaderboard')

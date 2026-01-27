@@ -9,8 +9,8 @@ import time
 
 main = Blueprint('main', __name__)
 
-# Global toggle to disable purchases (set to False to re-enable)
-PURCHASES_DISABLED = True
+# Global toggle to disable purchases
+PURCHASES_DISABLED = os.getenv('PURCHASES_DISABLED', 'false').lower() in {'1', 'true', 'yes'}
 
 REACT_BUILD_DIR = os.getenv(
     'REACT_BUILD_DIR',
