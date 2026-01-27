@@ -79,6 +79,13 @@ class Product(db.Model):
     preview_image_url = db.Column(db.String(200))  # Preview image for minecraft skins
     download_file_url = db.Column(db.String(200))  # Actual downloadable file for minecraft skins
     
+    media = db.relationship(
+        'ProductMedia',
+        backref=db.backref('product', lazy=True),
+        lazy=True,
+        order_by='ProductMedia.sort_order'
+    )
+    
     def __repr__(self):
         return f'<Product {self.name} ({self.product_type})>'
     
@@ -98,6 +105,15 @@ class Product(db.Model):
     @property
     def display_image(self):
         """Get the appropriate image for display (preview for minecraft skins, regular image for others)"""
+        primary_media = next(
+            (item for item in self.media if item.media_type == 'image' and item.is_primary),
+            None
+        )
+        if primary_media:
+            return primary_media.url
+        first_image = next((item for item in self.media if item.media_type == 'image'), None)
+        if first_image:
+            return first_image.url
         if self.product_type == 'minecraft_skin' and self.preview_image_url:
             return self.preview_image_url
         return self.image_url
@@ -106,6 +122,18 @@ class Product(db.Model):
     def has_dual_files(self):
         """Check if this product uses dual-file system (minecraft skins)"""
         return self.product_type == 'minecraft_skin' and self.preview_image_url and self.download_file_url
+
+class ProductMedia(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    media_type = db.Column(db.String(20), default='image')  # image, video, file
+    url = db.Column(db.String(255), nullable=False)
+    alt_text = db.Column(db.String(150))
+    sort_order = db.Column(db.Integer, default=0)
+    is_primary = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f'<ProductMedia {self.product_id} {self.media_type}>'
 
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)

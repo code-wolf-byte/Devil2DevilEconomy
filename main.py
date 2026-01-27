@@ -2,13 +2,14 @@ from shared import app, bot, db, User, EconomySettings, Achievement, UserAchieve
 from discord_files.cogs.economy import EconomyCog
 from routes.auth import auth, handle_callback
 from routes.main import main
+from routes.api import api as api_bp
 from utils import fix_balance_consistency
 import dotenv
 import os
 import time
 import asyncio
 import threading
-from flask import redirect, url_for
+from flask import redirect, url_for, jsonify
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -16,6 +17,7 @@ dotenv.load_dotenv()
 # Register blueprints
 app.register_blueprint(auth, url_prefix='/auth')
 app.register_blueprint(main)
+app.register_blueprint(api_bp)
 
 # User loader for Flask-Login
 @login_manager.user_loader
@@ -27,6 +29,17 @@ def load_user(user_id):
 def callback():
     """Handle Discord OAuth callback"""
     return handle_callback()
+
+@app.route('/login')
+def login_redirect():
+    """Shortcut for auth login to support frontend routing."""
+    return redirect(url_for('auth.login'))
+
+@app.route('/logout')
+def logout_redirect():
+    """Shortcut for auth logout to support frontend routing."""
+    return redirect(url_for('auth.logout'))
+
 
 # Discord bot setup
 token = os.getenv("DISCORD_TOKEN")
@@ -267,4 +280,3 @@ if __name__ == "__main__":
     # Start the Flask app (this will block)
     print("Starting Flask app...")
     app.run(host = '0.0.0.0', debug=True, use_reloader=False, port=5000)  # use_reloader=False to avoid issues with threading
-
