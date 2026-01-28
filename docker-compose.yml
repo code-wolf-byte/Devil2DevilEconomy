@@ -1,10 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      args:
-        VITE_API_BASE_URL: ""
-        NPM_AUTH_TOKEN: ${NPM_AUTH_TOKEN}
+    image: codewolfbyte/devil2devil-economy:tagname
     ports:
       - "5000:5000"
     volumes:
