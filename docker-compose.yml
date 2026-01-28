@@ -16,3 +16,10 @@ services:
     # Traditional approach: run as root to avoid permission issues
     # user: "0:0"  # Uncomment this line if needed
     restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup --label-enable
+    restart: unless-stopped
