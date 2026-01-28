@@ -5,6 +5,9 @@ WORKDIR /react
 COPY asu-unity-react/package.json asu-unity-react/yarn.lock asu-unity-react/.yarnrc.yml /react/
 COPY asu-unity-react/.yarn /react/.yarn
 
+ARG NPM_AUTH_TOKEN
+ENV NPM_AUTH_TOKEN=$NPM_AUTH_TOKEN
+
 RUN corepack enable && yarn install --immutable
 
 COPY asu-unity-react/public /react/public

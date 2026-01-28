@@ -4,6 +4,7 @@ services:
       context: .
       args:
         VITE_API_BASE_URL: ""
+        NPM_AUTH_TOKEN: ${NPM_AUTH_TOKEN}
     ports:
       - "5000:5000"
     volumes:
