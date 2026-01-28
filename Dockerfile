@@ -8,9 +8,10 @@ COPY .env /react/.env
 
 ARG NPM_AUTH_TOKEN
 ENV NPM_AUTH_TOKEN=$NPM_AUTH_TOKEN
+ENV NODE_OPTIONS=--max-old-space-size=1024
 
 # Use the vendored Yarn binary to avoid Corepack downloads on restricted servers
-RUN set -a && . /react/.env && set +a && node /react/.yarn/releases/yarn-4.4.0.cjs install --immutable
+RUN set -a && . /react/.env && set +a && node /react/.yarn/releases/yarn-4.4.0.cjs install --immutable --inline-builds
 
 COPY asu-unity-react/public /react/public
 COPY asu-unity-react/src /react/src
