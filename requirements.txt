@@ -51,6 +51,7 @@ Flask-Uploads==0.2.1
 # fros==1.1  # Removed, not available on PyPI
 frozendict==2.4.6
 frozenlist==1.7.0
+gunicorn==21.2.0
 humanize==4.12.0
 i3ipc==2.2.1
 idna==3.10

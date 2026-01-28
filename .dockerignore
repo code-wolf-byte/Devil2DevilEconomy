@@ -77,3 +77,4 @@ data/
 
 # Deployment scripts
 deploy.sh 
+.env

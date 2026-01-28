@@ -3,7 +3,6 @@ from discord_files.cogs.economy import EconomyCog
 from routes.auth import auth, handle_callback
 from routes.main import main
 from routes.api import api as api_bp
-from utils import fix_balance_consistency
 import dotenv
 import os
 import time
@@ -98,10 +97,6 @@ async def test_command(ctx):
     """Send a test message for reactions"""
     await ctx.send("React to this message to test the reaction handler! 👍")
 
-@bot.command(name='ping')
-async def ping_command(ctx):
-    """Simple ping command"""
-    await ctx.send("Pong!")
 
 @bot.command(name='oldmsg')
 async def old_message_test(ctx):
@@ -171,21 +166,12 @@ def run_bot():
         import traceback
         traceback.print_exc()
 
-if __name__ == "__main__":
+def run_startup_tasks():
+    """Run startup tasks needed before serving requests."""
     # Create database tables
     with app.app_context():
         db.create_all()
         print("Database tables created successfully!")
-    
-    # Fix balance/points consistency before starting the application
-    print("🔧 Running balance consistency check...")
-    try:
-        fix_balance_consistency(app, db, User)
-        print("✅ Balance consistency check completed!")
-    except Exception as e:
-        print(f"⚠️ Warning: Balance consistency check failed: {e}")
-        print("   Continuing with application startup...")
-    
     # Fix image paths before starting the application
     print("🔧 Running image path fix...")
     try:
@@ -268,15 +254,22 @@ if __name__ == "__main__":
         print(f"⚠️ Warning: Could not set database file permissions: {e}")
         print("   This may cause database write issues. Check file permissions manually.")
         print("   Continuing with application startup...")
-    
-    # Start the bot in a separate thread
+
+def start_bot_thread():
+    """Start the Discord bot in a background thread."""
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
     print("Bot thread started")
-    
+    return bot_thread
+
+def run_dev_server():
+    run_startup_tasks()
+    start_bot_thread()
     # Give the bot more time to start and connect
     time.sleep(5)
-    
     # Start the Flask app (this will block)
     print("Starting Flask app...")
-    app.run(host = '0.0.0.0', debug=True, use_reloader=False, port=5000)  # use_reloader=False to avoid issues with threading
+    app.run(host='0.0.0.0', debug=True, use_reloader=False, port=5000)
+
+if __name__ == "__main__":
+    run_dev_server()

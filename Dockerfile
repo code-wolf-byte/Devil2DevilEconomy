@@ -49,7 +49,8 @@ RUN pip install --no-cache-dir \
     alembic==1.12.0 \
     requests==2.31.0 \
     Pillow==10.0.1 \
-    cryptography==41.0.7
+    cryptography==41.0.7 \
+    gunicorn==21.2.0
 
 # Create necessary directories
 RUN mkdir -p instance static/uploads
@@ -74,4 +75,4 @@ RUN chmod -R 755 /app && \
 EXPOSE 5000
 
 # Run the application with Flask development server
-CMD ["python3", "main.py"] 
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "--bind", "0.0.0.0:5000", "wsgi:app"]
