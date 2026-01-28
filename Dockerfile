@@ -9,7 +9,8 @@ COPY .env /react/.env
 ARG NPM_AUTH_TOKEN
 ENV NPM_AUTH_TOKEN=$NPM_AUTH_TOKEN
 
-RUN set -a && . /react/.env && set +a && corepack enable && yarn install --immutable
+# Use the vendored Yarn binary to avoid Corepack downloads on restricted servers
+RUN set -a && . /react/.env && set +a && node /react/.yarn/releases/yarn-4.4.0.cjs install --immutable
 
 COPY asu-unity-react/public /react/public
 COPY asu-unity-react/src /react/src
