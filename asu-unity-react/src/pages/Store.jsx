@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button } from "@asu/unity-react-core";
-import { Card, Pagination } from "@asu/unity-react-core";
+import { Button, Pagination } from "@asu/unity-react-core";
+import ProductCard from "../components/ProductCard";
 
 export default function Store({
   isAuthenticated = false,
@@ -62,37 +62,6 @@ export default function Store({
     const startIndex = (currentPage - 1) * itemsPerPage;
     return products.slice(startIndex, startIndex + itemsPerPage);
   }, [currentPage, products]);
-
-  const formatTags = (product) => {
-    const tags = [
-      {
-        label: `${product.price}`,
-        color: "dark",
-        ariaLabel: `Price ${product.price}`,
-      },
-    ];
-
-    if (product.is_unlimited) {
-      tags.push({ label: "Unlimited stock", color: "gray" });
-    } else if (product.in_stock) {
-      tags.push({
-        label: `In stock (${product.stock})`,
-        color: "gray",
-        ariaLabel: `In stock ${product.stock}`,
-      });
-    } else {
-      tags.push({ label: "Out of stock", color: "dark" });
-    }
-
-    if (product.product_type) {
-      tags.push({
-        label: product.product_type.replace(/_/g, " "),
-        color: "white",
-      });
-    }
-
-    return tags;
-  };
 
   if (status.loading) {
     return (
@@ -170,25 +139,9 @@ export default function Store({
         <>
           <div className="row g-4">
             {pageProducts.map((product) => (
-            <div className="col-12 col-md-6 col-lg-4" key={product.id}>
-              <a
-                className="text-decoration-none text-reset d-block h-100"
-                href={`/product/${product.id}`}
-              >
-                <div className="store-card">
-                  <Card
-                  type="default"
-                  horizontal={false}
-                  showBorders={true}
-                  image={product.image_url || undefined}
-                  imageAltText={product.name}
-                  title={product.name}
-                  body={product.description || "No description available."}
-                  tags={formatTags(product)}
-                  />
-                </div>
-              </a>
-            </div>
+              <div className="col-12 col-md-6 col-lg-4" key={product.id}>
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
           {totalPages > 1 ? (

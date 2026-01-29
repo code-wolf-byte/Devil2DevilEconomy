@@ -319,10 +319,47 @@ export default function Dashboard({
 
       <div className="border rounded bg-white p-4 mt-4">
         <h2 className="h4 fw-bold mb-3">Quick Actions</h2>
-        <div className="d-flex flex-column flex-md-row gap-3">
-          <Button label="Visit Shop" color="gold" href={storeHref} />
-          <Button label="View Leaderboard" color="gray" href="/leaderboard" />
-          <Button label="Manage Products" color="gray" href="/admin/products" />
+        <div className="row g-3">
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href={storeHref} className="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#128722;</span> Visit Shop
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/admin/products" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#128230;</span> Manage Products
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/admin/products/new" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#10133;</span> Add Product
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/digital-templates" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#127912;</span> Digital Templates
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/file-manager" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#128193;</span> File Manager
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/economy-config" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#9881;</span> Economy Config
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/admin-purchases" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#128176;</span> View Purchases
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
+            <a href="/admin-leaderboard" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#127942;</span> View Leaderboard
+            </a>
+          </div>
         </div>
       </div>
 
