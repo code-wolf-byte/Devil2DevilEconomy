@@ -21,7 +21,7 @@ export default function Store({
   const withBase = (path) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 15;
 
   useEffect(() => {
     let isMounted = true;
