@@ -419,17 +419,22 @@ def restore_product(product_id):
 
 
 @main.route('/admin/purchases')
+@main.route('/admin-purchases')
 @login_required
 def admin_purchases():
     """Admin purchases view"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     page = request.args.get('page', 1, type=int)
     pagination = Purchase.query.order_by(Purchase.timestamp.desc()).paginate(
         page=page, per_page=20, error_out=False)
-    
+
     return render_template('admin_purchases.html', pagination=pagination)
 
 @main.route('/leaderboard')
@@ -481,23 +486,33 @@ def new_product():
     return render_template('new_product.html')
 
 @main.route('/digital_templates')
+@main.route('/digital-templates')
 @login_required
 def digital_templates():
     """Digital templates page"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     return render_template('digital_templates.html')
 
 @main.route('/file_manager')
+@main.route('/file-manager')
 @login_required
 def file_manager():
     """File manager page"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     return render_template('file_manager.html')
 
 @main.route('/upload_file', methods=['POST'])
@@ -628,16 +643,21 @@ def create_role_product():
     return redirect(url_for('main.admin_products'))
 
 @main.route('/economy_config')
+@main.route('/economy-config')
 @login_required
 def economy_config():
     """Economy configuration page"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     # Fetch the settings from the database
     settings = EconomySettings.query.first()
-    
+
     return render_template('economy_config.html', settings=settings)
 
 @main.route('/admin/get-discord-roles')
@@ -755,12 +775,17 @@ def get_minecraft_skin_products():
         return jsonify({'error': f'Failed to fetch minecraft skin products: {str(e)}'}), 500
 
 @main.route('/admin_leaderboard')
+@main.route('/admin-leaderboard')
 @login_required
 def admin_leaderboard():
     """Admin leaderboard page"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
     
     # Get page parameter for pagination
     page = request.args.get('page', 1, type=int)
@@ -839,13 +864,18 @@ def admin_leaderboard():
                          pagination=pagination)
 
 @main.route('/admin/user/<user_id>')
+@main.route('/admin/users/<user_id>')
 @login_required
 def admin_user_detail(user_id):
     """Detailed user profile page for admins"""
     if not current_user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('main.dashboard'))
-    
+
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
     # Get the user
     user = User.query.get_or_404(user_id)
     

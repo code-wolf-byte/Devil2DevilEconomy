@@ -8,6 +8,12 @@ import Leaderboard from "./pages/Leaderboard";
 import MyPurchases from "./pages/MyPurchases";
 import Product from "./pages/Product";
 import Store from "./pages/Store";
+import EconomyConfig from "./pages/EconomyConfig";
+import FileManager from "./pages/FileManager";
+import DigitalTemplates from "./pages/DigitalTemplates";
+import AdminLeaderboard from "./pages/AdminLeaderboard";
+import AdminPurchases from "./pages/AdminPurchases";
+import AdminUserDetail from "./pages/AdminUserDetail";
 import "./App.css";
 
 export default function App() {
@@ -178,6 +184,66 @@ export default function App() {
           />
         );
       }
+    }
+
+    if (path === "/economy-config") {
+      return (
+        <EconomyConfig
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path === "/file-manager") {
+      return (
+        <FileManager
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path === "/digital-templates") {
+      return (
+        <DigitalTemplates
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path === "/admin-leaderboard") {
+      return (
+        <AdminLeaderboard
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path === "/admin-purchases") {
+      return (
+        <AdminPurchases
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path.startsWith("/admin/users/")) {
+      return (
+        <AdminUserDetail
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
     }
 
     return (

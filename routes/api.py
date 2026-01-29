@@ -763,3 +763,730 @@ def my_purchases_api():
         })
 
     return _json_response({'purchases': payload})
+
+
+# ============================================================================
+# CONFIG PAGE APIs
+# ============================================================================
+
+@api.route('/admin/economy-config')
+@login_required
+def admin_economy_config_api():
+    """Get economy configuration settings."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    from shared import EconomySettings
+    settings = EconomySettings.query.first()
+
+    if not settings:
+        return _json_response({
+            'settings': {
+                'economy_enabled': False,
+                'verified_role_id': None,
+                'verified_bonus_points': 200,
+                'onboarding_role_ids': [],
+                'onboarding_bonus_points': 500,
+                'roles_configured': False
+            }
+        })
+
+    onboarding_roles = []
+    if settings.onboarding_role_ids:
+        try:
+            import json
+            onboarding_roles = json.loads(settings.onboarding_role_ids)
+        except (json.JSONDecodeError, TypeError):
+            onboarding_roles = []
+
+    return _json_response({
+        'settings': {
+            'economy_enabled': settings.economy_enabled,
+            'verified_role_id': settings.verified_role_id,
+            'verified_bonus_points': settings.verified_bonus_points or 200,
+            'onboarding_role_ids': onboarding_roles,
+            'onboarding_bonus_points': settings.onboarding_bonus_points or 500,
+            'roles_configured': settings.roles_configured
+        }
+    })
+
+
+@api.route('/admin/economy-config', methods=['POST'])
+@login_required
+def admin_economy_config_save_api():
+    """Save economy configuration settings."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    import json
+    from shared import EconomySettings
+
+    data = request.get_json() or {}
+    action = data.get('action', 'save_config')
+
+    settings = EconomySettings.query.first()
+    if not settings:
+        settings = EconomySettings()
+        db.session.add(settings)
+
+    settings.verified_role_id = data.get('verified_role_id')
+    settings.verified_bonus_points = int(data.get('verified_bonus_points', 200))
+    settings.onboarding_bonus_points = int(data.get('onboarding_bonus_points', 500))
+
+    onboarding_roles = data.get('onboarding_role_ids', [])
+    settings.onboarding_role_ids = json.dumps(onboarding_roles) if onboarding_roles else None
+    settings.roles_configured = bool(settings.verified_role_id or onboarding_roles)
+
+    if action == 'enable_economy':
+        if not settings.roles_configured:
+            return _json_response({'error': 'Please configure roles before enabling the economy.'}, status=400)
+        settings.economy_enabled = True
+        settings.enabled_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return _json_response({'ok': True, 'message': 'Configuration saved successfully.'})
+
+
+@api.route('/admin/discord-roles')
+@login_required
+def admin_discord_roles_api():
+    """Get Discord roles for admin interface."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    try:
+        from shared import bot
+        import time
+
+        max_wait = 10
+        wait_time = 0
+        while not bot.is_ready() and wait_time < max_wait:
+            time.sleep(0.5)
+            wait_time += 0.5
+
+        if not bot.is_ready():
+            return _json_response({'error': 'Discord bot is not ready. Please try again.'}, status=503)
+
+        guild_id = os.getenv('DISCORD_GUILD_ID')
+        if not guild_id:
+            return _json_response({'error': 'DISCORD_GUILD_ID not configured.'}, status=500)
+
+        guild = bot.get_guild(int(guild_id))
+        if not guild:
+            return _json_response({'error': f'Bot is not in the configured Discord server.'}, status=404)
+
+        roles = []
+        for role in guild.roles:
+            if role.name == '@everyone':
+                continue
+            if guild.me.top_role > role:
+                roles.append({
+                    'id': str(role.id),
+                    'name': role.name,
+                    'color': f'#{role.color.value:06x}',
+                    'position': role.position
+                })
+
+        roles.sort(key=lambda x: x['position'], reverse=True)
+        return _json_response({'roles': roles})
+
+    except Exception as e:
+        return _json_response({'error': f'Failed to fetch Discord roles: {str(e)}'}, status=500)
+
+
+@api.route('/admin/files')
+@login_required
+def admin_files_api():
+    """Get list of uploaded files."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    uploads_dir = os.path.join('static', 'uploads')
+    if not os.path.exists(uploads_dir):
+        return _json_response({'files': [], 'stats': {'total': 0, 'images': 0, 'archives': 0, 'documents': 0}})
+
+    files = []
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'}
+    archive_extensions = {'.zip', '.rar', '.7z', '.tar', '.gz', '.mcpack', '.mcworld', '.mcaddon'}
+    document_extensions = {'.pdf', '.doc', '.docx', '.txt', '.md', '.json', '.xml'}
+
+    for filename in os.listdir(uploads_dir):
+        file_path = os.path.join(uploads_dir, filename)
+        if os.path.isfile(file_path):
+            stat = os.stat(file_path)
+            ext = os.path.splitext(filename)[1].lower()
+            files.append({
+                'name': filename,
+                'path': f'/static/uploads/{filename}',
+                'size': stat.st_size,
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                'is_image': ext in image_extensions,
+                'is_archive': ext in archive_extensions,
+                'is_document': ext in document_extensions
+            })
+
+    files.sort(key=lambda x: x['modified'], reverse=True)
+
+    stats = {
+        'total': len(files),
+        'images': sum(1 for f in files if f['is_image']),
+        'archives': sum(1 for f in files if f['is_archive']),
+        'documents': sum(1 for f in files if f['is_document'])
+    }
+
+    return _json_response({'files': files, 'stats': stats})
+
+
+@api.route('/admin/files', methods=['POST'])
+@login_required
+def admin_files_upload_api():
+    """Upload a file."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    if 'file' not in request.files:
+        return _json_response({'error': 'No file provided.'}, status=400)
+
+    file = request.files['file']
+    if not file or not file.filename:
+        return _json_response({'error': 'No file selected.'}, status=400)
+
+    from werkzeug.utils import secure_filename
+    filename = secure_filename(file.filename)
+    unique_filename = f"{uuid.uuid4()}_{filename}"
+    file_path = os.path.join('static', 'uploads', unique_filename)
+
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    file.save(file_path)
+
+    return _json_response({
+        'ok': True,
+        'file': {
+            'name': unique_filename,
+            'path': f'/static/uploads/{unique_filename}'
+        }
+    })
+
+
+@api.route('/admin/files', methods=['DELETE'])
+@login_required
+def admin_files_delete_api():
+    """Delete a file."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    data = request.get_json() or {}
+    file_path = data.get('file_path', '')
+
+    if not file_path:
+        return _json_response({'error': 'No file path provided.'}, status=400)
+
+    if file_path.startswith('/static/uploads/'):
+        file_path = file_path[1:]
+    elif file_path.startswith('static/uploads/'):
+        pass
+    else:
+        return _json_response({'error': 'Invalid file path.'}, status=400)
+
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        os.remove(file_path)
+        return _json_response({'ok': True, 'message': 'File deleted successfully.'})
+    else:
+        return _json_response({'error': 'File not found.'}, status=404)
+
+
+@api.route('/admin/digital-templates/roles')
+@login_required
+def admin_digital_templates_roles_api():
+    """Get existing role products for digital templates."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    role_products = Product.query.filter_by(product_type='role').all()
+    products = []
+
+    for product in role_products:
+        image_url = None
+        if product.image_url:
+            if str(product.image_url).startswith("http"):
+                image_url = product.image_url
+            else:
+                image_url = url_for('static', filename=f"uploads/{product.image_url}", _external=True)
+
+        import json
+        delivery_data = {}
+        if product.delivery_data:
+            try:
+                delivery_data = json.loads(product.delivery_data)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        products.append({
+            'id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'price': product.price,
+            'stock': product.stock,
+            'is_active': product.is_active,
+            'created_at': product.created_at.strftime('%m/%d/%Y') if product.created_at else None,
+            'image_url': image_url,
+            'role_id': delivery_data.get('role_id'),
+            'auto_delivery': product.delivery_method == 'auto_role'
+        })
+
+    return _json_response({'products': products})
+
+
+@api.route('/admin/digital-templates/roles', methods=['POST'])
+@login_required
+def admin_digital_templates_create_role_api():
+    """Create a new role product."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    import json
+
+    name = request.form.get('product_name')
+    description = request.form.get('description', '')
+    price_str = request.form.get('price')
+    role_id = request.form.get('role_id')
+    stock_str = request.form.get('stock')
+
+    if not name or not name.strip():
+        return _json_response({'error': 'Product name is required.'}, status=400)
+    if not price_str:
+        return _json_response({'error': 'Price is required.'}, status=400)
+    if not role_id:
+        return _json_response({'error': 'Discord role selection is required.'}, status=400)
+
+    try:
+        price = int(price_str)
+        if price < 0:
+            return _json_response({'error': 'Price must be positive.'}, status=400)
+    except (ValueError, TypeError):
+        return _json_response({'error': 'Price must be a valid number.'}, status=400)
+
+    stock = None
+    if stock_str and stock_str.strip():
+        try:
+            stock = int(stock_str)
+            if stock < 0:
+                return _json_response({'error': 'Stock must be positive.'}, status=400)
+        except (ValueError, TypeError):
+            return _json_response({'error': 'Stock must be a valid number.'}, status=400)
+
+    image_url = None
+    if 'role_image' in request.files:
+        file = request.files['role_image']
+        if file and file.filename:
+            from werkzeug.utils import secure_filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4()}_{filename}"
+            file_path = os.path.join('static', 'uploads', unique_filename)
+            file.save(file_path)
+            image_url = unique_filename
+
+    product = Product(
+        name=name.strip(),
+        description=description.strip() if description else '',
+        price=price,
+        stock=stock,
+        image_url=image_url,
+        product_type='role',
+        delivery_method='auto_role',
+        delivery_data=json.dumps({'role_id': role_id}),
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(product)
+    db.session.commit()
+
+    return _json_response({'ok': True, 'product_id': product.id})
+
+
+@api.route('/admin/digital-templates/minecraft-skins')
+@login_required
+def admin_digital_templates_skins_api():
+    """Get existing minecraft skin products for digital templates."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    skin_products = Product.query.filter_by(product_type='minecraft_skin').all()
+    products = []
+
+    for product in skin_products:
+        preview_url = None
+        preview_type = 'image'
+        if product.preview_image_url:
+            if str(product.preview_image_url).startswith("http"):
+                preview_url = product.preview_image_url
+            else:
+                preview_url = url_for('static', filename=f"uploads/{product.preview_image_url}", _external=True)
+            if any(product.preview_image_url.lower().endswith(ext) for ext in ['.mp4', '.webm', '.mov']):
+                preview_type = 'video'
+
+        products.append({
+            'id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'price': product.price,
+            'stock': product.stock,
+            'is_active': product.is_active,
+            'created_at': product.created_at.strftime('%m/%d/%Y') if product.created_at else None,
+            'preview_image_url': preview_url,
+            'preview_type': preview_type,
+            'download_file_url': product.download_file_url,
+            'has_dual_files': bool(product.preview_image_url and product.download_file_url)
+        })
+
+    return _json_response({'products': products})
+
+
+@api.route('/admin/digital-templates/minecraft-skins', methods=['POST'])
+@login_required
+def admin_digital_templates_create_skin_api():
+    """Create a new minecraft skin product."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    name = request.form.get('name')
+    description = request.form.get('description', '')
+    price_str = request.form.get('price')
+    stock_str = request.form.get('stock')
+
+    if not name or not name.strip():
+        return _json_response({'error': 'Product name is required.'}, status=400)
+    if not price_str:
+        return _json_response({'error': 'Price is required.'}, status=400)
+
+    try:
+        price = int(price_str)
+        if price < 0:
+            return _json_response({'error': 'Price must be positive.'}, status=400)
+    except (ValueError, TypeError):
+        return _json_response({'error': 'Price must be a valid number.'}, status=400)
+
+    stock = None
+    if stock_str and stock_str.strip():
+        try:
+            stock = int(stock_str)
+            if stock < 0:
+                return _json_response({'error': 'Stock must be positive.'}, status=400)
+        except (ValueError, TypeError):
+            return _json_response({'error': 'Stock must be a valid number.'}, status=400)
+
+    preview_image_url = None
+    download_file_url = None
+
+    if 'preview_image' in request.files:
+        file = request.files['preview_image']
+        if file and file.filename:
+            from werkzeug.utils import secure_filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4()}_{filename}"
+            file_path = os.path.join('static', 'uploads', unique_filename)
+            file.save(file_path)
+            preview_image_url = unique_filename
+
+    if 'download_file' in request.files:
+        file = request.files['download_file']
+        if file and file.filename:
+            from werkzeug.utils import secure_filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4()}_{filename}"
+            file_path = os.path.join('static', 'uploads', unique_filename)
+            file.save(file_path)
+            download_file_url = unique_filename
+
+    product = Product(
+        name=name.strip(),
+        description=description.strip() if description else '',
+        price=price,
+        stock=stock,
+        product_type='minecraft_skin',
+        preview_image_url=preview_image_url,
+        download_file_url=download_file_url,
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(product)
+    db.session.commit()
+
+    return _json_response({'ok': True, 'product_id': product.id})
+
+
+# ============================================================================
+# ADMIN PAGE APIs
+# ============================================================================
+
+@api.route('/admin/leaderboard')
+@login_required
+def admin_leaderboard_api():
+    """Admin leaderboard API with pagination."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    total_users = User.query.count()
+    total_balance = db.session.query(db.func.sum(User.balance)).scalar() or 0
+    total_purchases = Purchase.query.count()
+    total_spent = db.session.query(db.func.sum(Purchase.points_spent)).scalar() or 0
+    total_achievements = UserAchievement.query.count()
+    average_balance = total_balance // total_users if total_users > 0 else 0
+
+    economy_stats = {
+        'total_users': total_users,
+        'total_balance': total_balance,
+        'total_spent': total_spent,
+        'total_purchases': total_purchases,
+        'total_achievements': total_achievements,
+        'average_balance': average_balance
+    }
+
+    pagination = User.query.order_by(User.balance.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    leaderboard_stats = []
+    for i, user in enumerate(pagination.items, (page - 1) * per_page + 1):
+        user_purchases = Purchase.query.filter_by(user_id=user.id).all()
+        user_achievements = UserAchievement.query.filter_by(user_id=user.id).count()
+        total_user_spent = sum(p.points_spent for p in user_purchases)
+        activity_score = (user.message_count or 0) + (user.reaction_count or 0) + (user.voice_minutes or 0)
+
+        leaderboard_stats.append({
+            'rank': i,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'avatar_url': user.avatar_url,
+                'balance': user.balance or 0,
+                'is_admin': user.is_admin,
+                'has_boosted': user.has_boosted,
+                'message_count': user.message_count or 0,
+                'voice_minutes': user.voice_minutes or 0,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            },
+            'total_spent': total_user_spent,
+            'purchase_count': len(user_purchases),
+            'achievement_count': user_achievements,
+            'activity_score': activity_score
+        })
+
+    top_spenders_query = db.session.query(
+        User,
+        db.func.sum(Purchase.points_spent).label('total_spent'),
+        db.func.count(Purchase.id).label('purchase_count')
+    ).join(Purchase).group_by(User.id).order_by(db.desc('total_spent')).limit(10).all()
+
+    top_spenders = []
+    for user, spent, count in top_spenders_query:
+        top_spenders.append({
+            'user': {'id': user.id, 'username': user.username},
+            'total_spent': spent or 0,
+            'purchase_count': count or 0
+        })
+
+    most_active = User.query.order_by(
+        (User.message_count + User.reaction_count + User.voice_minutes).desc()
+    ).limit(10).all()
+
+    most_active_list = []
+    for user in most_active:
+        activity = (user.message_count or 0) + (user.reaction_count or 0) + (user.voice_minutes or 0)
+        most_active_list.append({
+            'user': {'id': user.id, 'username': user.username, 'message_count': user.message_count or 0},
+            'activity_score': activity
+        })
+
+    return _json_response({
+        'economy_stats': economy_stats,
+        'leaderboard_stats': leaderboard_stats,
+        'top_spenders': top_spenders,
+        'most_active': most_active_list,
+        'pagination': {
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next,
+            'prev_num': pagination.prev_num,
+            'next_num': pagination.next_num
+        }
+    })
+
+
+@api.route('/admin/purchases')
+@login_required
+def admin_purchases_api():
+    """Admin purchases API with pagination."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    pagination = Purchase.query.order_by(Purchase.timestamp.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    purchases = []
+    for purchase in pagination.items:
+        user = purchase.user
+        product = purchase.product
+
+        user_avatar = user.avatar_url if user else None
+        product_image = None
+        if product:
+            display_image = product.display_image or product.image_url
+            if display_image:
+                if str(display_image).startswith("http"):
+                    product_image = display_image
+                else:
+                    product_image = url_for('static', filename=f"uploads/{display_image}", _external=True)
+
+        purchases.append({
+            'id': purchase.id,
+            'points_spent': purchase.points_spent,
+            'timestamp': purchase.timestamp.isoformat(),
+            'user': {
+                'id': user.id if user else None,
+                'username': user.username if user else 'Unknown',
+                'avatar_url': user_avatar,
+                'user_uuid': user.user_uuid if user else None,
+                'discord_id': user.id if user else None
+            },
+            'product': {
+                'id': product.id if product else None,
+                'name': product.name if product else 'Unknown Product',
+                'description': product.description[:50] + '...' if product and product.description and len(product.description) > 50 else (product.description if product else ''),
+                'image_url': product_image
+            }
+        })
+
+    total_points_on_page = sum(p['points_spent'] for p in purchases)
+
+    return _json_response({
+        'purchases': purchases,
+        'stats': {
+            'total_points_on_page': total_points_on_page
+        },
+        'pagination': {
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next,
+            'prev_num': pagination.prev_num,
+            'next_num': pagination.next_num
+        }
+    })
+
+
+@api.route('/admin/users/<user_id>')
+@login_required
+def admin_user_detail_api(user_id):
+    """Admin user detail API."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    user = User.query.get_or_404(user_id)
+
+    purchases = Purchase.query.filter_by(user_id=user.id).order_by(Purchase.timestamp.desc()).all()
+    user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
+    achievements = [ua.achievement for ua in user_achievements]
+
+    total_spent = sum(p.points_spent for p in purchases)
+    total_earned = (user.balance or 0) + total_spent
+    activity_score = (user.message_count or 0) + (user.reaction_count or 0) + (user.voice_minutes or 0)
+
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    recent_purchases = [p for p in purchases if p.timestamp >= thirty_days_ago]
+    recent_achievements = [ua for ua in user_achievements if ua.achieved_at >= thirty_days_ago]
+
+    earning_breakdown = {
+        'messages': user.message_count or 0,
+        'reactions': user.reaction_count or 0,
+        'voice_minutes': user.voice_minutes or 0,
+        'daily_claims': getattr(user, 'daily_claims_count', 0) or 0,
+        'campus_photos': getattr(user, 'campus_photos_count', 0) or 0,
+        'daily_engagement': getattr(user, 'daily_engagement_count', 0) or 0,
+        'achievements': sum(a.points for a in achievements),
+        'verification_bonus': 200 if getattr(user, 'verification_bonus_received', False) else 0,
+        'onboarding_bonus': 500 if getattr(user, 'onboarding_bonus_received', False) else 0,
+        'enrollment_deposit': 1000 if getattr(user, 'enrollment_deposit_received', False) else 0,
+        'birthday_bonus': 100 if getattr(user, 'birthday_points_received', False) else 0,
+        'boost_bonus': 500 if user.has_boosted else 0
+    }
+
+    spending_breakdown = {}
+    for purchase in purchases:
+        product_type = purchase.product.product_type if purchase.product else 'unknown'
+        if product_type not in spending_breakdown:
+            spending_breakdown[product_type] = 0
+        spending_breakdown[product_type] += purchase.points_spent
+
+    all_users = User.query.order_by(User.balance.desc()).all()
+    user_rank = None
+    for i, u in enumerate(all_users, 1):
+        if u.id == user.id:
+            user_rank = i
+            break
+
+    recent_purchases_data = []
+    for p in recent_purchases[:10]:
+        recent_purchases_data.append({
+            'id': p.id,
+            'product_name': p.product.name if p.product else 'Unknown Product',
+            'points_spent': p.points_spent,
+            'timestamp': p.timestamp.isoformat()
+        })
+
+    recent_achievements_data = []
+    for ua in recent_achievements[:10]:
+        recent_achievements_data.append({
+            'name': ua.achievement.name,
+            'points': ua.achievement.points,
+            'achieved_at': ua.achieved_at.isoformat()
+        })
+
+    achievements_data = []
+    for a in achievements:
+        achievements_data.append({
+            'id': a.id,
+            'name': a.name,
+            'description': a.description,
+            'points': a.points
+        })
+
+    return _json_response({
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'avatar_url': user.avatar_url,
+            'balance': user.balance or 0,
+            'is_admin': user.is_admin,
+            'has_boosted': user.has_boosted,
+            'birthday': user.birthday.strftime('%m/%d') if user.birthday else None,
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'discord_id': user.id
+        },
+        'stats': {
+            'user_rank': user_rank,
+            'total_earned': total_earned,
+            'total_spent': total_spent,
+            'activity_score': activity_score,
+            'total_purchases': len(purchases),
+            'total_achievements': len(achievements)
+        },
+        'earning_breakdown': earning_breakdown,
+        'spending_breakdown': spending_breakdown,
+        'achievements': achievements_data,
+        'recent_purchases': recent_purchases_data,
+        'recent_achievements': recent_achievements_data
+    })
