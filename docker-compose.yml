@@ -1,6 +1,6 @@
 services:
   api:
-    image: codewolfbyte/devil2devil-economy:tagname
+    image: codewolfbyte/devil2devil-economy:latest
     ports:
       - "5000:5000"
     volumes:
