@@ -450,7 +450,11 @@ def leaderboard():
 @main.route('/how-to-earn')
 def how_to_earn():
     """How to earn pitchforks page"""
-    return render_template('how_to_earn.html')
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+    return redirect(url_for('main.index'))
 
 @main.route('/my-purchases')
 @login_required

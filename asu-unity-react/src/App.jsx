@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
-import Footer from "./components/footer";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
 import HowToEarn from "./pages/HowToEarn";
 import AdminProducts from "./pages/AdminProducts";
 import Dashboard from "./pages/Dashboard";
@@ -129,7 +130,11 @@ export default function App() {
       );
     }
 
-    if (path === "/store" || path === "/") {
+    if (path === "/") {
+      return <Home />;
+    }
+
+    if (path === "/store") {
       return (
         <Store
           isAuthenticated={authState.authenticated}
@@ -246,15 +251,7 @@ export default function App() {
       );
     }
 
-    return (
-      <div className="container py-5">
-        <h1 className="display-5 fw-bold mb-3">Devil2Devil Economy</h1>
-        <p className="lead text-muted">
-          Explore the community marketplace and learn how to earn and use
-          pitchforks.
-        </p>
-      </div>
-    );
+    return <Home />;
   }, [path, authState.authenticated, authState.isAdmin, authState.user?.username]);
 
   return (

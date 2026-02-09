@@ -1,0 +1,6 @@
+services:
+  api:
+    build:
+      context: .
+      args:
+        NPM_AUTH_TOKEN: ${NPM_AUTH_TOKEN}

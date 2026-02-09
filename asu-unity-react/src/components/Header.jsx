@@ -31,8 +31,8 @@ export default function Header({
   },
   {
     id: 1,
-    href: "/profiles",
-    text: "Profiles",
+    href: "/store",
+    text: "Store",
   },
   {
     id: 2,
