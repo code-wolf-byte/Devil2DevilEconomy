@@ -25,13 +25,7 @@ export default function ProductCard({
   linkTo,
 }) {
   const formatTags = () => {
-    const tags = [
-      {
-        label: `${product.price}`,
-        color: "dark",
-        ariaLabel: `Price ${product.price}`,
-      },
-    ];
+    const tags = [];
 
     if (product.is_unlimited) {
       tags.push({ label: "Unlimited stock", color: "gray" });
@@ -80,11 +74,15 @@ export default function ProductCard({
             <p className="card-text text-muted small">
               {product.description || "No description available."}
             </p>
-            <div className="d-flex flex-wrap gap-1">
+            <div className="d-flex flex-wrap gap-1 align-items-center">
+              <span className="badge bg-dark d-inline-flex align-items-center gap-1" aria-label={`Price ${product.price}`}>
+                <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
+                {product.price}
+              </span>
               {formatTags().map((tag, index) => (
                 <span
                   key={index}
-                  className={`badge bg-${tag.color === "dark" ? "dark" : tag.color === "gray" ? "secondary" : "light text-dark border"}`}
+                  className={`badge bg-${tag.color === "gray" ? "secondary" : "light text-dark border"}`}
                   aria-label={tag.ariaLabel}
                 >
                   {tag.label}
@@ -102,17 +100,25 @@ export default function ProductCard({
       className="text-decoration-none text-reset d-block h-100"
       href={href}
     >
-      <div className="store-card h-100">
+      <div className="store-card h-100 card border">
         <Card
           type="default"
           horizontal={false}
-          showBorders={true}
+          showBorders={false}
           image={mediaUrl || undefined}
           imageAltText={product.name}
           title={product.name}
           body={product.description || "No description available."}
           tags={formatTags()}
         />
+        <div className="card-body pt-0">
+          <div className="d-flex flex-wrap gap-1 align-items-center">
+            <span className="badge bg-dark d-inline-flex align-items-center gap-1" aria-label={`Price ${product.price}`}>
+              <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
+              {product.price}
+            </span>
+          </div>
+        </div>
       </div>
     </a>
   );
