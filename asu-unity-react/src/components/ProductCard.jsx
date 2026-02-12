@@ -109,14 +109,23 @@ export default function ProductCard({
           imageAltText={product.name}
           title={product.name}
           body={product.description || "No description available."}
-          tags={formatTags()}
         />
+
         <div className="card-body pt-0">
           <div className="d-flex flex-wrap gap-1 align-items-center">
             <span className="badge bg-dark d-inline-flex align-items-center gap-1" aria-label={`Price ${product.price}`}>
               <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
               {product.price}
             </span>
+            {formatTags().map((tag, index) => (
+              <span
+                key={index}
+                className={`badge bg-${tag.color === "gray" ? "secondary" : tag.color === "dark" ? "dark" : "light text-dark border"}`}
+                aria-label={tag.ariaLabel}
+              >
+                {tag.label}
+              </span>
+            ))}
           </div>
         </div>
       </div>
