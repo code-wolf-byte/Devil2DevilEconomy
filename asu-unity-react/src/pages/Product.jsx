@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, Divider, Image } from "@asu/unity-react-core";
 
+const VIDEO_EXTENSIONS = [".mov", ".mp4", ".webm", ".ogg", ".avi"];
+
+function isVideoUrl(url) {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  return VIDEO_EXTENSIONS.some((ext) => lowerUrl.endsWith(ext));
+}
+
 export default function Product({ productId, isAuthenticated = false, loginHref = "/auth/login" }) {
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState({ loading: true, error: null });
@@ -54,7 +62,7 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
       return [
         {
           id: "fallback",
-          type: "image",
+          type: isVideoUrl(product.image_url) ? "video" : "image",
           url: product.image_url,
           alt_text: product.name,
           is_primary: true,

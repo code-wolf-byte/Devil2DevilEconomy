@@ -15,6 +15,7 @@ import DigitalTemplates from "./pages/DigitalTemplates";
 import AdminLeaderboard from "./pages/AdminLeaderboard";
 import AdminPurchases from "./pages/AdminPurchases";
 import AdminUserDetail from "./pages/AdminUserDetail";
+import Version from "./pages/Version";
 import "./App.css";
 
 export default function App() {
@@ -239,6 +240,10 @@ export default function App() {
           loginHref={withBase("/auth/login")}
         />
       );
+    }
+
+    if (path === "/version") {
+      return <Version />;
     }
 
     if (path.startsWith("/admin/users/")) {

@@ -8,6 +8,18 @@ function isVideoUrl(url) {
   return VIDEO_EXTENSIONS.some((ext) => lowerUrl.endsWith(ext));
 }
 
+function getPrimaryMedia(product) {
+  if (product?.media?.length) {
+    const primary = product.media.find((item) => item.is_primary);
+    const media = primary || product.media[0];
+    return { url: media.url, isVideo: media.type === "video" };
+  }
+  if (product?.image_url) {
+    return { url: product.image_url, isVideo: isVideoUrl(product.image_url) };
+  }
+  return { url: null, isVideo: false };
+}
+
 export default function ProductCard({
   product,
   linkTo,
@@ -44,9 +56,9 @@ export default function ProductCard({
   };
 
   const href = linkTo || `/product/${product.id}`;
-  const hasVideo = isVideoUrl(product.image_url);
+  const { url: mediaUrl, isVideo } = getPrimaryMedia(product);
 
-  if (hasVideo) {
+  if (isVideo) {
     return (
       <a
         className="text-decoration-none text-reset d-block h-100"
@@ -55,7 +67,7 @@ export default function ProductCard({
         <div className="store-card h-100 card border">
           <div className="card-img-top-wrapper" style={{ aspectRatio: "16/9", overflow: "hidden" }}>
             <video
-              src={product.image_url}
+              src={mediaUrl}
               autoPlay
               loop
               muted
@@ -95,7 +107,7 @@ export default function ProductCard({
           type="default"
           horizontal={false}
           showBorders={true}
-          image={product.image_url || undefined}
+          image={mediaUrl || undefined}
           imageAltText={product.name}
           title={product.name}
           body={product.description || "No description available."}
