@@ -12,7 +12,7 @@ function getPrimaryMedia(product) {
   if (product?.media?.length) {
     const primary = product.media.find((item) => item.is_primary);
     const media = primary || product.media[0];
-    return { url: media.url, isVideo: media.type === "video" };
+    return { url: media.url, isVideo: media.type === "video" || isVideoUrl(media.url) };
   }
   if (product?.image_url) {
     return { url: product.image_url, isVideo: isVideoUrl(product.image_url) };

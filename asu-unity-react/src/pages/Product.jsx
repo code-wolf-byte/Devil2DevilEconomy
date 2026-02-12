@@ -56,7 +56,10 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
 
   const media = useMemo(() => {
     if (product?.media?.length) {
-      return product.media;
+      return product.media.map((item) => ({
+        ...item,
+        type: isVideoUrl(item.url) ? "video" : item.type,
+      }));
     }
     if (product?.image_url) {
       return [
