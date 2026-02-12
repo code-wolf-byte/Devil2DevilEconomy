@@ -26,6 +26,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Resolve commit metadata
+        id: commit
+        run: |
+          echo "hash=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "message=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -34,6 +40,8 @@ jobs:
           push: true
           build-args: |
             NPM_AUTH_TOKEN=${{ secrets.NPM_AUTH_TOKEN }}
+            VITE_COMMIT_HASH=${{ steps.commit.outputs.hash }}
+            VITE_COMMIT_MESSAGE=${{ steps.commit.outputs.message }}
           tags: |
             codewolfbyte/devil2devil-economy:latest
             codewolfbyte/devil2devil-economy:${{ github.sha }}
