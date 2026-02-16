@@ -225,6 +225,65 @@ export default function AdminProducts({
     }
   };
 
+  const reloadCurrentMedia = React.useCallback(async () => {
+    if (!selectedId) return;
+    try {
+      const url = apiBaseUrl
+        ? `${apiBaseUrl}/api/admin/products/${selectedId}`
+        : `/api/admin/products/${selectedId}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) return;
+      const data = await response.json();
+      const product = data.product || {};
+      setCurrentMedia({
+        image_url: product.image_url || null,
+        preview_image_url: product.preview_image_url || null,
+        download_file_url: product.download_file_url || null,
+        media: Array.isArray(product.media) ? product.media : [],
+      });
+    } catch {
+      // ignore
+    }
+  }, [apiBaseUrl, selectedId]);
+
+  const handleDeleteMedia = async (mediaId) => {
+    if (!selectedId) return;
+    try {
+      const url = apiBaseUrl
+        ? `${apiBaseUrl}/api/admin/products/${selectedId}/media/${mediaId}`
+        : `/api/admin/products/${selectedId}/media/${mediaId}`;
+      const response = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Delete failed (${response.status})`);
+      }
+      await reloadCurrentMedia();
+    } catch (error) {
+      setFormStatus((prev) => ({ ...prev, error: error.message }));
+    }
+  };
+
+  const handleSetPrimary = async (mediaId) => {
+    if (!selectedId) return;
+    try {
+      const url = apiBaseUrl
+        ? `${apiBaseUrl}/api/admin/products/${selectedId}/media/${mediaId}/primary`
+        : `/api/admin/products/${selectedId}/media/${mediaId}/primary`;
+      const response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Set primary failed (${response.status})`);
+      }
+      await reloadCurrentMedia();
+    } catch (error) {
+      setFormStatus((prev) => ({ ...prev, error: error.message }));
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="container py-5">
@@ -266,14 +325,17 @@ export default function AdminProducts({
             {status.loading ? (
               <p className="text-muted mb-0">Loading products...</p>
             ) : products.length ? (
-              <div className="list-group">
+              <div className="d-flex flex-wrap gap-2">
                 {products.map((product) => (
                   <button
                     key={product.id}
                     type="button"
-                    className={`list-group-item list-group-item-action d-flex align-items-center gap-3 ${
-                      selectedId === product.id ? "active" : ""
+                    className={`btn text-start border rounded p-2 d-flex flex-column align-items-center ${
+                      selectedId === product.id
+                        ? "border-warning bg-warning bg-opacity-10"
+                        : "bg-white"
                     }`}
+                    style={{ width: "120px", minHeight: "120px" }}
                     onClick={() => handleSelectProduct(product.id)}
                   >
                     {product.image_url ? (
@@ -281,21 +343,25 @@ export default function AdminProducts({
                         src={product.image_url}
                         alt={product.name}
                         className="rounded"
-                        style={{ width: "44px", height: "44px", objectFit: "cover" }}
+                        style={{ width: "72px", height: "72px", objectFit: "cover" }}
                       />
                     ) : (
                       <div
                         className="rounded bg-light d-flex align-items-center justify-content-center"
-                        style={{ width: "44px", height: "44px" }}
+                        style={{ width: "72px", height: "72px", fontSize: "1.5rem" }}
                       >
                         📦
                       </div>
                     )}
-                    <div className="flex-grow-1 text-start">
-                      <div className="fw-semibold">{product.name}</div>
-                      <div className="small text-muted">
-                        {product.is_active ? "Active" : "Archived"} ·{" "}
-                        {product.price} pts
+                    <div className="text-center mt-1 w-100" style={{ overflow: "hidden" }}>
+                      <div
+                        className="fw-semibold text-truncate"
+                        style={{ fontSize: "0.75rem" }}
+                      >
+                        {product.name}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: "0.65rem" }}>
+                        {product.is_active ? "Active" : "Archived"} · {product.price} pts
                       </div>
                     </div>
                   </button>
@@ -471,18 +537,56 @@ export default function AdminProducts({
 
               <div className="mt-3">
                 <label className="form-label">Gallery Images</label>
-                {currentMedia.media?.length ? (
+                {currentMedia.media?.filter((item) => item.type === "image").length ? (
                   <div className="d-flex flex-wrap gap-2 mb-2">
                     {currentMedia.media
                       .filter((item) => item.type === "image")
                       .map((item) => (
-                        <img
+                        <div
                           key={item.id}
-                          src={item.url}
-                          alt={item.alt_text || "Gallery"}
-                          className="rounded"
-                          style={{ width: "64px", height: "64px", objectFit: "cover" }}
-                        />
+                          className="position-relative border rounded p-1"
+                          style={{ width: "80px" }}
+                        >
+                          <img
+                            src={item.url}
+                            alt={item.alt_text || "Gallery"}
+                            className="rounded"
+                            style={{ width: "64px", height: "64px", objectFit: "cover", display: "block", margin: "0 auto" }}
+                          />
+                          {item.is_primary ? (
+                            <span
+                              className="badge bg-success d-block text-center mt-1"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              Primary
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm d-block w-100 mt-1"
+                              style={{ fontSize: "0.6rem", padding: "1px 2px" }}
+                              onClick={() => handleSetPrimary(item.id)}
+                            >
+                              Set Primary
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm position-absolute top-0 end-0"
+                            style={{
+                              width: "20px",
+                              height: "20px",
+                              padding: 0,
+                              fontSize: "0.7rem",
+                              lineHeight: "20px",
+                              borderRadius: "50%",
+                            }}
+                            onClick={() => handleDeleteMedia(item.id)}
+                            title="Remove image"
+                          >
+                            &times;
+                          </button>
+                        </div>
                       ))}
                   </div>
                 ) : null}
@@ -507,14 +611,25 @@ export default function AdminProducts({
                     {currentMedia.media
                       .filter((item) => item.type === "video")
                       .map((item) => (
-                        <a
-                          key={item.id}
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {item.url}
-                        </a>
+                        <div key={item.id} className="d-flex align-items-center gap-2">
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-truncate"
+                          >
+                            {item.url}
+                          </a>
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm"
+                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                            onClick={() => handleDeleteMedia(item.id)}
+                            title="Remove video"
+                          >
+                            &times;
+                          </button>
+                        </div>
                       ))}
                   </div>
                 </div>

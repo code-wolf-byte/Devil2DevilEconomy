@@ -540,6 +540,60 @@ def admin_product_update_api(product_id):
     return _json_response({'ok': True})
 
 
+@api.route('/admin/products/<int:product_id>/media/<int:media_id>', methods=['DELETE'])
+@login_required
+def admin_product_delete_media_api(product_id, media_id):
+    """Delete a media item from a product."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    media = ProductMedia.query.filter_by(id=media_id, product_id=product_id).first()
+    if not media:
+        return _json_response({'error': 'Media not found.'}, status=404)
+
+    was_primary = media.is_primary
+    media_url = media.url
+
+    db.session.delete(media)
+    db.session.commit()
+
+    # Delete the file from disk if it's a local file
+    if media_url and not media_url.startswith('http') and not media_url.startswith('/'):
+        file_path = os.path.join('static', 'uploads', media_url)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    # If the deleted media was primary, promote the next available image
+    if was_primary:
+        next_image = ProductMedia.query.filter_by(
+            product_id=product_id, media_type='image'
+        ).order_by(ProductMedia.sort_order).first()
+        if next_image:
+            next_image.is_primary = True
+            db.session.commit()
+
+    return _json_response({'ok': True})
+
+
+@api.route('/admin/products/<int:product_id>/media/<int:media_id>/primary', methods=['POST'])
+@login_required
+def admin_product_set_primary_media_api(product_id, media_id):
+    """Set a media item as the primary image for a product."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    media = ProductMedia.query.filter_by(id=media_id, product_id=product_id).first()
+    if not media:
+        return _json_response({'error': 'Media not found.'}, status=404)
+
+    # Clear primary on all media for this product
+    ProductMedia.query.filter_by(product_id=product_id).update({'is_primary': False})
+    media.is_primary = True
+    db.session.commit()
+
+    return _json_response({'ok': True})
+
+
 @api.route('/purchase/<int:product_id>', methods=['POST'])
 @login_required
 def purchase_api(product_id):
