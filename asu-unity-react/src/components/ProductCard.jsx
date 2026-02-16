@@ -1,5 +1,3 @@
-import { Card } from "@asu/unity-react-core";
-
 const VIDEO_EXTENSIONS = [".mov", ".mp4", ".webm", ".ogg", ".avi"];
 
 function isVideoUrl(url) {
@@ -59,7 +57,7 @@ export default function ProductCard({
         href={href}
       >
         <div className="store-card h-100 card border">
-          <div className="card-img-top-wrapper" style={{ aspectRatio: "16/9", overflow: "hidden" }}>
+          <div className="card-img-top-wrapper" style={{ aspectRatio: "1/1", overflow: "hidden" }}>
             <video
               src={mediaUrl}
               autoPlay
@@ -101,15 +99,22 @@ export default function ProductCard({
       href={href}
     >
       <div className="store-card h-100 card border">
-        <Card
-          type="default"
-          horizontal={false}
-          showBorders={false}
-          image={mediaUrl || undefined}
-          imageAltText={product.name}
-          title={product.name}
-          body={product.description || "No description available."}
-        />
+        {mediaUrl ? (
+          <div style={{ aspectRatio: "1/1", overflow: "hidden" }}>
+            <img
+              src={mediaUrl}
+              alt={product.name}
+              className="card-img-top"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+        ) : null}
+        <div className="card-body">
+          <h5 className="card-title fw-bold">{product.name}</h5>
+          <p className="card-text text-muted small">
+            {product.description || "No description available."}
+          </p>
+        </div>
 
         <div className="card-body pt-0">
           <div className="d-flex flex-wrap gap-1 align-items-center">

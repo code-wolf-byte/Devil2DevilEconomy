@@ -325,17 +325,14 @@ export default function AdminProducts({
             {status.loading ? (
               <p className="text-muted mb-0">Loading products...</p>
             ) : products.length ? (
-              <div className="d-flex flex-wrap gap-2">
+              <div className="list-group">
                 {products.map((product) => (
                   <button
                     key={product.id}
                     type="button"
-                    className={`btn text-start border rounded p-2 d-flex flex-column align-items-center ${
-                      selectedId === product.id
-                        ? "border-warning bg-warning bg-opacity-10"
-                        : "bg-white"
+                    className={`list-group-item list-group-item-action d-flex align-items-center gap-3 ${
+                      selectedId === product.id ? "active" : ""
                     }`}
-                    style={{ width: "120px", minHeight: "120px" }}
                     onClick={() => handleSelectProduct(product.id)}
                   >
                     {product.image_url ? (
@@ -343,25 +340,21 @@ export default function AdminProducts({
                         src={product.image_url}
                         alt={product.name}
                         className="rounded"
-                        style={{ width: "72px", height: "72px", objectFit: "cover" }}
+                        style={{ width: "44px", height: "44px", objectFit: "cover" }}
                       />
                     ) : (
                       <div
                         className="rounded bg-light d-flex align-items-center justify-content-center"
-                        style={{ width: "72px", height: "72px", fontSize: "1.5rem" }}
+                        style={{ width: "44px", height: "44px" }}
                       >
                         📦
                       </div>
                     )}
-                    <div className="text-center mt-1 w-100" style={{ overflow: "hidden" }}>
-                      <div
-                        className="fw-semibold text-truncate"
-                        style={{ fontSize: "0.75rem" }}
-                      >
-                        {product.name}
-                      </div>
-                      <div className="text-muted" style={{ fontSize: "0.65rem" }}>
-                        {product.is_active ? "Active" : "Archived"} · {product.price} pts
+                    <div className="flex-grow-1 text-start">
+                      <div className="fw-semibold">{product.name}</div>
+                      <div className="small text-muted">
+                        {product.is_active ? "Active" : "Archived"} ·{" "}
+                        {product.price} pts
                       </div>
                     </div>
                   </button>

@@ -155,7 +155,9 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
       <div className="row g-4 mt-2">
         <div className="col-12 col-lg-7">
           <div className="product-media border rounded p-3 h-100">
-            {activeMedia ? (
+            {media.length === 0 ? (
+              <div className="text-muted">No media available.</div>
+            ) : media.length === 1 ? (
               activeMedia.type === "video" ? (
                 <video
                   className="w-100 rounded"
@@ -170,27 +172,97 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
                 />
               )
             ) : (
-              <div className="text-muted">No media available.</div>
-            )}
-
-            {media.length > 1 ? (
-              <div className="d-flex flex-wrap gap-2 mt-3">
-                {media.map((item, index) => (
+              <>
+                <div
+                  id="productCarousel"
+                  className="carousel slide"
+                  data-bs-ride="false"
+                >
+                  <div className="carousel-inner rounded">
+                    {media.map((item, index) => (
+                      <div
+                        key={item.id || `${item.type}-${index}`}
+                        className={`carousel-item${index === activeMediaIndex ? " active" : ""}`}
+                      >
+                        {item.type === "video" ? (
+                          <video
+                            className="d-block w-100 rounded"
+                            controls
+                            src={item.url}
+                          />
+                        ) : (
+                          <img
+                            className="d-block w-100 rounded"
+                            src={item.url}
+                            alt={item.alt_text || product.name}
+                            style={{ objectFit: "cover", aspectRatio: "1/1" }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                   <button
+                    className="carousel-control-prev"
                     type="button"
-                    key={item.id || `${item.type}-${index}`}
-                    className={`btn btn-sm ${
-                      index === activeMediaIndex
-                        ? "btn-dark"
-                        : "btn-outline-secondary"
-                    }`}
-                    onClick={() => setActiveMediaIndex(index)}
+                    data-bs-target="#productCarousel"
+                    data-bs-slide="prev"
+                    onClick={() =>
+                      setActiveMediaIndex((prev) =>
+                        prev === 0 ? media.length - 1 : prev - 1
+                      )
+                    }
                   >
-                    {item.type === "video" ? "Video" : "Image"} {index + 1}
+                    <span className="carousel-control-prev-icon" aria-hidden="true" />
+                    <span className="visually-hidden">Previous</span>
                   </button>
-                ))}
-              </div>
-            ) : null}
+                  <button
+                    className="carousel-control-next"
+                    type="button"
+                    data-bs-target="#productCarousel"
+                    data-bs-slide="next"
+                    onClick={() =>
+                      setActiveMediaIndex((prev) =>
+                        prev === media.length - 1 ? 0 : prev + 1
+                      )
+                    }
+                  >
+                    <span className="carousel-control-next-icon" aria-hidden="true" />
+                    <span className="visually-hidden">Next</span>
+                  </button>
+                </div>
+                <div className="d-flex flex-wrap gap-2 mt-3 justify-content-center">
+                  {media.map((item, index) => (
+                    <button
+                      type="button"
+                      key={item.id || `thumb-${index}`}
+                      className="btn p-0 border rounded overflow-hidden"
+                      style={{
+                        width: "56px",
+                        height: "56px",
+                        opacity: index === activeMediaIndex ? 1 : 0.5,
+                        outline: index === activeMediaIndex ? "2px solid #8C1D40" : "none",
+                      }}
+                      onClick={() => setActiveMediaIndex(index)}
+                    >
+                      {item.type === "video" ? (
+                        <div
+                          className="d-flex align-items-center justify-content-center bg-dark text-white"
+                          style={{ width: "100%", height: "100%", fontSize: "1.2rem" }}
+                        >
+                          &#9654;
+                        </div>
+                      ) : (
+                        <img
+                          src={item.url}
+                          alt={item.alt_text || `Thumbnail ${index + 1}`}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
