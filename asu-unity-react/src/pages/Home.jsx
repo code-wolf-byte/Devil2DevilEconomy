@@ -2,37 +2,6 @@ import "@asu/unity-bootstrap-theme/dist/css/unity-bootstrap-theme.bundle.css";
 import "@asu/unity-bootstrap-theme/dist/css/unity-bootstrap-header-footer.css";
 import heroImage from "../assets/Hero.jpg";
 
-const features = [
-  {
-    icon: "fa-coins",
-    title: "Earn Pitchforks",
-    description: "Use daily commands, participate in events, and hit milestones to earn pitchforks.",
-    href: "/how-to-earn",
-    label: "Learn how",
-  },
-  {
-    icon: "fa-store",
-    title: "Spend in the Store",
-    description: "Browse rewards curated for the Devil2Devil community and redeem your pitchforks.",
-    href: "/store",
-    label: "Visit store",
-  },
-  {
-    icon: "fa-ranking-star",
-    title: "Climb the Leaderboard",
-    description: "See how you rank among other users and compete for the top spot.",
-    href: "/leaderboard",
-    label: "View rankings",
-  },
-];
-
-const quickStats = [
-  { icon: "fa-terminal", label: "Daily Commands", detail: "Earn 85 pitchforks per day" },
-  { icon: "fa-calendar-check", label: "Events", detail: "25 pitchforks per event" },
-  { icon: "fa-gift", label: "Milestones", detail: "Up to 900 pitchforks" },
-  { icon: "fa-star", label: "Bonuses", detail: "Surveys, boosts, and more" },
-];
-
 export default function Home() {
   return (
     <main id="main-content">
@@ -55,34 +24,35 @@ export default function Home() {
       </div>
 
       
-      {/* Features */}
       <section className="py-5 bg topo-white">
-        <div className="container-xl">
-          <div className="text-center mb-5">
-            <h2 className="display-6 fw-bold">
-              <span className="highlight-gold">How it works</span>
-            </h2>
-            <p className="lead text-muted">
-              The Devil2Devil economy rewards active community members.
-            </p>
-          </div>
-
-          <div className="row g-4">
-            {features.map((feature) => (
-              <div key={feature.title} className="col-12 col-md-4">
-                <div className="border rounded bg-white p-4 h-100 text-center shadow-sm">
-                  <div
-                    className="bg-maroon rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                    style={{ width: 56, height: 56 }}
-                  >
-                    <i className={`fa-solid ${feature.icon} text-white fa-lg`} />
-                  </div>
-                  <h3 className="h5 fw-bold mb-2">{feature.title}</h3>
-                  <p className="text-muted mb-3">{feature.description}</p>
-                  <a href={feature.href} className="btn btn-maroon">{feature.label}</a>
-                </div>
+        <div className="container">
+          <div className="row align-items-center">
+            <div className="col-12 col-sm-4 col-md-4 col-lg-4 mb-4 mb-md-0">
+              <img
+                className="img-fluid"
+                src="/Devil2Devil.gif"
+                alt="Devil2Devil Discord"
+                loading="lazy"
+              />
+            </div>
+            <div className="col-12 col-sm-8 col-md-8 col-lg-8">
+              <div className="uds-highlighted-heading">
+                <h2><span className="highlight-gold">Devil2Devil Rewards Shop</span></h2>
               </div>
-            ))}
+              <p>
+                The Devil2Devil Rewards Shop is the official economy for the Devil2Devil Discord
+                community. Earn pitchforks by staying active — check in daily, attend events,
+                hit milestones, and participate in community challenges. Every action you take
+                in the server adds up, putting you closer to rewards curated exclusively for
+                incoming Sun Devils.
+              </p>
+              <p>
+                Once you've stacked your pitchforks, head to the store to redeem them for
+                exclusive merchandise, Discord roles, digital items, and more. Check the
+                leaderboard to see how you rank against your fellow Sun Devils and keep
+                climbing to the top.
+              </p>
+            </div>
           </div>
         </div>
       </section>
