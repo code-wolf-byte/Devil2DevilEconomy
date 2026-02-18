@@ -30,7 +30,7 @@ export default function Home() {
             <div className="col-12 col-sm-4 col-md-4 col-lg-4 mb-4 mb-md-0">
               <img
                 className="img-fluid"
-                src="/Devil2Devil.gif"
+                src="/Devil2Devil.png"
                 alt="Devil2Devil Discord"
                 loading="lazy"
               />

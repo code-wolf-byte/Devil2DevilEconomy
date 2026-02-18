@@ -457,23 +457,13 @@ def how_to_earn():
     return redirect(url_for('main.index'))
 
 @main.route('/my-purchases')
-@login_required
 def my_purchases():
     """User's purchase history"""
-    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.timestamp.desc()).all()
-    
-    # Get download tokens for each purchase
-    purchase_tokens = {}
-    for purchase in purchases:
-        if purchase.product.product_type == 'minecraft_skin':
-            token = DownloadToken.query.filter_by(
-                purchase_id=purchase.id, 
-                user_id=current_user.id
-            ).first()
-            if token and token.expires_at > datetime.utcnow():
-                purchase_tokens[purchase.id] = token
-    
-    return render_template('my_purchases.html', purchases=purchases, purchase_tokens=purchase_tokens)
+    react_index = os.path.join(REACT_BUILD_DIR, 'index.html')
+    if os.path.exists(react_index):
+        return send_from_directory(REACT_BUILD_DIR, 'index.html')
+
+    return redirect(url_for('main.index'))
 
 @main.route('/new_product', methods=['GET'])
 @login_required
