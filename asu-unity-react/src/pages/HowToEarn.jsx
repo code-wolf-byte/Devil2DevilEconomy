@@ -69,17 +69,22 @@ export default function HowToEarn() {
         contentsColor="white"
       />
 
-      <section className="py-5">
-        <div className="uds-image-overlap">
+      <section className="py-5 bg topo-white" style={{ backgroundColor: "#191919" }}>
+        <div className="uds-image-overlap content-left">
           <img src="/overlap.jpg" alt="Devil2Devil community at ASU" />
           <div className="content-wrapper">
-            <h2>Welcome to the Devil2Devil Economy</h2>
-            <p>
-              Devil2Devil rewards you for being an active member of
-              our community. Earn pitchforks by completing challenges, attending
-              events, and engaging with your fellow Sun Devils — then spend them
-              in the shop on exclusive rewards.
-            </p>
+            <h2>
+              <span style={{
+                background: "#ffc627",
+                boxShadow: "-0.15em 0 0 #ffc627, 0.15em 0 0 #ffc627",
+                color: "#191919",
+              }}>
+                Quick Start
+              </span>
+            </h2>
+            <h3 className="h5 fw-bold mt-3 mb-2">Easiest Ways to Earn</h3>
+            <p>Follow these three simple steps to start earning pitchforks today!</p>
+            <p className="mb-0">Most rewards are automatic — just show up and participate.</p>
           </div>
         </div>
       </section>
