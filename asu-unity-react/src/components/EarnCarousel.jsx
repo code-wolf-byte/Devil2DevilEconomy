@@ -13,16 +13,7 @@ export default function EarnCarousel({ items }) {
   };
 
   return (
-    <div className="position-relative px-4 px-md-5">
-      <button
-        className="btn btn-maroon position-absolute top-50 start-0 translate-middle-y rounded-circle d-none d-md-flex align-items-center justify-content-center shadow"
-        style={{ width: 44, height: 44, zIndex: 2, marginLeft: -8 }}
-        onClick={() => scroll("left")}
-        aria-label="Scroll left"
-      >
-        <span className="text-white fw-bold" aria-hidden="true">&lt;</span>
-      </button>
-
+    <div>
       <div
         ref={scrollRef}
         className="d-flex gap-3 overflow-auto pb-3 align-items-stretch"
@@ -46,14 +37,24 @@ export default function EarnCarousel({ items }) {
         ))}
       </div>
 
-      <button
-        className="btn btn-maroon position-absolute top-50 end-0 translate-middle-y rounded-circle d-none d-md-flex align-items-center justify-content-center shadow"
-        style={{ width: 44, height: 44, zIndex: 2, marginRight: -8 }}
-        onClick={() => scroll("right")}
-        aria-label="Scroll right"
-      >
-        <span className="text-white fw-bold" aria-hidden="true">&gt;</span>
-      </button>
+      <div className="d-none d-md-flex justify-content-center gap-2 mt-3">
+        <button
+          className="btn btn-maroon rounded-circle d-flex align-items-center justify-content-center shadow"
+          style={{ width: 44, height: 44 }}
+          onClick={() => scroll("left")}
+          aria-label="Scroll left"
+        >
+          <i className="fas fa-chevron-left text-white" aria-hidden="true" />
+        </button>
+        <button
+          className="btn btn-maroon rounded-circle d-flex align-items-center justify-content-center shadow"
+          style={{ width: 44, height: 44 }}
+          onClick={() => scroll("right")}
+          aria-label="Scroll right"
+        >
+          <i className="fas fa-chevron-right text-white" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }
