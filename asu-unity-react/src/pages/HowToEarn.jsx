@@ -69,9 +69,9 @@ export default function HowToEarn() {
         contentsColor="white"
       />
 
-      <section className="py-5 bg topo-white" style={{ backgroundColor: "#191919" }}>
+      <section className="py-5 bg topo-black" style={{ backgroundColor: "#191919" }}>
         <div className="uds-image-overlap content-left">
-          <img src="/overlap.jpg" alt="Devil2Devil community at ASU" />
+          <img src="/overlap.jpg" alt="Devil2Devil community at ASU" style={{ gridRow: "2 / span 1" }} />
           <div className="content-wrapper">
             <h2>
               <span style={{
@@ -89,7 +89,7 @@ export default function HowToEarn() {
         </div>
       </section>
 
-      <section className="py-5 bg topo-white">
+      <section className="py-5 bg topo-black">
         <div className="container-xl">
           <div className="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
             <h2 className="h3 fw-bold mb-0">Ways to earn</h2>
