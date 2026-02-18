@@ -2,8 +2,7 @@ import { ASUHeader } from "@asu/component-header-footer";
 import asuLogoVertical from "@asu/component-header-footer/dist/assets/img/arizona-state-university-logo-vertical.png";
 import asuLogoHorizontal from "@asu/component-header-footer/dist/assets/img/arizona-state-university-logo.png";
 
-export default function Header({
-}) {
+export default function Header({ isAuthenticated = false }) {
     const logo = {
         alt: "Arizona State University",
         src: asuLogoVertical,
@@ -44,6 +43,12 @@ export default function Header({
     href: "/leaderboard",
     text: "Leaderboard",
   },
+  ...(isAuthenticated ? [{
+    id: 4,
+    href: "/my-purchases",
+    text: "My Purchases",
+    type: "link",
+  }] : []),
 ];
 
 

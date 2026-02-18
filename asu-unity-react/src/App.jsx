@@ -261,8 +261,7 @@ export default function App() {
 
   return (
     <div className="main-container">
-      <Header
-      />
+      <Header isAuthenticated={authState.authenticated} />
       {/* ✅ Push content below sticky/overlay header */}
       <main className="main-content" style={{ paddingTop: headerOffset }}>
         {content}
