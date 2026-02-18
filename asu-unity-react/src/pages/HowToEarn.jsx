@@ -69,27 +69,9 @@ export default function HowToEarn() {
         contentsColor="white"
       />
 
-      <section className="py-5 bg topo-black" style={{ backgroundColor: "#191919" }}>
-        <div className="uds-image-overlap content-left">
-          <img src="/overlap.jpg" alt="Devil2Devil community at ASU" style={{ gridRow: "2 / span 1" }} />
-          <div className="content-wrapper">
-            <h2>
-              <span style={{
-                background: "#ffc627",
-                boxShadow: "-0.15em 0 0 #ffc627, 0.15em 0 0 #ffc627",
-                color: "#191919",
-              }}>
-                Quick Start
-              </span>
-            </h2>
-            <h3 className="h5 fw-bold mt-3 mb-2">Easiest Ways to Earn</h3>
-            <p>Follow these three simple steps to start earning pitchforks today!</p>
-            <p className="mb-0">Most rewards are automatic — just show up and participate.</p>
-          </div>
-        </div>
-      </section>
+  
 
-      <section className="py-5 bg topo-black">
+      <section className="py-5 bg topo-white">
         <div className="container-xl">
           <div className="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-4">
             <h2 className="h3 fw-bold mb-0">Ways to earn</h2>
