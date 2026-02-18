@@ -44,7 +44,7 @@ export default function Home() {
                 community. Earn pitchforks by staying active — check in daily, attend events,
                 hit milestones, and participate in community challenges. Every action you take
                 in the server adds up, putting you closer to rewards curated exclusively for
-                incoming Sun Devils.
+                Future Sun Devils.
               </p>
               <p>
                 Once you've stacked your pitchforks, head to the store to redeem them for
