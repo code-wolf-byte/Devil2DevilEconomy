@@ -261,7 +261,12 @@ export default function App() {
 
   return (
     <div className="main-container">
-      <Header isAuthenticated={authState.authenticated} />
+      <Header
+        isAuthenticated={authState.authenticated}
+        userName={authState.user?.username || ""}
+        loginHref={withBase("/auth/cas-login")}
+        logoutHref={withBase("/auth/logout")}
+      />
       {/* ✅ Push content below sticky/overlay header */}
       <main className="main-content" style={{ paddingTop: headerOffset }}>
         {content}

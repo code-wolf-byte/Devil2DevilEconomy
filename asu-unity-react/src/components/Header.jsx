@@ -2,7 +2,7 @@ import { ASUHeader } from "@asu/component-header-footer";
 import asuLogoVertical from "@asu/component-header-footer/dist/assets/img/arizona-state-university-logo-vertical.png";
 import asuLogoHorizontal from "@asu/component-header-footer/dist/assets/img/arizona-state-university-logo.png";
 
-export default function Header({ isAuthenticated = false }) {
+export default function Header({ isAuthenticated = false, userName = "", loginHref = "/auth/cas-login", logoutHref = "/auth/logout" }) {
     const logo = {
         alt: "Arizona State University",
         src: asuLogoVertical,
@@ -67,6 +67,10 @@ export default function Header({ isAuthenticated = false }) {
             expandOnHover={true}
             searchUrl="https://search.asu.edu/search"
             site="devil2devil-rewards-shop"
+            loggedIn={isAuthenticated}
+            userName={userName}
+            loginLink={loginHref}
+            logoutLink={logoutHref}
         />
     );
 }

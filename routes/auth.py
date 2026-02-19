@@ -4,6 +4,8 @@ from shared import app, db, User
 import requests
 import os
 import uuid
+import xml.etree.ElementTree as ET
+from urllib.parse import quote
 from datetime import datetime
 
 auth = Blueprint('auth', __name__)
@@ -128,3 +130,86 @@ def logout():
     logout_user()
     flash('Successfully logged out!', 'success')
     return redirect('/store')
+
+@auth.route('/cas-login')
+def cas_login():
+    """Redirect to ASU CAS login"""
+    if current_user.is_authenticated:
+        return redirect('/store')
+
+    service_url = os.getenv('CAS_SERVICE_URL')
+    if not service_url:
+        flash('CAS service URL not configured. Contact an administrator.', 'error')
+        return redirect('/')
+
+    cas_url = f"https://weblogin.asu.edu/cas/login?service={quote(service_url, safe='')}"
+    return redirect(cas_url)
+
+@auth.route('/cas-callback')
+def cas_callback():
+    """Handle ASU CAS authentication callback"""
+    ticket = request.args.get('ticket')
+    if not ticket:
+        flash('CAS authentication failed: no ticket received.', 'error')
+        return redirect('/')
+
+    service_url = os.getenv('CAS_SERVICE_URL')
+    if not service_url:
+        flash('Server configuration error. Contact an administrator.', 'error')
+        return redirect('/')
+
+    try:
+        # Validate ticket with ASU CAS server
+        response = requests.get(
+            'https://weblogin.asu.edu/cas/serviceValidate',
+            params={'ticket': ticket, 'service': service_url},
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            flash('CAS ticket validation failed.', 'error')
+            return redirect('/')
+
+        # Parse XML response
+        root = ET.fromstring(response.text)
+        ns = {'cas': 'http://www.yale.edu/tp/cas'}
+
+        success = root.find('cas:authenticationSuccess', ns)
+        if success is None:
+            failure = root.find('cas:authenticationFailure', ns)
+            error_msg = failure.text.strip() if failure is not None and failure.text else 'Authentication denied'
+            flash(f'CAS authentication failed: {error_msg}', 'error')
+            return redirect('/')
+
+        user_elem = success.find('cas:user', ns)
+        if user_elem is None or not user_elem.text:
+            flash('CAS authentication failed: no user info received.', 'error')
+            return redirect('/')
+
+        asurite_id = user_elem.text.strip()
+
+        # Find or create user by ASURITE ID (used as primary key)
+        user = User.query.get(asurite_id)
+
+        if not user:
+            user = User(
+                id=asurite_id,
+                username=asurite_id,
+                user_uuid=str(uuid.uuid4()),
+                points=0,
+                balance=0,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
+
+        login_user(user)
+        flash('Successfully logged in with your ASU account!', 'success')
+        return redirect('/store')
+
+    except ET.ParseError:
+        flash('CAS response could not be parsed.', 'error')
+        return redirect('/')
+    except Exception as e:
+        flash(f'CAS authentication error: {str(e)}', 'error')
+        return redirect('/')
