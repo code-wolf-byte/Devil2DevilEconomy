@@ -15,6 +15,7 @@ import DigitalTemplates from "./pages/DigitalTemplates";
 import AdminLeaderboard from "./pages/AdminLeaderboard";
 import AdminPurchases from "./pages/AdminPurchases";
 import AdminUserDetail from "./pages/AdminUserDetail";
+import AdminCategories from "./pages/AdminCategories";
 import Version from "./pages/Version";
 import "./App.css";
 
@@ -235,6 +236,16 @@ export default function App() {
     if (path === "/admin-purchases") {
       return (
         <AdminPurchases
+          isAuthenticated={authState.authenticated}
+          isAdmin={authState.isAdmin}
+          loginHref={withBase("/auth/login")}
+        />
+      );
+    }
+
+    if (path === "/admin/categories") {
+      return (
+        <AdminCategories
           isAuthenticated={authState.authenticated}
           isAdmin={authState.isAdmin}
           loginHref={withBase("/auth/login")}

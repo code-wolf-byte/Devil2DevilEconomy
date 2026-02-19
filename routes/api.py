@@ -9,6 +9,7 @@ from shared import (
     UserAchievement,
     DownloadToken,
     ProductMedia,
+    Category,
 )
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -60,7 +61,8 @@ def store():
             'is_unlimited': product.stock is None,
             'in_stock': product.stock is None or product.stock > 0,
             'product_type': product.product_type,
-            'image_url': image_url
+            'image_url': image_url,
+            'category': product.category or 'general'
         })
 
     return _json_response({'products': store_products})
@@ -283,6 +285,7 @@ def admin_products_api():
             'stock': product.stock,
             'is_active': product.is_active,
             'product_type': product.product_type,
+            'category': product.category or 'general',
             'created_at': product.created_at.isoformat() if product.created_at else None,
             'image_url': image_url,
             'preview_image_url': preview_image_url,
@@ -346,6 +349,7 @@ def admin_product_detail_api(product_id):
             'stock': product.stock,
             'is_active': product.is_active,
             'product_type': product.product_type,
+            'category': product.category or 'general',
             'image_url': image_url,
             'preview_image_url': preview_image_url,
             'download_file_url': product.download_file_url,
@@ -366,6 +370,7 @@ def admin_product_create_api():
     price = int(request.form.get('price')) if request.form.get('price') else 0
     stock = request.form.get('stock')
     product_type = request.form.get('product_type', 'physical')
+    category = request.form.get('category', 'general') or 'general'
 
     if stock == '' or stock == 'unlimited':
         stock = None
@@ -430,6 +435,7 @@ def admin_product_create_api():
         stock=stock,
         image_url=image_url,
         product_type=product_type,
+        category=category,
         preview_image_url=preview_image_url,
         download_file_url=download_file_url,
         created_at=datetime.utcnow()
@@ -467,6 +473,7 @@ def admin_product_update_api(product_id):
     product.price = int(request.form.get('price')) if request.form.get('price') else 0
     stock = request.form.get('stock')
     product.product_type = request.form.get('product_type', 'physical')
+    product.category = request.form.get('category', 'general') or 'general'
 
     if stock == '' or stock == 'unlimited':
         product.stock = None
@@ -1544,3 +1551,149 @@ def admin_user_detail_api(user_id):
         'recent_purchases': recent_purchases_data,
         'recent_achievements': recent_achievements_data
     })
+
+
+# ============================================================================
+# CATEGORY APIs
+# ============================================================================
+
+def _slugify(name):
+    """Convert a category name to a URL-safe slug."""
+    import re
+    slug = name.lower().strip()
+    slug = re.sub(r'[^\w\s-]', '', slug)
+    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r'-+', '-', slug)
+    return slug.strip('-')
+
+
+@api.route('/categories')
+def categories_api():
+    """Public endpoint to list all categories (used by store filter)."""
+    categories = Category.query.order_by(Category.name).all()
+    return _json_response({
+        'categories': [
+            {'id': c.id, 'name': c.name, 'slug': c.slug}
+            for c in categories
+        ]
+    })
+
+
+@api.route('/admin/categories')
+@login_required
+def admin_categories_api():
+    """Admin: list all categories with product counts."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    categories = Category.query.order_by(Category.name).all()
+    payload = []
+    for cat in categories:
+        count = Product.query.filter_by(category=cat.slug).count()
+        payload.append({
+            'id': cat.id,
+            'name': cat.name,
+            'slug': cat.slug,
+            'product_count': count,
+            'created_at': cat.created_at.isoformat() if cat.created_at else None
+        })
+
+    return _json_response({'categories': payload})
+
+
+@api.route('/admin/categories', methods=['POST'])
+@login_required
+def admin_category_create_api():
+    """Admin: create a new category."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return _json_response({'error': 'Category name is required.'}, status=400)
+
+    slug = _slugify(name)
+    if not slug:
+        return _json_response({'error': 'Invalid category name.'}, status=400)
+
+    if Category.query.filter_by(name=name).first():
+        return _json_response({'error': 'A category with that name already exists.'}, status=400)
+    if Category.query.filter_by(slug=slug).first():
+        return _json_response({'error': 'A category with that slug already exists.'}, status=400)
+
+    cat = Category(name=name, slug=slug)
+    db.session.add(cat)
+    db.session.commit()
+
+    return _json_response({'ok': True, 'category': {'id': cat.id, 'name': cat.name, 'slug': cat.slug}})
+
+
+@api.route('/admin/categories/<int:category_id>', methods=['POST'])
+@login_required
+def admin_category_update_api(category_id):
+    """Admin: rename a category."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    cat = Category.query.get_or_404(category_id)
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return _json_response({'error': 'Category name is required.'}, status=400)
+
+    new_slug = _slugify(name)
+    if not new_slug:
+        return _json_response({'error': 'Invalid category name.'}, status=400)
+
+    existing_name = Category.query.filter(Category.name == name, Category.id != category_id).first()
+    if existing_name:
+        return _json_response({'error': 'A category with that name already exists.'}, status=400)
+
+    old_slug = cat.slug
+    cat.name = name
+    cat.slug = new_slug
+
+    # Update all products that reference the old slug
+    if old_slug != new_slug:
+        Product.query.filter_by(category=old_slug).update({'category': new_slug})
+
+    db.session.commit()
+    return _json_response({'ok': True, 'category': {'id': cat.id, 'name': cat.name, 'slug': cat.slug}})
+
+
+@api.route('/admin/categories/<int:category_id>', methods=['DELETE'])
+@login_required
+def admin_category_delete_api(category_id):
+    """Admin: delete a category and reset its products to 'general'."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    cat = Category.query.get_or_404(category_id)
+    Product.query.filter_by(category=cat.slug).update({'category': 'general'})
+    db.session.delete(cat)
+    db.session.commit()
+
+    return _json_response({'ok': True})
+
+
+@api.route('/admin/categories/<int:category_id>/assign-all', methods=['POST'])
+@login_required
+def admin_category_assign_all_api(category_id):
+    """Admin: retroactively assign this category to all products."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    cat = Category.query.get_or_404(category_id)
+    data = request.get_json() or {}
+    uncategorized_only = data.get('uncategorized_only', False)
+
+    if uncategorized_only:
+        updated = Product.query.filter(
+            (Product.category == 'general') | (Product.category.is_(None))
+        ).update({'category': cat.slug})
+    else:
+        updated = Product.query.update({'category': cat.slug})
+
+    db.session.commit()
+    return _json_response({'ok': True, 'updated': updated})

@@ -10,6 +10,8 @@ export default function Store({
   avatarUrl = "",
 }) {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("all");
   const [status, setStatus] = useState({ loading: true, error: null });
 
   const apiBaseUrl = useMemo(() => {
@@ -28,14 +30,23 @@ export default function Store({
 
     const loadStore = async () => {
       try {
-        const response = await fetch(withBase("/api/store"));
-        if (!response.ok) {
-          throw new Error(`Store request failed (${response.status})`);
+        const [storeRes, catRes] = await Promise.all([
+          fetch(withBase("/api/store")),
+          fetch(withBase("/api/categories")),
+        ]);
+        if (!storeRes.ok) {
+          throw new Error(`Store request failed (${storeRes.status})`);
         }
-        const data = await response.json();
+        const storeData = await storeRes.json();
         if (isMounted) {
-          setProducts(Array.isArray(data.products) ? data.products : []);
+          setProducts(Array.isArray(storeData.products) ? storeData.products : []);
           setStatus({ loading: false, error: null });
+        }
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (isMounted) {
+            setCategories(Array.isArray(catData.categories) ? catData.categories : []);
+          }
         }
       } catch (error) {
         if (isMounted) {
@@ -50,7 +61,17 @@ export default function Store({
     };
   }, [apiBaseUrl]);
 
-  const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+  // Reset to page 1 when category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory]);
+
+  const filteredProducts = useMemo(() => {
+    if (activeCategory === "all") return products;
+    return products.filter((p) => p.category === activeCategory);
+  }, [products, activeCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -60,8 +81,8 @@ export default function Store({
 
   const pageProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return products.slice(startIndex, startIndex + itemsPerPage);
-  }, [currentPage, products]);
+    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  }, [currentPage, filteredProducts]);
 
   if (status.loading) {
     return (
@@ -133,8 +154,42 @@ export default function Store({
           </>
         )}
       </div>
-      {products.length === 0 ? (
-        <p className="text-muted">No products available right now.</p>
+      {/* Category filter tabs — only shown when categories exist */}
+      {categories.length > 0 && (
+        <div className="uds-tabbed-panels mb-4">
+          <ul className="nav nav-tabs" role="tablist">
+            <li className="nav-item" role="presentation">
+              <button
+                className={`nav-link${activeCategory === "all" ? " active" : ""}`}
+                onClick={() => setActiveCategory("all")}
+                role="tab"
+                aria-selected={activeCategory === "all"}
+              >
+                All
+              </button>
+            </li>
+            {categories.map((cat) => (
+              <li key={cat.slug} className="nav-item" role="presentation">
+                <button
+                  className={`nav-link${activeCategory === cat.slug ? " active" : ""}`}
+                  onClick={() => setActiveCategory(cat.slug)}
+                  role="tab"
+                  aria-selected={activeCategory === cat.slug}
+                >
+                  {cat.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {filteredProducts.length === 0 ? (
+        <p className="text-muted">
+          {activeCategory === "all"
+            ? "No products available right now."
+            : "No products in this category."}
+        </p>
       ) : (
         <>
           <div className="row g-4">

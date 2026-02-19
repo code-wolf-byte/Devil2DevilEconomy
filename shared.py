@@ -229,6 +229,17 @@ class DownloadToken(db.Model):
     download_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
-    
+
     user = db.relationship('User', backref='download_tokens')
     purchase = db.relationship('Purchase', backref='download_tokens')
+
+
+class Category(db.Model):
+    """Product categories for the store"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    slug = db.Column(db.String(100), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Category {self.name}>'

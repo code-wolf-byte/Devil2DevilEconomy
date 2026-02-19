@@ -35,6 +35,7 @@ export default function AdminProducts({
     stock: "",
     unlimitedStock: false,
     product_type: "physical",
+    category: "general",
     image: null,
     preview_image: null,
     download_file: null,
@@ -47,8 +48,32 @@ export default function AdminProducts({
     download_file_url: null,
     media: [],
   });
+  const [categories, setCategories] = React.useState([]);
+
+  // Category management state
+  const [catNewName, setCatNewName] = React.useState("");
+  const [catCreating, setCatCreating] = React.useState(false);
+  const [catCreateError, setCatCreateError] = React.useState(null);
+  const [catEditingId, setCatEditingId] = React.useState(null);
+  const [catEditName, setCatEditName] = React.useState("");
+  const [catEditError, setCatEditError] = React.useState(null);
 
   const apiBaseUrl = React.useMemo(buildApiBase, []);
+
+  const withBase = React.useCallback(
+    (path) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path),
+    [apiBaseUrl]
+  );
+
+  const loadCategories = React.useCallback(async () => {
+    try {
+      const res = await fetch(withBase("/api/admin/categories"), { credentials: "include" });
+      const data = await res.json();
+      setCategories(Array.isArray(data.categories) ? data.categories : []);
+    } catch {
+      // ignore
+    }
+  }, [withBase]);
 
   const loadProducts = React.useCallback(async () => {
     try {
@@ -72,7 +97,8 @@ export default function AdminProducts({
       return;
     }
     loadProducts();
-  }, [isAuthenticated, isAdmin, loadProducts]);
+    loadCategories();
+  }, [isAuthenticated, isAdmin, loadProducts, loadCategories]);
 
   React.useEffect(() => {
     const path = window.location.pathname;
@@ -95,6 +121,7 @@ export default function AdminProducts({
         stock: "",
         unlimitedStock: false,
         product_type: "physical",
+        category: "general",
         image: null,
         preview_image: null,
         download_file: null,
@@ -128,6 +155,7 @@ export default function AdminProducts({
           stock: product.stock ?? "",
           unlimitedStock: product.stock === null,
           product_type: product.product_type || "physical",
+          category: product.category || "general",
           image: null,
           preview_image: null,
           download_file: null,
@@ -176,6 +204,7 @@ export default function AdminProducts({
         form.unlimitedStock ? "unlimited" : form.stock
       );
       formData.append("product_type", form.product_type);
+      formData.append("category", form.category || "general");
 
       if (form.image) {
         formData.append("image", form.image);
@@ -281,6 +310,70 @@ export default function AdminProducts({
       await reloadCurrentMedia();
     } catch (error) {
       setFormStatus((prev) => ({ ...prev, error: error.message }));
+    }
+  };
+
+  const handleCatCreate = async (e) => {
+    e.preventDefault();
+    setCatCreating(true);
+    setCatCreateError(null);
+    try {
+      const res = await fetch(withBase("/api/admin/categories"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: catNewName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create category.");
+      setCatNewName("");
+      await loadCategories();
+    } catch (err) {
+      setCatCreateError(err.message);
+    } finally {
+      setCatCreating(false);
+    }
+  };
+
+  const handleCatUpdate = async (id) => {
+    setCatEditError(null);
+    try {
+      const res = await fetch(withBase(`/api/admin/categories/${id}`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: catEditName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to rename category.");
+      setCatEditingId(null);
+      await loadCategories();
+      // Refresh the form category value if it changed
+      await loadProducts();
+    } catch (err) {
+      setCatEditError(err.message);
+    }
+  };
+
+  const handleCatDelete = async (id, name) => {
+    if (
+      !window.confirm(
+        `Delete category "${name}"?\n\nProducts in this category will be reset to "General".`
+      )
+    )
+      return;
+    try {
+      const res = await fetch(withBase(`/api/admin/categories/${id}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete category.");
+      }
+      await loadCategories();
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -436,21 +529,48 @@ export default function AdminProducts({
                 </div>
               </div>
 
-              <div className="mt-3">
-                <label className="form-label">Product Type</label>
-                <select
-                  className="form-select"
-                  value={form.product_type}
-                  onChange={(event) =>
-                    updateForm("product_type", event.target.value)
-                  }
-                >
-                  {PRODUCT_TYPES.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="row g-3 mt-0">
+                <div className="col-12 col-md-6">
+                  <label className="form-label">Product Type</label>
+                  <select
+                    className="form-select"
+                    value={form.product_type}
+                    onChange={(event) =>
+                      updateForm("product_type", event.target.value)
+                    }
+                  >
+                    {PRODUCT_TYPES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-12 col-md-6">
+                  <label className="form-label">Category</label>
+                  <select
+                    className="form-select"
+                    value={form.category}
+                    onChange={(event) =>
+                      updateForm("category", event.target.value)
+                    }
+                  >
+                    <option value="general">General (uncategorized)</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.slug}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  {categories.length === 0 && (
+                    <div className="form-text text-muted">
+                      <a href="/admin/categories" onClick={(e) => { e.preventDefault(); window.history.pushState({}, "", "/admin/categories"); window.dispatchEvent(new PopStateEvent("popstate")); }}>
+                        Create categories
+                      </a>{" "}
+                      to organize your products.
+                    </div>
+                  )}
+                </div>
               </div>
 
               {form.product_type !== "minecraft_skin" ? (
@@ -654,6 +774,141 @@ export default function AdminProducts({
                 ) : null}
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Categories section ── */}
+      <div className="mt-5">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h2 className="h5 fw-bold mb-0">Categories</h2>
+            <p className="text-muted small mb-0">
+              Create and manage categories. They appear as filter tabs in the store.
+            </p>
+          </div>
+        </div>
+
+        <div className="row g-4">
+          {/* Quick-create form */}
+          <div className="col-12 col-md-4">
+            <div className="border rounded bg-white p-4 h-100">
+              <h3 className="h6 fw-semibold mb-3">New Category</h3>
+              <form onSubmit={handleCatCreate}>
+                <div className="mb-3">
+                  <label className="form-label">Name</label>
+                  <input
+                    className="form-control"
+                    placeholder="e.g. Apparel, Roles, Digital…"
+                    value={catNewName}
+                    onChange={(e) => setCatNewName(e.target.value)}
+                    required
+                  />
+                  <div className="form-text text-muted">
+                    A URL slug is generated automatically.
+                  </div>
+                </div>
+                {catCreateError && (
+                  <div className="alert alert-danger py-2 small">
+                    {catCreateError}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="btn btn-dark btn-sm"
+                  disabled={catCreating || !catNewName.trim()}
+                >
+                  {catCreating ? "Creating…" : "Create Category"}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Category list */}
+          <div className="col-12 col-md-8">
+            <div className="border rounded bg-white p-4">
+              <h3 className="h6 fw-semibold mb-3">
+                All Categories{" "}
+                <span className="badge bg-light text-dark fw-normal ms-1">
+                  {categories.length}
+                </span>
+              </h3>
+
+              {categories.length === 0 ? (
+                <p className="text-muted small mb-0">
+                  No categories yet — create one to get started.
+                </p>
+              ) : (
+                <div className="list-group list-group-flush">
+                  {categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="list-group-item px-0 d-flex flex-wrap align-items-center gap-2"
+                    >
+                      {catEditingId === cat.id ? (
+                        <>
+                          <div className="flex-grow-1">
+                            <input
+                              className="form-control form-control-sm"
+                              value={catEditName}
+                              onChange={(e) => setCatEditName(e.target.value)}
+                              autoFocus
+                            />
+                            {catEditError && (
+                              <div className="text-danger small mt-1">
+                                {catEditError}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleCatUpdate(cat.id)}
+                            disabled={!catEditName.trim()}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => setCatEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex-grow-1">
+                            <span className="fw-semibold">{cat.name}</span>
+                            <span className="text-muted small ms-2">
+                              <code>{cat.slug}</code>
+                            </span>
+                            <span className="badge bg-light text-dark ms-2 fw-normal">
+                              {cat.product_count}{" "}
+                              {cat.product_count === 1 ? "product" : "products"}
+                            </span>
+                          </div>
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => {
+                              setCatEditingId(cat.id);
+                              setCatEditName(cat.name);
+                              setCatEditError(null);
+                            }}
+                          >
+                            Rename
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleCatDelete(cat.id, cat.name)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

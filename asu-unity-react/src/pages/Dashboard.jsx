@@ -331,6 +331,11 @@ export default function Dashboard({
             </a>
           </div>
           <div className="col-6 col-md-4 col-lg-3">
+            <a href="/admin/categories" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+              <span>&#127991;</span> Categories
+            </a>
+          </div>
+          <div className="col-6 col-md-4 col-lg-3">
             <a href="/admin/products/new" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
               <span>&#10133;</span> Add Product
             </a>

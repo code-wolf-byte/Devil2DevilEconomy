@@ -18,6 +18,7 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
     error: null,
     success: null,
   });
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const apiBaseUrl = useMemo(() => {
     const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -107,11 +108,17 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
     );
   }
 
-  const handlePurchase = async () => {
+  const handlePurchase = () => {
     if (!isAuthenticated) {
       window.location.href = loginHref;
       return;
     }
+    setPurchaseStatus({ loading: false, error: null, success: null });
+    setShowConfirm(true);
+  };
+
+  const confirmPurchase = async () => {
+    setShowConfirm(false);
     setPurchaseStatus({ loading: true, error: null, success: null });
     try {
       const url = apiBaseUrl
@@ -317,6 +324,85 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
           </div>
         </div>
       </div>
+
+      {/* Purchase confirmation modal */}
+      {showConfirm && (
+        <div
+          className="modal d-block"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">Confirm Purchase</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowConfirm(false)}
+                />
+              </div>
+              <div className="modal-body pt-2">
+                <div className="d-flex gap-3 align-items-center mb-4">
+                  {media[0]?.url && (
+                    media[0].type === "video" ? (
+                      <video
+                        src={media[0].url}
+                        muted
+                        style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", flexShrink: 0 }}
+                      />
+                    ) : (
+                      <img
+                        src={media[0].url}
+                        alt={product.name}
+                        style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", flexShrink: 0 }}
+                      />
+                    )
+                  )}
+                  <div>
+                    <div className="fw-semibold fs-5">{product.name}</div>
+                    {product.description && (
+                      <div className="text-muted small mt-1" style={{ maxWidth: "260px" }}>
+                        {product.description.length > 100
+                          ? product.description.slice(0, 100) + "…"
+                          : product.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border rounded p-3 bg-light">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="text-muted">Price</span>
+                    <span className="d-flex align-items-center gap-1 fw-bold fs-5">
+                      <img src="/static/Coin_Gold.png" alt="" style={{ width: "18px", height: "18px" }} />
+                      {product.price}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-muted small mt-3 mb-0">
+                  This will deduct <strong>{product.price} pitchforks</strong> from your balance. This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer border-0 pt-0 gap-2">
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-warning fw-semibold px-4"
+                  onClick={confirmPurchase}
+                >
+                  Confirm Purchase
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
