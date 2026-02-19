@@ -1610,5 +1610,124 @@ class EconomyCog(commands.Cog):
             await interaction.followup.send(embed=error_embed, ephemeral=True)
             cog_logger.error(f"Error in remove_restricted_roles command: {e}")
 
+    @app_commands.command(
+        name="award_verification",
+        description="Backfill verification bonus to all verified members who haven't received it (Admin only)"
+    )
+    async def award_verification(self, interaction: discord.Interaction):
+        """Award 200 pitchforks to every member with the verified role who hasn't received the bonus yet."""
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "❌ You need administrator permissions to use this command.", ephemeral=True
+            )
+            return
+
+        guild_id = os.getenv('DISCORD_GUILD_ID')
+        if not guild_id:
+            await interaction.response.send_message(
+                "❌ `DISCORD_GUILD_ID` is not configured in the environment.", ephemeral=True
+            )
+            return
+
+        if not VERIFIED_ROLE_ID:
+            await interaction.response.send_message(
+                "❌ `VERIFIED_ROLE_ID` is not configured in the environment.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        guild = self.bot.get_guild(int(guild_id))
+        if not guild:
+            await interaction.followup.send(
+                f"❌ Could not find guild `{guild_id}`. Make sure the bot is a member of that server.",
+                ephemeral=True
+            )
+            return
+
+        verified_role = guild.get_role(int(VERIFIED_ROLE_ID))
+        if not verified_role:
+            await interaction.followup.send(
+                f"❌ Could not find the verified role (`{VERIFIED_ROLE_ID}`) in this server.",
+                ephemeral=True
+            )
+            return
+
+        awarded_count = 0
+        skipped_count = 0
+        error_count = 0
+
+        with self.app.app_context():
+            try:
+                for member in guild.members:
+                    if member.bot:
+                        continue
+                    if verified_role not in member.roles:
+                        continue
+
+                    try:
+                        user = self.User.query.filter_by(id=str(member.id)).first()
+                        if not user:
+                            user = self.User(
+                                id=str(member.id),
+                                username=member.name,
+                                discord_id=str(member.id),
+                                avatar_url=str(member.avatar.url) if member.avatar else None
+                            )
+                            self.db.session.add(user)
+                            self.db.session.flush()
+
+                        if user.verification_bonus_received:
+                            skipped_count += 1
+                            continue
+
+                        user.balance += 200
+                        user.points += 200
+                        user.verification_bonus_received = True
+                        awarded_count += 1
+
+                    except Exception as e:
+                        error_count += 1
+                        cog_logger.error(f"Error processing verification bonus for {member.name}: {e}")
+
+                self.db.session.commit()
+
+            except Exception as e:
+                self.db.session.rollback()
+                await interaction.followup.send(f"❌ Database error: {str(e)}", ephemeral=True)
+                cog_logger.error(f"Error in award_verification command: {e}")
+                return
+
+        embed = discord.Embed(
+            title="✅ Verification Bonus Backfill Complete",
+            color=discord.Color.gold()
+        )
+        embed.add_field(
+            name="✅ Awarded",
+            value=f"**{awarded_count}** member(s) received **200 pitchforks**",
+            inline=False
+        )
+        embed.add_field(
+            name="⏭️ Skipped",
+            value=f"**{skipped_count}** member(s) already had the bonus",
+            inline=False
+        )
+        if error_count:
+            embed.add_field(
+                name="❌ Errors",
+                value=f"**{error_count}** member(s) could not be processed — check bot logs",
+                inline=False
+            )
+        embed.add_field(name="🎯 Verified Role", value=verified_role.name, inline=True)
+        embed.add_field(name="💰 Points Per User", value="200 pitchforks", inline=True)
+        embed.set_footer(text="Only members missing the bonus were awarded — no double-awards.")
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        cog_logger.info(
+            f"award_verification run by {interaction.user.name}: "
+            f"{awarded_count} awarded, {skipped_count} skipped, {error_count} errors"
+        )
+
+
 def setup(bot, app, db, User, EconomySettings, Achievement, UserAchievement):
     bot.add_cog(EconomyCog(bot, app, db, User, EconomySettings, Achievement, UserAchievement)) 
