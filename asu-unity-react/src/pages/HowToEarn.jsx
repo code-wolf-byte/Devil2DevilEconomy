@@ -12,26 +12,26 @@ const earnItems = [
   { action: "Birthday celebration", description: "Earn points automatically on your birthday.", reward: "100", category: "Commands" },
 
   // Participation
-  { action: "Events", description: "Attend an event in Devil2Devil in the Stage channel.", reward: "25 per event", category: "Participation" },
-  { action: "Daily question", description: "Answer the question of the day in #general chat.", reward: "25 per day", category: "Participation" },
-  { action: "Campus Photo", description: "Post a photo on campus in #proof-for-pitchforks.", reward: "100", category: "Participation" },
+  { action: "Events", description: "Attend an event in Devil2Devil. An admin must approve your attendance by reacting to your message.", reward: "25 per event", category: "Participation" },
+  { action: "Daily question", description: "Participate in the daily question. An admin must react to your message with the daily engage emoji to approve points.", reward: "25 per day", category: "Participation" },
+  { action: "Campus Photo", description: "Post a photo on campus in #proof-for-pitchforks. An admin must approve it. One-time reward.", reward: "100", category: "Participation" },
   { action: "Minecraft", description: "Win a Minecraft build challenge.", reward: "500", category: "Participation" },
   { action: "Minecraft", description: "Get second place in a Minecraft build challenge.", reward: "300", category: "Participation" },
   { action: "Minecraft", description: "Get third place in a Minecraft build challenge.", reward: "150", category: "Participation" },
   { action: "Minecraft", description: "Participate in a Minecraft build challenge.", reward: "25", category: "Participation" },
 
   // Milestones
-  { action: "Onboarding", description: "Complete onboarding before joining the server.", reward: "100", category: "Milestones" },
-  { action: "Verify", description: "Verify your admittance to ASU in #verify-here.", reward: "300", category: "Milestones" },
+  { action: "Onboarding", description: "Complete onboarding before joining the server.", reward: "500", category: "Milestones" },
+  { action: "Verify", description: "Verify your admittance to ASU in #verify-here.", reward: "200", category: "Milestones" },
   { action: "Message", description: "Send your first message in any chat.", reward: "200", category: "Milestones" },
-  { action: "Deposit", description: "Submit your enrollment deposit.", reward: "500", category: "Milestones" },
+  { action: "Deposit", description: "Submit your enrollment deposit and have an admin approve it. One-time reward.", reward: "500", category: "Milestones" },
   { action: "React", description: "Add 10 reactions to messages.", reward: "200", category: "Milestones" },
-  { action: "Voice chat", description: "Spend 60 minutes in the voice channels.", reward: "200", category: "Milestones" },
+  { action: "Voice chat", description: "Spend 60 minutes in voice channels.", reward: "200", category: "Milestones" },
   { action: "Message", description: "Reach 100 total messages sent.", reward: "300", category: "Milestones" },
   { action: "Message", description: "Reach 1,000 total messages sent.", reward: "500", category: "Milestones" },
   { action: "React", description: "Add 500 reactions to messages.", reward: "500", category: "Milestones" },
-  { action: "Voice chat", description: "Spend 720 minutes in the voice channels.", reward: "500", category: "Milestones" },
-  { action: "Voice chat", description: "Spend 1,440 minutes in the voice channels.", reward: "700", category: "Milestones" },
+  { action: "Voice chat", description: "Spend 720 minutes in voice channels.", reward: "500", category: "Milestones" },
+  { action: "Voice chat", description: "Spend 1,440 minutes in voice channels.", reward: "700", category: "Milestones" },
   { action: "Message", description: "Reach 100,000 total messages sent.", reward: "900", category: "Milestones" },
 
   // Bonus

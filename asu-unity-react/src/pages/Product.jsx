@@ -102,7 +102,7 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
           Failed to load product: {status.error || "Not found"}
         </p>
         <div className="mt-3">
-          <Button label="Back to store" color="gray" href="/" size="small" />
+          <Button label="Back to store" color="gray" href="/store" size="small" />
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
         <div>
           <h1 className="display-6 fw-bold mb-2">{product.name}</h1>
         </div>
-        <Button label="Back to store" color="gray" href="/" size="small" />
+        <Button label="Back to store" color="gray" href="/store" size="small" />
       </div>
 
       <Divider />

@@ -27,6 +27,8 @@ MAX_DAILY_CLAIMS = 90  # Lifetime limit for daily command claims
 CAMPUS_PICTURE_EMOJI = os.getenv('CAMPUS_PICTURE_EMOJI', 'campus_photo')
 DAILY_ENGAGEMENT_EMOJI = os.getenv('DAILY_ENGAGEMENT_EMOJI', 'daily_engage')
 ENROLLMENT_DEPOSIT_EMOJI = os.getenv('ENROLLMENT_DEPOSIT_EMOJI', 'deposit_check')
+EVENTS_ENGAGE_EMOJI = os.getenv('EVENTS_ENGAGE_EMOJI', 'events_engage')
+EVENT_POINTS = 25
 
 # Channel and role IDs
 GENERAL_CHANNEL_ID = os.getenv('GENERAL_CHANNEL_ID')
@@ -147,7 +149,8 @@ class EconomyCog(commands.Cog):
         self.EconomySettings = EconomySettings
         self.Achievement = Achievement
         self.UserAchievement = UserAchievement
-        # Removed role_assignment_queue since we're using direct function calls now
+        # In-memory map of member_id -> datetime they joined their current voice channel
+        self.voice_join_times = {}
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
@@ -208,36 +211,52 @@ class EconomyCog(commands.Cog):
         """Process reaction data - can be called from main.py or internally"""
         if payload.user_id == self.bot.user.id:
             return
-        
+
         with self.app.app_context():
             try:
                 # Get the channel and message
                 channel = self.bot.get_channel(payload.channel_id)
                 if not channel:
                     return
-                
+
                 try:
                     message = await channel.fetch_message(payload.message_id)
                 except Exception as e:
                     return
-                
+
                 # Create a fake reaction object for compatibility
                 class FakeReaction:
                     def __init__(self, message, emoji):
                         self.message = message
                         self.emoji = emoji
                         self.count = 1
-                
+
                 reaction = FakeReaction(message, payload.emoji)
-                
-                # Check if this is an admin reaction
-                # Get the member from the guild instead of just the user
+
                 guild = channel.guild
                 if guild:
                     member = guild.get_member(payload.user_id)
+
+                    # Track reaction count for the reacting user
+                    reactor = self.User.query.filter_by(id=str(payload.user_id)).first()
+                    if not reactor:
+                        reactor = self.User(
+                            id=str(payload.user_id),
+                            username=member.name if member else str(payload.user_id),
+                            discord_id=str(payload.user_id),
+                            avatar_url=str(member.avatar.url) if member and member.avatar else None
+                        )
+                        self.db.session.add(reactor)
+                        self.db.session.commit()
+
+                    reactor.reaction_count += 1
+                    self.db.session.commit()
+                    await self.check_achievements(reactor, 'reactions', reactor.reaction_count)
+
+                    # Check if this is an admin reaction
                     if member and member.guild_permissions.administrator:
                         await self.check_admin_reactions(reaction, member)
-                
+
             except Exception as e:
                 cog_logger.error(f"Error processing reaction: {e}")
 
@@ -245,10 +264,37 @@ class EconomyCog(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         if member.bot:
             return
-        
+
+        now = datetime.now()
+
+        # ── Track join time ──────────────────────────────────────────────────
+        if before.channel is None and after.channel is not None:
+            # User joined a voice channel
+            self.voice_join_times[member.id] = now
+            return
+
+        # ── Calculate elapsed minutes and credit the user ────────────────────
+        minutes_to_add = 0
+
+        if before.channel is not None and after.channel is None:
+            # User left voice completely
+            join_time = self.voice_join_times.pop(member.id, None)
+            if join_time:
+                minutes_to_add = int((now - join_time).total_seconds() / 60)
+
+        elif (before.channel is not None and after.channel is not None
+              and before.channel != after.channel):
+            # User switched channels — credit time in old channel, restart timer
+            join_time = self.voice_join_times.get(member.id)
+            if join_time:
+                minutes_to_add = int((now - join_time).total_seconds() / 60)
+            self.voice_join_times[member.id] = now
+
+        if minutes_to_add <= 0:
+            return
+
         with self.app.app_context():
             try:
-                # Get or create user
                 user = self.User.query.filter_by(id=str(member.id)).first()
                 if not user:
                     user = self.User(
@@ -258,16 +304,12 @@ class EconomyCog(commands.Cog):
                     )
                     self.db.session.add(user)
                     self.db.session.commit()
-                
-                # Update voice minutes (simplified tracking)
-                if before.channel is None and after.channel is not None:
-                    # User joined a voice channel
-                    user.voice_minutes += 1
-                    self.db.session.commit()
-                    
-                    # Check for voice-based achievements
-                    await self.check_achievements(user, 'voice', user.voice_minutes)
-                
+
+                user.voice_minutes += minutes_to_add
+                self.db.session.commit()
+
+                await self.check_achievements(user, 'voice', user.voice_minutes)
+
             except Exception as e:
                 cog_logger.error(f"Error processing voice state update: {e}")
 
@@ -573,6 +615,29 @@ class EconomyCog(commands.Cog):
                                 cog_logger.error(f"Error adding checkmark reaction: {e}")
                     else:
                         cog_logger.warning(f"User {reaction.message.author.name} not found in database")
+
+                # Check for events engagement emoji
+                elif emoji_name == EVENTS_ENGAGE_EMOJI:
+                    user = self.User.query.filter_by(id=str(reaction.message.author.id)).first()
+                    if not user:
+                        # Create user if they don't exist yet
+                        member = reaction.message.author
+                        user = self.User(
+                            id=str(member.id),
+                            username=member.name,
+                            discord_id=str(member.id),
+                            avatar_url=str(member.avatar.url) if member.avatar else None
+                        )
+                        self.db.session.add(user)
+                        self.db.session.commit()
+                    success, msg = await self.award_event_points(user, reaction.message)
+                    await self.send_admin_reaction_dm(admin_user, reaction, reaction.message, "event_attendance", EVENT_POINTS if success else 0)
+                    if success:
+                        try:
+                            await reaction.message.add_reaction("✅")
+                        except Exception as e:
+                            cog_logger.error(f"Error adding checkmark reaction: {e}")
+
                 else:
                     cog_logger.info(f"Emoji {emoji_name} did not match any configured emojis")
                 
@@ -636,6 +701,53 @@ class EconomyCog(commands.Cog):
             self.db.session.rollback()
             cog_logger.error(f"Error awarding enrollment deposit points: {e}")
             return False, "Error awarding points"
+
+    async def award_event_points(self, user, message):
+        """Award points for attending an event (no per-user limit — one award per reaction)."""
+        try:
+            user.balance += EVENT_POINTS
+            user.points += EVENT_POINTS
+            self.db.session.commit()
+
+            await self.send_event_announcement(user)
+
+            cog_logger.info(f"Event points awarded to {user.username}: {EVENT_POINTS} points")
+            return True, f"Awarded {EVENT_POINTS} points for event attendance"
+
+        except Exception as e:
+            self.db.session.rollback()
+            cog_logger.error(f"Error awarding event points: {e}")
+            return False, "Error awarding points"
+
+    async def send_event_announcement(self, user):
+        """Send event attendance announcement to the general channel."""
+        if GENERAL_CHANNEL_ID:
+            try:
+                channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+                if channel:
+                    embed = discord.Embed(
+                        title="🎉 Event Attendance Approved!",
+                        description=f"Great job {user.username}! Your event attendance has been approved!",
+                        color=discord.Color.gold()
+                    )
+                    embed.add_field(
+                        name="💰 Points Earned",
+                        value=f"+{EVENT_POINTS} pitchforks",
+                        inline=True
+                    )
+                    embed.add_field(
+                        name="💎 New Balance",
+                        value=f"{user.balance} pitchforks",
+                        inline=True
+                    )
+                    embed.add_field(
+                        name="🗓️ Keep it up!",
+                        value="Attend more events to keep earning pitchforks!",
+                        inline=False
+                    )
+                    await channel.send(embed=embed)
+            except Exception as e:
+                cog_logger.error(f"Error sending event announcement: {e}")
 
     async def check_birthdays(self):
         """Check for birthdays and send announcements"""
@@ -782,6 +894,10 @@ class EconomyCog(commands.Cog):
                     
                     # Check if user meets the requirement
                     if achievement_type == 'messages' and user.message_count >= achievement.requirement:
+                        await self.award_achievement(user, achievement)
+                    elif achievement_type == 'reactions' and user.reaction_count >= achievement.requirement:
+                        await self.award_achievement(user, achievement)
+                    elif achievement_type == 'voice' and user.voice_minutes >= achievement.requirement:
                         await self.award_achievement(user, achievement)
                     elif achievement_type == 'daily' and user.daily_claims_count >= achievement.requirement:
                         await self.award_achievement(user, achievement)

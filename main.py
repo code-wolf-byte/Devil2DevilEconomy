@@ -168,10 +168,37 @@ def run_bot():
 
 def run_startup_tasks():
     """Run startup tasks needed before serving requests."""
-    # Create database tables
+    # Create database tables and seed required data
     with app.app_context():
         db.create_all()
         print("Database tables created successfully!")
+
+        # Seed achievements that must exist for the economy to function correctly.
+        # Safe to run on every deploy — skips any that already exist.
+        achievements_to_seed = [
+            # Reaction milestones
+            {'name': 'Reactor I',   'description': 'Add 10 reactions to messages.',    'points': 200, 'type': 'reactions', 'requirement': 10},
+            {'name': 'Reactor II',  'description': 'Add 500 reactions to messages.',   'points': 500, 'type': 'reactions', 'requirement': 500},
+            # Voice milestones
+            {'name': 'Voice Regular', 'description': 'Spend 60 minutes in voice channels.',    'points': 200, 'type': 'voice', 'requirement': 60},
+            {'name': 'Voice Veteran', 'description': 'Spend 720 minutes in voice channels.',   'points': 500, 'type': 'voice', 'requirement': 720},
+            {'name': 'Voice Legend',  'description': 'Spend 1,440 minutes in voice channels.', 'points': 700, 'type': 'voice', 'requirement': 1440},
+        ]
+
+        seeded = 0
+        for ach_data in achievements_to_seed:
+            exists = Achievement.query.filter_by(
+                type=ach_data['type'], requirement=ach_data['requirement']
+            ).first()
+            if not exists:
+                db.session.add(Achievement(**ach_data))
+                seeded += 1
+
+        if seeded:
+            db.session.commit()
+            print(f"✅ Seeded {seeded} new achievement(s).")
+        else:
+            print("✅ All achievements already present — nothing to seed.")
     # Fix image paths before starting the application
     print("🔧 Running image path fix...")
     try:
