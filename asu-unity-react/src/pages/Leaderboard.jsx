@@ -79,7 +79,6 @@ function Avatar({ src, alt, size }) {
 export default function Leaderboard() {
   const [status, setStatus] = useState({ loading: true, error: null });
   const [users, setUsers] = useState([]);
-  const [totals, setTotals] = useState(null);
 
   const apiBaseUrl = useMemo(() => {
     const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -97,7 +96,6 @@ export default function Leaderboard() {
         const data = await res.json();
         if (isMounted) {
           setUsers(Array.isArray(data.users) ? data.users : []);
-          setTotals(data.totals || null);
           setStatus({ loading: false, error: null });
         }
       } catch (err) {
@@ -145,44 +143,6 @@ export default function Leaderboard() {
         contents={[{ text: "Who's earning the most pitchforks in the Devil2Devil community?" }]}
         contentsColor="white"
       />
-
-      {/* ── Community stats bar ── */}
-      {totals && (
-        <div className="gray-dark-bg">
-          <div className="container-xl">
-            <div className="row g-0 text-center">
-              <div className="col-12 col-md-4 py-4" style={{ borderRight: "1px solid rgba(255,255,255,0.15)" }}>
-                <div
-                  className="fw-bold mb-1"
-                  style={{ color: "#FFC627", fontSize: "1.75rem", lineHeight: 1 }}
-                >
-                  {totals.total_users.toLocaleString()}
-                </div>
-                <div className="small text-white" style={{ opacity: 0.7 }}>Sun Devils</div>
-              </div>
-              <div className="col-12 col-md-4 py-4" style={{ borderRight: "1px solid rgba(255,255,255,0.15)" }}>
-                <div
-                  className="fw-bold mb-1 d-inline-flex align-items-center gap-2"
-                  style={{ color: "#FFC627", fontSize: "1.75rem", lineHeight: 1 }}
-                >
-                  <img src="/static/Coin_Gold.png" alt="" style={{ width: 22, height: 22 }} />
-                  {totals.total_balance.toLocaleString()}
-                </div>
-                <div className="small text-white" style={{ opacity: 0.7 }}>Pitchforks in Circulation</div>
-              </div>
-              <div className="col-12 col-md-4 py-4">
-                <div
-                  className="fw-bold mb-1"
-                  style={{ color: "#FFC627", fontSize: "1.75rem", lineHeight: 1 }}
-                >
-                  {totals.total_points.toLocaleString()}
-                </div>
-                <div className="small text-white" style={{ opacity: 0.7 }}>Total Points Earned</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Podium (top 3) ── */}
       {topThree.length > 0 && (
