@@ -2,7 +2,7 @@ import { useState } from "react";
 import "@asu/unity-bootstrap-theme/dist/css/unity-bootstrap-theme.bundle.css";
 import "@asu/unity-bootstrap-theme/dist/css/unity-bootstrap-header-footer.css";
 import { Hero } from "@asu/unity-react-core";
-import heroImage from "../assets/Hero.jpg";
+import heroImage from "../assets/Hero2.jpg";
 import EarnCarousel from "../components/EarnCarousel";
 
 const earnItems = [

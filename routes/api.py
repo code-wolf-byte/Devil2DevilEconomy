@@ -750,22 +750,32 @@ def purchase_api(product_id):
 
 @api.route('/leaderboard')
 def leaderboard_api():
-    """Leaderboard data API."""
-    users = User.query.order_by(User.balance.desc()).limit(10).all()
+    """Leaderboard data API. Admins are excluded."""
+    users = (
+        User.query
+        .filter(User.is_admin == False)
+        .order_by(User.balance.desc())
+        .limit(10)
+        .all()
+    )
     payload = [
         {
             'id': user.id,
             'username': user.username,
             'avatar_url': user.avatar_url,
-            'points': user.points,
-            'balance': user.balance
+            'points': user.points or 0,
+            'balance': user.balance or 0
         }
         for user in users
     ]
+    # Community-wide totals (all non-admin users, not just the top 10)
+    total_users = User.query.filter(User.is_admin == False).count()
+    total_balance = db.session.query(db.func.sum(User.balance)).filter(User.is_admin == False).scalar() or 0
+    total_points = db.session.query(db.func.sum(User.points)).filter(User.is_admin == False).scalar() or 0
     totals = {
-        'total_users': len(payload),
-        'total_balance': sum(user['balance'] or 0 for user in payload),
-        'total_points': sum(user['points'] or 0 for user in payload)
+        'total_users': total_users,
+        'total_balance': total_balance,
+        'total_points': total_points
     }
     return _json_response({'users': payload, 'totals': totals})
 
