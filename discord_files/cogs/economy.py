@@ -164,7 +164,7 @@ class EconomyCog(commands.Cog):
     async def on_ready(self):
         """Called when the bot is ready"""
         cog_logger.info("Economy cog is ready!")
-        
+
         # Start background tasks only after bot is ready
         try:
             if not self.daily_birthday_check.is_running():
@@ -174,9 +174,12 @@ class EconomyCog(commands.Cog):
             print("Background tasks started successfully!")
         except Exception as e:
             print(f"Warning: Could not start background tasks: {e}")
-        
+
         # Sync slash commands
         await self.bot.tree.sync()
+
+        # Award boost bonus to any existing boosters who haven't received it
+        await self._retroactive_boost_check()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -326,15 +329,10 @@ class EconomyCog(commands.Cog):
                     if verified_role and verified_role in after.roles and verified_role not in before.roles:
                         await self.handle_verification_bonus(after)
                 
-                # Check for onboarding bonuses
-                if ONBOARDING_ROLE_IDS:
-                    for role_id in ONBOARDING_ROLE_IDS:
-                        if role_id.strip():
-                            onboarding_role = after.guild.get_role(int(role_id.strip()))
-                            if onboarding_role and onboarding_role in after.roles and onboarding_role not in before.roles:
-                                await self.handle_onboarding_bonus(after)
-                                break
-                
+                # Check for server boost
+                if before.premium_since is None and after.premium_since is not None:
+                    await self.handle_boost_bonus(after)
+
                 # Monitor and prevent restricted role assignment
                 await self.monitor_restricted_role(before, after)
                 
@@ -459,18 +457,18 @@ class EconomyCog(commands.Cog):
                 
                 # Check if user already received verification bonus
                 if not user.verification_bonus_received:
-                    user.balance += 200
-                    user.points += 200
+                    user.balance += 300
+                    user.points += 300
                     user.verification_bonus_received = True
                     self.db.session.commit()
-                    
+
                     # Send announcement
                     if GENERAL_CHANNEL_ID:
                         channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
                         if channel:
                             embed = discord.Embed(
                                 title="🎉 Verification Bonus!",
-                                description=f"Congratulations {member.mention}! You've received **200 pitchforks** for getting verified!",
+                                description=f"Congratulations {member.mention}! You've received **300 pitchforks** for getting verified!",
                                 color=discord.Color.gold()
                             )
                             embed.add_field(
@@ -479,53 +477,47 @@ class EconomyCog(commands.Cog):
                                 inline=True
                             )
                             await channel.send(embed=embed)
-                    
-                    cog_logger.info(f"Verification bonus awarded to {member.name}: 200 points")
+
+                    cog_logger.info(f"Verification bonus awarded to {member.name}: 300 points")
                 
             except Exception as e:
                 cog_logger.error(f"Error handling verification bonus: {e}")
 
-    async def handle_onboarding_bonus(self, member):
-        """Handle onboarding role bonus"""
+    async def handle_boost_bonus(self, member):
+        """Award 500 pitchforks for boosting the server (once per user)."""
         with self.app.app_context():
             try:
                 user = self.User.query.filter_by(id=str(member.id)).first()
                 if not user:
-                    user = self.User(
-                        id=str(member.id),
-                        username=member.name,
-                        discord_id=str(member.id)
-                    )
+                    user = self.User(id=str(member.id), username=member.name, discord_id=str(member.id))
                     self.db.session.add(user)
                     self.db.session.flush()
-                
-                # Check if user already received onboarding bonus
-                if not user.onboarding_bonus_received:
+
+                if not user.has_boosted:
                     user.balance += 500
                     user.points += 500
-                    user.onboarding_bonus_received = True
+                    user.has_boosted = True
                     self.db.session.commit()
-                    
-                    # Send announcement
+
                     if GENERAL_CHANNEL_ID:
                         channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
                         if channel:
                             embed = discord.Embed(
-                                title="🎉 Onboarding Bonus!",
-                                description=f"Welcome {member.mention}! You've received **500 pitchforks** for completing onboarding!",
-                                color=discord.Color.gold()
+                                title="🚀 Server Boost!",
+                                description=f"Thank you {member.mention} for boosting the server! You've received **500 pitchforks**!",
+                                color=discord.Color.purple()
                             )
-                            embed.add_field(
-                                name="💰 New Balance",
-                                value=f"{user.balance} pitchforks",
-                                inline=True
-                            )
+                            embed.add_field(name="💰 New Balance", value=f"{user.balance} pitchforks", inline=True)
                             await channel.send(embed=embed)
-                    
-                    cog_logger.info(f"Onboarding bonus awarded to {member.name}: 500 points")
-                
+                    cog_logger.info(f"Boost bonus awarded to {member.name}: 500 points")
             except Exception as e:
-                cog_logger.error(f"Error handling onboarding bonus: {e}")
+                cog_logger.error(f"Error handling boost bonus: {e}")
+
+    async def _retroactive_boost_check(self):
+        for guild in self.bot.guilds:
+            for member in guild.members:
+                if member.premium_since is not None and not member.bot:
+                    await self.handle_boost_bonus(member)
 
     async def award_daily_engagement_points(self, user, message):
         """Award points for daily engagement approval"""

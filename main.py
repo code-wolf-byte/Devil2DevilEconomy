@@ -183,6 +183,11 @@ def run_startup_tasks():
             {'name': 'Voice Regular', 'description': 'Spend 60 minutes in voice channels.',    'points': 200, 'type': 'voice', 'requirement': 60},
             {'name': 'Voice Veteran', 'description': 'Spend 720 minutes in voice channels.',   'points': 500, 'type': 'voice', 'requirement': 720},
             {'name': 'Voice Legend',  'description': 'Spend 1,440 minutes in voice channels.', 'points': 700, 'type': 'voice', 'requirement': 1440},
+            # Message milestones
+            {'name': 'First Message', 'description': 'Send your first message in any chat.',  'points': 200, 'type': 'messages', 'requirement': 1},
+            {'name': 'Chatterbox',    'description': 'Reach 100 total messages sent.',        'points': 300, 'type': 'messages', 'requirement': 100},
+            {'name': 'Active Member', 'description': 'Reach 1,000 total messages sent.',      'points': 500, 'type': 'messages', 'requirement': 1000},
+            {'name': 'Legend',        'description': 'Reach 100,000 total messages sent.',    'points': 900, 'type': 'messages', 'requirement': 100000},
         ]
 
         seeded = 0
