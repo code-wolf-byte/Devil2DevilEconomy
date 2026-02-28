@@ -3,15 +3,16 @@ Retroactive fix script — run once from the project root:
     python utils/retroactive_fix.py
 
 What it does:
-1. Verification correction: users with verification_bonus_received=True and verify_corrected=False
-   receive +100 pts (diff between old 200 and new 300 spec).
-2. Onboarding refund: users with onboarding_bonus_received=True and onboarding_refunded=False
-   have -500 pts deducted (floored at 0).
-3. Message milestone awards: for each user, award any message-type achievements they qualify
-   for based on current message_count (skips already-awarded ones).
+0. Ensures the two tracking columns exist in SQLite (adds them if missing, so
+   flask db migrate / flask db upgrade is NOT required before running this).
+1. Verification correction: users with verification_bonus_received=True and
+   verify_corrected=False receive +100 pts (diff between old 200 and new 300 spec).
+2. Onboarding refund: users with onboarding_bonus_received=True and
+   onboarding_refunded=False have -500 pts deducted (floored at 0).
+3. Message milestone awards: for each user, award any message-type achievements
+   they qualify for based on current message_count (skips already-awarded ones).
 
-The verify_corrected and onboarding_refunded columns act as idempotency guards — safe to run
-multiple times; subsequent runs will report 0 changes.
+Safe to run multiple times — subsequent runs will report 0 changes.
 """
 
 import sys
@@ -21,7 +22,33 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import app, db, User, Achievement, UserAchievement
+from sqlalchemy import text
 from datetime import datetime
+
+
+def ensure_columns(engine):
+    """Add verify_corrected and onboarding_refunded columns if they don't exist."""
+    added = []
+    with engine.connect() as conn:
+        # Inspect existing columns
+        result = conn.execute(text("PRAGMA table_info(user)"))
+        existing = {row[1] for row in result}
+
+        if 'verify_corrected' not in existing:
+            conn.execute(text(
+                "ALTER TABLE user ADD COLUMN verify_corrected BOOLEAN DEFAULT 0"
+            ))
+            conn.commit()
+            added.append('verify_corrected')
+
+        if 'onboarding_refunded' not in existing:
+            conn.execute(text(
+                "ALTER TABLE user ADD COLUMN onboarding_refunded BOOLEAN DEFAULT 0"
+            ))
+            conn.commit()
+            added.append('onboarding_refunded')
+
+    return added
 
 
 def run_verification_correction(session):
@@ -106,6 +133,13 @@ def main():
         print("=" * 55)
         print("  Retroactive Fix Script")
         print("=" * 55)
+
+        print("\n[0/3] Ensuring tracking columns exist...")
+        added = ensure_columns(db.engine)
+        if added:
+            print(f"      Added columns: {', '.join(added)}")
+        else:
+            print("      Columns already present.")
 
         print("\n[1/3] Verification bonus correction (+100 each)...")
         verify_count = run_verification_correction(db.session)
