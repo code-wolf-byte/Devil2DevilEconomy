@@ -47,6 +47,24 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // Auto-reload when the server has a newer build than what the browser cached.
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch(withBase("/api/version"), { cache: "no-store" });
+        if (!res.ok) return;
+        const { version } = await res.json();
+        if (version && version !== "unknown" && version !== __COMMIT_HASH__) {
+          window.location.reload();
+        }
+      } catch {
+        // network error — ignore, try again next interval
+      }
+    };
+    const id = setInterval(check, 5 * 60 * 1000); // every 5 minutes
+    return () => clearInterval(id);
+  }, [apiBaseUrl]);
+
   // ✅ Measure ASU header height and offset main content by that amount
   const [headerOffset, setHeaderOffset] = useState(0);
 

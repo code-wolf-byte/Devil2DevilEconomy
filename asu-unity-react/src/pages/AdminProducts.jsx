@@ -190,6 +190,26 @@ export default function AdminProducts({
     window.history.pushState({}, "", "/admin/products/new");
   };
 
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    if (!window.confirm("Permanently delete this product? This cannot be undone.")) return;
+    setFormStatus({ saving: true, error: null, success: null });
+    try {
+      const url = withBase(`/api/admin/products/${selectedId}`);
+      const response = await fetch(url, { method: "DELETE", credentials: "include" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Delete failed (${response.status})`);
+      }
+      await loadProducts();
+      setSelectedId(null);
+      window.history.pushState({}, "", "/admin/products");
+      setFormStatus({ saving: false, error: null, success: null });
+    } catch (error) {
+      setFormStatus({ saving: false, error: error.message, success: null });
+    }
+  };
+
   const handleClone = async () => {
     if (!selectedId) return;
     setFormStatus({ saving: true, error: null, success: null });
@@ -775,7 +795,7 @@ export default function AdminProducts({
                 </div>
               ) : null}
 
-              <div className="d-flex gap-2 mt-3">
+              <div className="d-flex gap-2 mt-3 flex-wrap">
                 <Button
                   label={formStatus.saving ? "Saving..." : "Save Product"}
                   color="gold"
@@ -795,6 +815,16 @@ export default function AdminProducts({
                     color="gray"
                     onClick={handleNewProduct}
                   />
+                ) : null}
+                {selectedId ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    disabled={formStatus.saving}
+                    onClick={handleDelete}
+                  >
+                    Delete Product
+                  </button>
                 ) : null}
               </div>
             </form>

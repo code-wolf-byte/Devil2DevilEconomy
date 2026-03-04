@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import os
 import uuid
 import asyncio
+import subprocess
 
 api = Blueprint('api', __name__, url_prefix='/api')
 
@@ -599,6 +600,52 @@ def admin_product_set_primary_media_api(product_id, media_id):
     db.session.commit()
 
     return _json_response({'ok': True})
+
+
+@api.route('/admin/products/<int:product_id>', methods=['DELETE'])
+@login_required
+def admin_product_delete_api(product_id):
+    """Hard-delete a product and its associated files."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    product = Product.query.get_or_404(product_id)
+
+    if product.purchases:
+        return _json_response(
+            {'error': 'Cannot delete a product that has purchase history.'},
+            status=409
+        )
+
+    for media in list(product.media):
+        if media.url and not media.url.startswith('http'):
+            fp = os.path.join('static', 'uploads', media.url)
+            if os.path.exists(fp):
+                os.remove(fp)
+        db.session.delete(media)
+
+    for field in [product.image_url, product.preview_image_url, product.download_file_url]:
+        if field and not field.startswith('http'):
+            fp = os.path.join('static', 'uploads', field)
+            if os.path.exists(fp):
+                os.remove(fp)
+
+    db.session.delete(product)
+    db.session.commit()
+    return _json_response({'ok': True})
+
+
+@api.route('/version')
+def version_api():
+    """Return the current git commit hash so clients can detect stale builds."""
+    try:
+        hash_ = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        hash_ = 'unknown'
+    return _json_response({'version': hash_})
 
 
 @api.route('/admin/products/<int:product_id>/clone', methods=['POST'])
