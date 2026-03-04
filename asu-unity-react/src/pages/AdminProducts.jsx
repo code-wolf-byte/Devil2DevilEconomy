@@ -190,6 +190,22 @@ export default function AdminProducts({
     window.history.pushState({}, "", "/admin/products/new");
   };
 
+  const handleClone = async () => {
+    if (!selectedId) return;
+    setFormStatus({ saving: true, error: null, success: null });
+    try {
+      const url = withBase(`/api/admin/products/${selectedId}/clone`);
+      const response = await fetch(url, { method: "POST", credentials: "include" });
+      if (!response.ok) throw new Error(`Clone failed (${response.status})`);
+      const data = await response.json();
+      await loadProducts();
+      handleSelectProduct(data.product_id);
+      setFormStatus({ saving: false, error: null, success: "Cloned!" });
+    } catch (error) {
+      setFormStatus({ saving: false, error: error.message, success: null });
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormStatus({ saving: true, error: null, success: null });
@@ -765,6 +781,14 @@ export default function AdminProducts({
                   color="gold"
                   disabled={formStatus.saving}
                 />
+                {selectedId ? (
+                  <Button
+                    label="Clone"
+                    color="gray"
+                    disabled={formStatus.saving}
+                    onClick={handleClone}
+                  />
+                ) : null}
                 {selectedId ? (
                   <Button
                     label="New Product"

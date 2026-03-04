@@ -601,6 +601,63 @@ def admin_product_set_primary_media_api(product_id, media_id):
     return _json_response({'ok': True})
 
 
+@api.route('/admin/products/<int:product_id>/clone', methods=['POST'])
+@login_required
+def admin_product_clone_api(product_id):
+    """Clone a product, duplicating all its fields and media files."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    source = Product.query.get_or_404(product_id)
+
+    clone = Product(
+        name=f"Copy of {source.name}",
+        description=source.description,
+        price=source.price,
+        stock=source.stock,
+        product_type=source.product_type,
+        category=source.category,
+        is_active=False,
+        created_at=datetime.utcnow(),
+    )
+
+    def _copy_file(filename):
+        """Copy a local upload file and return the new filename, or return filename unchanged for remote URLs."""
+        if not filename or filename.startswith('http'):
+            return filename
+        src_path = os.path.join('static', 'uploads', filename)
+        if not os.path.exists(src_path):
+            return filename
+        ext = os.path.splitext(filename)[1]
+        new_filename = f"{uuid.uuid4()}{ext}"
+        dst_path = os.path.join('static', 'uploads', new_filename)
+        import shutil
+        shutil.copy2(src_path, dst_path)
+        return new_filename
+
+    clone.image_url = _copy_file(source.image_url)
+    clone.preview_image_url = _copy_file(source.preview_image_url)
+    clone.download_file_url = _copy_file(source.download_file_url)
+
+    db.session.add(clone)
+    db.session.commit()
+
+    for media in source.media:
+        new_url = _copy_file(media.url) if media.media_type != 'video' else media.url
+        db.session.add(ProductMedia(
+            product_id=clone.id,
+            media_type=media.media_type,
+            url=new_url,
+            alt_text=media.alt_text,
+            sort_order=media.sort_order,
+            is_primary=media.is_primary,
+        ))
+
+    db.session.commit()
+
+    return _json_response({'ok': True, 'product_id': clone.id})
+
+
 @api.route('/purchase/<int:product_id>', methods=['POST'])
 @login_required
 def purchase_api(product_id):
