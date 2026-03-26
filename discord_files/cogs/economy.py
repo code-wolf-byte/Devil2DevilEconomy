@@ -33,6 +33,7 @@ EVENT_POINTS = 25
 # Channel and role IDs
 GENERAL_CHANNEL_ID = os.getenv('GENERAL_CHANNEL_ID')
 VERIFIED_ROLE_ID = os.getenv('VERIFIED_ROLE_ID')
+ENROLLMENT_DEPOSIT_ROLE_ID = os.getenv('ENROLLMENT_DEPOSIT_ROLE_ID', '1356257786563920023')
 ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.getenv('ONBOARDING_ROLE_IDS') else []
 BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:30')
 
@@ -180,6 +181,9 @@ class EconomyCog(commands.Cog):
 
         # Award boost bonus to any existing boosters who haven't received it
         await self._retroactive_boost_check()
+
+        # Award enrollment deposit bonus to any members who already have the role
+        await self._retroactive_enrollment_deposit_check()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -329,6 +333,12 @@ class EconomyCog(commands.Cog):
                     if verified_role and verified_role in after.roles and verified_role not in before.roles:
                         await self.handle_verification_bonus(after)
                 
+                # Check for enrollment deposit role
+                if ENROLLMENT_DEPOSIT_ROLE_ID:
+                    deposit_role = after.guild.get_role(int(ENROLLMENT_DEPOSIT_ROLE_ID))
+                    if deposit_role and deposit_role in after.roles and deposit_role not in before.roles:
+                        await self.handle_enrollment_deposit_bonus(after)
+
                 # Check for server boost
                 if before.premium_since is None and after.premium_since is not None:
                     await self.handle_boost_bonus(after)
@@ -518,6 +528,70 @@ class EconomyCog(commands.Cog):
             for member in guild.members:
                 if member.premium_since is not None and not member.bot:
                     await self.handle_boost_bonus(member)
+
+    async def _retroactive_enrollment_deposit_check(self):
+        if not ENROLLMENT_DEPOSIT_ROLE_ID:
+            return
+        for guild in self.bot.guilds:
+            deposit_role = guild.get_role(int(ENROLLMENT_DEPOSIT_ROLE_ID))
+            if not deposit_role:
+                continue
+            for member in guild.members:
+                if not member.bot and deposit_role in member.roles:
+                    await self.handle_enrollment_deposit_bonus(member)
+
+    async def handle_enrollment_deposit_bonus(self, member):
+        """Award enrollment deposit bonus when a member receives the enrollment deposit role."""
+        with self.app.app_context():
+            try:
+                user = self.User.query.filter_by(id=str(member.id)).first()
+                if not user:
+                    user = self.User(
+                        id=str(member.id),
+                        username=member.name,
+                        discord_id=str(member.id)
+                    )
+                    self.db.session.add(user)
+                    self.db.session.flush()
+
+                if not user.enrollment_deposit_received:
+                    user.balance += ENROLLMENT_DEPOSIT_POINTS
+                    user.points += ENROLLMENT_DEPOSIT_POINTS
+                    user.enrollment_deposit_received = True
+                    self.db.session.commit()
+
+                    await self.check_achievements(user, 'enrollment_deposit')
+
+                    if GENERAL_CHANNEL_ID:
+                        channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+                        if channel:
+                            embed = discord.Embed(
+                                title="🎉 Enrollment Deposit Approved!",
+                                description=f"Congratulations {member.mention}! Your enrollment deposit has been approved!",
+                                color=discord.Color.green()
+                            )
+                            embed.add_field(
+                                name="💰 Points Earned",
+                                value=f"+{ENROLLMENT_DEPOSIT_POINTS} pitchforks",
+                                inline=True
+                            )
+                            embed.add_field(
+                                name="💎 New Balance",
+                                value=f"{user.balance} pitchforks",
+                                inline=True
+                            )
+                            embed.add_field(
+                                name="🎓 Next Steps",
+                                value="You're now eligible for campus activities and exclusive benefits!",
+                                inline=False
+                            )
+                            await channel.send(embed=embed)
+
+                    cog_logger.info(f"Enrollment deposit bonus awarded to {member.name}: {ENROLLMENT_DEPOSIT_POINTS} points")
+
+            except Exception as e:
+                self.db.session.rollback()
+                cog_logger.error(f"Error handling enrollment deposit bonus: {e}")
 
     async def award_daily_engagement_points(self, user, message):
         """Award points for daily engagement approval"""
