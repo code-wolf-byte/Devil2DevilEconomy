@@ -30,7 +30,7 @@ import sqlite3
 import argparse
 from pathlib import Path
 
-FORKLIFT_DB = Path(__file__).resolve().parents[2] / "forklift" / "forklift.db"
+FORKLIFT_DB = Path(__file__).resolve().parents[2] / "forklift-docker" / "data" / "forklift.db"
 ECONOMY_DB  = Path(__file__).resolve().parents[1] / "instance" / "store.db"
 DEFAULT_POINTS = 250
 
