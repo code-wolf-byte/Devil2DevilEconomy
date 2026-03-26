@@ -48,6 +48,7 @@ class User(UserMixin, db.Model):
     onboarding_bonus_received = db.Column(db.Boolean, default=False)  # Track if user got onboarding bonus
     verify_corrected = db.Column(db.Boolean, default=False)     # True after +100 retroactive correction applied
     onboarding_refunded = db.Column(db.Boolean, default=False)  # True after -500 retroactive refund applied
+    survey_bonus_received = db.Column(db.Boolean, default=False)  # True after survey points awarded
     
     # Earning limit tracking columns
     daily_claims_count = db.Column(db.Integer, default=0)  # Track number of daily claims used
