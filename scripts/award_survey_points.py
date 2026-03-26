@@ -76,16 +76,23 @@ def ensure_survey_column(econ_conn):
 
 
 def lookup_discord(fork_conn, asurite):
-    """Return (discord_user_id, display_name) for an ASURITE, or (None, None)."""
-    row = fork_conn.execute(
-        "SELECT discord_user_id, discord_global_name, discord_username "
-        "FROM users WHERE asurite_id = ?",
-        (asurite,)
-    ).fetchone()
-    if not row or not row[0]:
-        return None, None
-    display = row[1] or row[2] or row[0]
-    return row[0], display
+    """Return (discord_user_id, display_name) for an ASURITE, or (None, None).
+    Tries bare ASURITE first, then with @asu.edu appended."""
+    candidates = [asurite]
+    if "@" not in asurite:
+        candidates.append(asurite + "@asu.edu")
+
+    for candidate in candidates:
+        row = fork_conn.execute(
+            "SELECT discord_user_id, discord_global_name, discord_username "
+            "FROM users WHERE asurite_id = ?",
+            (candidate,)
+        ).fetchone()
+        if row and row[0]:
+            display = row[1] or row[2] or row[0]
+            return row[0], display
+
+    return None, None
 
 
 def award(econ_conn, discord_id, display_name, points, dry_run):
