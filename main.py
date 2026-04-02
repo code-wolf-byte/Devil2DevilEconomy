@@ -9,6 +9,7 @@ import time
 import asyncio
 import threading
 from flask import redirect, url_for, jsonify
+from sqlalchemy import text
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -172,6 +173,17 @@ def run_startup_tasks():
     with app.app_context():
         db.create_all()
         print("Database tables created successfully!")
+
+        # Column migrations — safe to re-run on every deploy (skips if column already exists)
+        _column_migrations = [
+            "ALTER TABLE user ADD COLUMN csd_bonus_received BOOLEAN DEFAULT 0",
+        ]
+        for _migration in _column_migrations:
+            try:
+                db.session.execute(text(_migration))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         # Seed achievements that must exist for the economy to function correctly.
         # Safe to run on every deploy — skips any that already exist.
