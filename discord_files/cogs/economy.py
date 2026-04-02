@@ -28,7 +28,9 @@ CAMPUS_PICTURE_EMOJI = os.getenv('CAMPUS_PICTURE_EMOJI', 'campus_photo')
 DAILY_ENGAGEMENT_EMOJI = os.getenv('DAILY_ENGAGEMENT_EMOJI', 'daily_engage')
 ENROLLMENT_DEPOSIT_EMOJI = os.getenv('ENROLLMENT_DEPOSIT_EMOJI', 'deposit_check')
 EVENTS_ENGAGE_EMOJI = os.getenv('EVENTS_ENGAGE_EMOJI', 'events_engage')
+CSD_FORKS_UP_EMOJI = os.getenv('CSD_FORKS_UP_EMOJI', 'CSD_forks_up')
 EVENT_POINTS = 25
+CSD_POINTS = 200
 
 # Channel and role IDs
 GENERAL_CHANNEL_ID = os.getenv('GENERAL_CHANNEL_ID')
@@ -704,6 +706,20 @@ class EconomyCog(commands.Cog):
                         except Exception as e:
                             cog_logger.error(f"Error adding checkmark reaction: {e}")
 
+                # Check for college signing day emoji
+                elif emoji_name == CSD_FORKS_UP_EMOJI:
+                    user = self.User.query.filter_by(id=str(reaction.message.author.id)).first()
+                    if user:
+                        success, message = await self.award_csd_points(user, reaction.message)
+                        await self.send_admin_reaction_dm(admin_user, reaction, reaction.message, "college_signing_day", CSD_POINTS if success else 0)
+                        if success:
+                            try:
+                                await reaction.message.add_reaction("✅")
+                            except Exception as e:
+                                cog_logger.error(f"Error adding checkmark reaction: {e}")
+                    else:
+                        cog_logger.warning(f"User {reaction.message.author.name} not found in database")
+
                 else:
                     cog_logger.info(f"Emoji {emoji_name} did not match any configured emojis")
                 
@@ -736,6 +752,59 @@ class EconomyCog(commands.Cog):
         except Exception as e:
             cog_logger.error(f"Error awarding campus picture points: {e}")
             return False, "Error awarding points"
+
+    async def award_csd_points(self, user, message):
+        """Award points for college signing day picture"""
+        try:
+            if user.csd_bonus_received:
+                return False, "College signing day points already awarded"
+
+            user.balance += CSD_POINTS
+            user.points += CSD_POINTS
+            user.csd_bonus_received = True
+
+            self.db.session.commit()
+
+            await self.send_csd_announcement(user, message)
+
+            cog_logger.info(f"College signing day points awarded to {user.username}: {CSD_POINTS} points")
+            return True, f"Awarded {CSD_POINTS} points for college signing day picture"
+
+        except Exception as e:
+            cog_logger.error(f"Error awarding college signing day points: {e}")
+            return False, "Error awarding points"
+
+    async def send_csd_announcement(self, user, message):
+        """Send college signing day announcement in the general channel"""
+        if not GENERAL_CHANNEL_ID:
+            return
+        try:
+            channel = self.bot.get_channel(int(GENERAL_CHANNEL_ID))
+            if not channel:
+                return
+            embed = discord.Embed(
+                title="🎉 College Signing Day!",
+                description=f"Congratulations {message.author.mention} on your college signing day! 🏫✍️",
+                color=discord.Color.gold()
+            )
+            embed.add_field(
+                name="💰 Points Earned",
+                value=f"+{CSD_POINTS} pitchforks",
+                inline=True
+            )
+            embed.add_field(
+                name="💎 New Balance",
+                value=f"{user.balance} pitchforks",
+                inline=True
+            )
+            embed.add_field(
+                name="🔱 Pitchforks Awarded",
+                value="You earned 200 pitchforks for posting your college signing day picture!",
+                inline=False
+            )
+            await channel.send(embed=embed)
+        except Exception as e:
+            cog_logger.error(f"Error sending college signing day announcement: {e}")
 
     async def award_enrollment_deposit_points(self, user, message):
         """Award points for enrollment deposit approval"""
