@@ -36,6 +36,7 @@ CSD_POINTS = 200
 GENERAL_CHANNEL_ID = os.getenv('GENERAL_CHANNEL_ID')
 VERIFIED_ROLE_ID = os.getenv('VERIFIED_ROLE_ID')
 ENROLLMENT_DEPOSIT_ROLE_ID = os.getenv('ENROLLMENT_DEPOSIT_ROLE_ID', '1356257786563920023')
+STAFF_ROLE_ID = os.getenv('STAFF_ROLE_ID', '1477021385187655740')
 ONBOARDING_ROLE_IDS = os.getenv('ONBOARDING_ROLE_IDS', '').split(',') if os.getenv('ONBOARDING_ROLE_IDS') else []
 BIRTHDAY_CHECK_TIME = os.getenv('BIRTHDAY_CHECK_TIME', '09:30')
 
@@ -155,6 +156,12 @@ class EconomyCog(commands.Cog):
         # In-memory map of member_id -> datetime they joined their current voice channel
         self.voice_join_times = {}
 
+    def is_staff_or_admin(self, member):
+        """Return True if member has administrator permissions or the staff role."""
+        if member.guild_permissions.administrator:
+            return True
+        return any(str(role.id) == STAFF_ROLE_ID for role in member.roles)
+
     def cog_unload(self):
         """Clean up when cog is unloaded"""
         try:
@@ -262,8 +269,8 @@ class EconomyCog(commands.Cog):
                     self.db.session.commit()
                     await self.check_achievements(reactor, 'reactions', reactor.reaction_count)
 
-                    # Check if this is an admin reaction
-                    if member and member.guild_permissions.administrator:
+                    # Check if this is an admin or staff reaction
+                    if member and self.is_staff_or_admin(member):
                         await self.check_admin_reactions(reaction, member)
 
             except Exception as e:
@@ -1576,7 +1583,7 @@ class EconomyCog(commands.Cog):
     @app_commands.command(name="give_all", description="Give pitchforks to all users (Admin only)")
     async def give_all(self, interaction: discord.Interaction, amount: int):
         """Give pitchforks to all users (Admin only)"""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         
@@ -1597,7 +1604,7 @@ class EconomyCog(commands.Cog):
     @app_commands.command(name="give", description="Give pitchforks to a specific user (Admin only)")
     async def give(self, interaction: discord.Interaction, user: discord.Member, amount: int):
         """Give pitchforks to a specific user (Admin only)"""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         
@@ -1626,7 +1633,7 @@ class EconomyCog(commands.Cog):
     @app_commands.command(name="economy", description="Enable or disable the economy system (Admin only)")
     async def economy_toggle(self, interaction: discord.Interaction, action: str):
         """Enable or disable the economy system (Admin only)"""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         
@@ -1768,7 +1775,7 @@ class EconomyCog(commands.Cog):
     @app_commands.command(name="test", description="Test if the bot is working (Admin only)")
     async def test_bot(self, interaction: discord.Interaction):
         """Test if the bot is working (Admin only)"""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         
@@ -1798,7 +1805,7 @@ class EconomyCog(commands.Cog):
     @app_commands.command(name="remove_restricted_roles", description="Remove committed role from unverified users (Admin only)")
     async def remove_restricted_roles(self, interaction: discord.Interaction):
         """Remove committed role from unverified users (Admin only)"""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
             return
         
@@ -1867,7 +1874,7 @@ class EconomyCog(commands.Cog):
     )
     async def award_verification(self, interaction: discord.Interaction):
         """Award 200 pitchforks to every member with the verified role who hasn't received the bonus yet."""
-        if not interaction.user.guild_permissions.administrator:
+        if not self.is_staff_or_admin(interaction.user):
             await interaction.response.send_message(
                 "❌ You need administrator permissions to use this command.", ephemeral=True
             )
