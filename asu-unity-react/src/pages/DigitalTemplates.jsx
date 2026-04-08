@@ -21,6 +21,11 @@ export default function DigitalTemplates({
   const [skinProductsStatus, setSkinProductsStatus] = React.useState({ loading: true, error: null });
   const [roleFormStatus, setRoleFormStatus] = React.useState({ saving: false, error: null, success: null });
   const [skinFormStatus, setSkinFormStatus] = React.useState({ saving: false, error: null, success: null });
+  const [editingProduct, setEditingProduct] = React.useState(null);
+  const [editSelectedRole, setEditSelectedRole] = React.useState(null);
+  const [editRoleDropdownOpen, setEditRoleDropdownOpen] = React.useState(false);
+  const [editRoleSearchTerm, setEditRoleSearchTerm] = React.useState("");
+  const [editRoleStatus, setEditRoleStatus] = React.useState({ saving: false, error: null, success: null });
 
   const [roleForm, setRoleForm] = React.useState({
     role_id: "",
@@ -122,6 +127,50 @@ export default function DigitalTemplates({
   const filteredRoles = discordRoles.filter((role) =>
     role.name.toLowerCase().includes(roleSearchTerm.toLowerCase())
   );
+
+  const filteredEditRoles = discordRoles.filter((role) =>
+    role.name.toLowerCase().includes(editRoleSearchTerm.toLowerCase())
+  );
+
+  const openEditRoleModal = (product) => {
+    const currentRole = discordRoles.find((r) => r.id === product.role_id) || null;
+    setEditingProduct(product);
+    setEditSelectedRole(currentRole);
+    setEditRoleDropdownOpen(false);
+    setEditRoleSearchTerm("");
+    setEditRoleStatus({ saving: false, error: null, success: null });
+  };
+
+  const closeEditRoleModal = () => {
+    setEditingProduct(null);
+    setEditSelectedRole(null);
+    setEditRoleStatus({ saving: false, error: null, success: null });
+  };
+
+  const handleUpdateProductRole = async () => {
+    if (!editSelectedRole || !editingProduct) return;
+    setEditRoleStatus({ saving: true, error: null, success: null });
+    try {
+      const url = apiBaseUrl
+        ? `${apiBaseUrl}/api/admin/digital-templates/roles/${editingProduct.id}`
+        : `/api/admin/digital-templates/roles/${editingProduct.id}`;
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role_id: editSelectedRole.id }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update role");
+      }
+      setEditRoleStatus({ saving: false, error: null, success: "Role updated successfully!" });
+      await loadRoleProducts();
+      setTimeout(closeEditRoleModal, 1200);
+    } catch (error) {
+      setEditRoleStatus({ saving: false, error: error.message, success: null });
+    }
+  };
 
   const handleRoleFormSubmit = async (event) => {
     event.preventDefault();
@@ -470,9 +519,36 @@ export default function DigitalTemplates({
                               Stock: {product.stock === null ? "Unlimited" : product.stock === 0 ? "Out" : product.stock}
                             </span>
                           </div>
-                          <a href={`/admin/products/${product.id}`} className="btn btn-sm btn-outline-primary w-100">
-                            Edit Product
-                          </a>
+                          <div className="small text-muted mb-2">
+                            {(() => {
+                              const role = discordRoles.find((r) => r.id === product.role_id);
+                              return role ? (
+                                <span className="d-flex align-items-center gap-1">
+                                  <span
+                                    className="rounded-circle flex-shrink-0"
+                                    style={{ width: "10px", height: "10px", backgroundColor: role.color || "#ccc", display: "inline-block" }}
+                                  />
+                                  {role.name}
+                                </span>
+                              ) : product.role_id ? (
+                                <span className="font-monospace">ID: {product.role_id}</span>
+                              ) : (
+                                <span className="text-danger">No role assigned</span>
+                              );
+                            })()}
+                          </div>
+                          <div className="d-flex gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-warning flex-grow-1"
+                              onClick={() => openEditRoleModal(product)}
+                            >
+                              Edit Role
+                            </button>
+                            <a href={`/admin/products/${product.id}`} className="btn btn-sm btn-outline-primary flex-grow-1">
+                              Edit Product
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -659,6 +735,120 @@ export default function DigitalTemplates({
         <Button label="Back to Admin Panel" color="gray" href="/dashboard" />
         <Button label="Advanced Product Creator" color="gold" href="/admin/products/new" />
       </div>
+
+      {editingProduct && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+          onClick={closeEditRoleModal}
+        >
+          <div
+            className="bg-white rounded p-4 shadow-lg"
+            style={{ width: "100%", maxWidth: "460px", margin: "0 1rem" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-4">
+              <h3 className="h5 fw-bold mb-0">Edit Role Assignment</h3>
+              <button type="button" className="btn-close" onClick={closeEditRoleModal} />
+            </div>
+
+            <div className="mb-3">
+              <span className="text-muted small">Product</span>
+              <p className="fw-semibold mb-0">{editingProduct.name}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label">Discord Role *</label>
+              <div className="position-relative">
+                <div
+                  className="form-control d-flex align-items-center justify-content-between"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setEditRoleDropdownOpen(!editRoleDropdownOpen)}
+                >
+                  {editSelectedRole ? (
+                    <div className="d-flex align-items-center gap-2">
+                      <span
+                        className="rounded-circle"
+                        style={{ width: "12px", height: "12px", backgroundColor: editSelectedRole.color || "#ffffff" }}
+                      />
+                      <span>{editSelectedRole.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-muted">Choose a role...</span>
+                  )}
+                  <span>&#x25BC;</span>
+                </div>
+
+                {editRoleDropdownOpen && (
+                  <div
+                    className="position-absolute top-100 start-0 end-0 bg-white border rounded shadow-lg mt-1"
+                    style={{ zIndex: 10000 }}
+                  >
+                    <div className="p-2 border-bottom">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Search roles..."
+                        value={editRoleSearchTerm}
+                        onChange={(e) => setEditRoleSearchTerm(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    </div>
+                    <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                      {filteredEditRoles.length === 0 ? (
+                        <div className="p-3 text-center text-muted">No roles found</div>
+                      ) : (
+                        filteredEditRoles.map((role) => (
+                          <div
+                            key={role.id}
+                            className={`d-flex align-items-center gap-2 p-2 ${editSelectedRole?.id === role.id ? "bg-primary text-white" : ""}`}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => {
+                              setEditSelectedRole(role);
+                              setEditRoleDropdownOpen(false);
+                              setEditRoleSearchTerm("");
+                            }}
+                          >
+                            <span
+                              className="rounded-circle flex-shrink-0"
+                              style={{ width: "12px", height: "12px", backgroundColor: role.color || "#ffffff" }}
+                            />
+                            <span className="flex-grow-1">{role.name}</span>
+                            <span className="small" style={{ opacity: 0.7 }}>#{role.position}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <small className="text-muted">Only roles manageable by the bot are shown</small>
+            </div>
+
+            {editRoleStatus.error && (
+              <div className="alert alert-danger py-2">{editRoleStatus.error}</div>
+            )}
+            {editRoleStatus.success && (
+              <div className="alert alert-success py-2">{editRoleStatus.success}</div>
+            )}
+
+            <div className="d-flex gap-2">
+              <button type="button" className="btn btn-outline-secondary flex-grow-1" onClick={closeEditRoleModal}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-warning flex-grow-1"
+                onClick={handleUpdateProductRole}
+                disabled={editRoleStatus.saving || !editSelectedRole}
+              >
+                {editRoleStatus.saving ? "Saving..." : "Save Role"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

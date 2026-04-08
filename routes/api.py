@@ -1280,6 +1280,31 @@ def admin_digital_templates_create_role_api():
     return _json_response({'ok': True, 'product_id': product.id})
 
 
+@api.route('/admin/digital-templates/roles/<int:product_id>', methods=['PATCH'])
+@login_required
+def admin_digital_templates_update_role_api(product_id):
+    """Update the Discord role assigned to a role product."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    import json
+
+    data = request.get_json(silent=True) or {}
+    role_id = data.get('role_id', '').strip()
+
+    if not role_id:
+        return _json_response({'error': 'role_id is required'}, status=400)
+
+    product = Product.query.get(product_id)
+    if not product or product.product_type != 'role':
+        return _json_response({'error': 'Role product not found'}, status=404)
+
+    product.delivery_data = json.dumps({'role_id': role_id})
+    db.session.commit()
+
+    return _json_response({'ok': True, 'message': 'Role updated successfully'})
+
+
 @api.route('/admin/digital-templates/minecraft-skins')
 @login_required
 def admin_digital_templates_skins_api():
