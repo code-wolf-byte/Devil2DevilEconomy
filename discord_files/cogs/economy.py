@@ -487,7 +487,7 @@ class EconomyCog(commands.Cog):
                         if channel:
                             embed = discord.Embed(
                                 title="🎉 Verification Bonus!",
-                                description=f"Congratulations {member.mention}! You've received **300 pitchforks** for getting verified!",
+                                description=f"Congratulations {member.mention} **({member.display_name})**! You've received **300 pitchforks** for getting verified!",
                                 color=discord.Color.gold()
                             )
                             embed.add_field(
