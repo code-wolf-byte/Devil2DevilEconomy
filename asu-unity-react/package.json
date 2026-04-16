@@ -15,9 +15,15 @@
     "@asu/unity-bootstrap-theme": "^1.31.0",
     "@asu/unity-react-core": "^1.4.1",
     "@fortawesome/fontawesome-free": "^5.15.3",
+    "@tailwindcss/vite": "^4.2.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-router-dom": "^6.28.1"
+    "react-router-dom": "^6.28.1",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

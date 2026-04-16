@@ -49,6 +49,8 @@ export default function AdminProducts({
     media: [],
   });
   const [categories, setCategories] = React.useState([]);
+  const [categoryError, setCategoryError] = React.useState(null);
+  const [mediaError, setMediaError] = React.useState(null);
 
   // Category management state
   const [catNewName, setCatNewName] = React.useState("");
@@ -67,11 +69,13 @@ export default function AdminProducts({
 
   const loadCategories = React.useCallback(async () => {
     try {
+      setCategoryError(null);
       const res = await fetch(withBase("/api/admin/categories"), { credentials: "include" });
+      if (!res.ok) throw new Error(`Failed to load categories (${res.status})`);
       const data = await res.json();
       setCategories(Array.isArray(data.categories) ? data.categories : []);
-    } catch {
-      // ignore
+    } catch (err) {
+      setCategoryError(err.message);
     }
   }, [withBase]);
 
@@ -297,17 +301,21 @@ export default function AdminProducts({
         ? `${apiBaseUrl}/api/admin/products/${selectedId}`
         : `/api/admin/products/${selectedId}`;
       const response = await fetch(url, { credentials: "include" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        setMediaError(`Failed to load product media (${response.status})`);
+        return;
+      }
       const data = await response.json();
       const product = data.product || {};
+      setMediaError(null);
       setCurrentMedia({
         image_url: product.image_url || null,
         preview_image_url: product.preview_image_url || null,
         download_file_url: product.download_file_url || null,
         media: Array.isArray(product.media) ? product.media : [],
       });
-    } catch {
-      // ignore
+    } catch (err) {
+      setMediaError(err.message);
     }
   }, [apiBaseUrl, selectedId]);
 
@@ -584,6 +592,11 @@ export default function AdminProducts({
                 </div>
                 <div className="col-12 col-md-6">
                   <label className="form-label">Category</label>
+                  {categoryError && (
+                    <div className="alert alert-warning py-1 px-2 small mb-1">
+                      Could not load categories: {categoryError}
+                    </div>
+                  )}
                   <select
                     className="form-select"
                     value={form.category}
@@ -609,6 +622,11 @@ export default function AdminProducts({
                 </div>
               </div>
 
+              {mediaError && (
+                <div className="alert alert-warning py-1 px-2 small mt-2">
+                  Could not load media: {mediaError}
+                </div>
+              )}
               {form.product_type !== "minecraft_skin" ? (
                 <div className="mt-3">
                   <label className="form-label">Product Image</label>

@@ -1,5 +1,69 @@
 import React from "react";
-import { Button } from "@asu/unity-react-core";
+import {
+  Coins,
+  TrendingUp,
+  MessageSquare,
+  Mic,
+  Store,
+  Package,
+  Tag,
+  Plus,
+  Palette,
+  FolderOpen,
+  Settings,
+  ShoppingBag,
+  Trophy,
+  ArrowLeft,
+  User,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useApiUrl } from "@/utils/api";
+
+const QUICK_ACTIONS = [
+  { href: "/store",              icon: Store,      label: "Visit Shop",         primary: true },
+  { href: "/admin/products",     icon: Package,    label: "Manage Products" },
+  { href: "/admin/categories",   icon: Tag,        label: "Categories" },
+  { href: "/admin/products/new", icon: Plus,       label: "Add Product" },
+  { href: "/digital-templates",  icon: Palette,    label: "Digital Templates" },
+  { href: "/file-manager",       icon: FolderOpen, label: "File Manager" },
+  { href: "/economy-config",     icon: Settings,   label: "Economy Config" },
+  { href: "/admin-purchases",    icon: ShoppingBag,label: "View Purchases" },
+  { href: "/admin-leaderboard",  icon: Trophy,     label: "View Leaderboard" },
+];
+
+function StatCard({ icon: Icon, label, value, colorClass }) {
+  return (
+    <Card>
+      <CardContent className="p-5 flex items-center gap-4">
+        <div className={`rounded-lg p-2.5 ${colorClass}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-2xl font-bold text-gray-900">{value ?? 0}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="container py-5 space-y-6">
+      <Skeleton className="h-24 w-full" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Skeleton className="h-64" />
+        <Skeleton className="h-64" />
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard({
   isAuthenticated = false,
@@ -11,16 +75,9 @@ export default function Dashboard({
   const [status, setStatus] = React.useState({ loading: true, error: null });
   const [dashboardData, setDashboardData] = React.useState(null);
   const [products, setProducts] = React.useState([]);
-  const [productsStatus, setProductsStatus] = React.useState({
-    loading: true,
-    error: null,
-  });
+  const [productsStatus, setProductsStatus] = React.useState({ loading: true, error: null });
 
-  const apiBaseUrl = React.useMemo(() => {
-    const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
-    if (!value) return "";
-    return value.endsWith("/api") ? value.slice(0, -4) : value;
-  }, []);
+  const url = useApiUrl();
 
   React.useEffect(() => {
     let isMounted = true;
@@ -34,73 +91,44 @@ export default function Dashboard({
 
     const loadDashboard = async () => {
       try {
-        const url = apiBaseUrl ? `${apiBaseUrl}/api/dashboard` : "/api/dashboard";
-        const response = await fetch(url, {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          throw new Error(`Dashboard request failed (${response.status})`);
-        }
+        const response = await fetch(url("/api/dashboard"), { credentials: "include" });
+        if (!response.ok) throw new Error(`Dashboard request failed (${response.status})`);
         const data = await response.json();
         if (isMounted) {
           setDashboardData(data);
           setStatus({ loading: false, error: null });
         }
       } catch (error) {
-        if (isMounted) {
-          setStatus({ loading: false, error: error.message });
-        }
+        if (isMounted) setStatus({ loading: false, error: error.message });
       }
     };
-
-    loadDashboard();
-    return () => {
-      isMounted = false;
-    };
-  }, [apiBaseUrl, isAuthenticated, isAdmin]);
-
-  React.useEffect(() => {
-    let isMounted = true;
-    if (!isAuthenticated || !isAdmin) {
-      setProducts([]);
-      setProductsStatus({ loading: false, error: null });
-      return;
-    }
 
     const loadProducts = async () => {
       try {
         setProductsStatus({ loading: true, error: null });
-        const url = apiBaseUrl
-          ? `${apiBaseUrl}/api/admin/products`
-          : "/api/admin/products";
-        const response = await fetch(url, { credentials: "include" });
-        if (!response.ok) {
-          throw new Error(`Products request failed (${response.status})`);
-        }
+        const response = await fetch(url("/api/admin/products"), { credentials: "include" });
+        if (!response.ok) throw new Error(`Products request failed (${response.status})`);
         const data = await response.json();
         if (isMounted) {
           setProducts(Array.isArray(data.products) ? data.products : []);
           setProductsStatus({ loading: false, error: null });
         }
       } catch (error) {
-        if (isMounted) {
-          setProductsStatus({ loading: false, error: error.message });
-        }
+        if (isMounted) setProductsStatus({ loading: false, error: error.message });
       }
     };
 
+    loadDashboard();
     loadProducts();
-    return () => {
-      isMounted = false;
-    };
-  }, [apiBaseUrl, isAuthenticated, isAdmin]);
+    return () => { isMounted = false; };
+  }, [url, isAuthenticated, isAdmin]);
 
   if (!isAuthenticated) {
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Admin Dashboard</h1>
-        <p className="text-muted">Please sign in to access this page.</p>
-        <Button label="Sign in with Discord" color="gold" href={loginHref} />
+        <p className="text-gray-500 mb-4">Please sign in to access this page.</p>
+        <a href={loginHref} className="btn btn-warning">Sign in with Discord</a>
       </div>
     );
   }
@@ -109,29 +137,22 @@ export default function Dashboard({
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Admin Dashboard</h1>
-        <p className="text-danger">
-          You do not have permission to view this page.
-        </p>
-        <Button label="Back to Store" color="gray" href={storeHref} />
+        <p className="text-red-600 mb-4">You do not have permission to view this page.</p>
+        <a href={storeHref} className="btn btn-secondary">Back to Store</a>
       </div>
     );
   }
 
-  if (status.loading) {
-    return (
-      <div className="container py-5">
-        <h1 className="display-6 fw-bold mb-3">Admin Dashboard</h1>
-        <p className="text-muted">Loading dashboard data...</p>
-      </div>
-    );
-  }
+  if (status.loading) return <LoadingSkeleton />;
 
   if (status.error) {
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Admin Dashboard</h1>
-        <p className="text-danger">Failed to load dashboard: {status.error}</p>
-        <Button label="Back to Store" color="gray" href={storeHref} />
+        <Card className="border-red-200 bg-red-50 mb-4">
+          <CardContent className="p-4 text-red-700 text-sm">Failed to load dashboard: {status.error}</CardContent>
+        </Card>
+        <a href={storeHref} className="btn btn-secondary">Back to Store</a>
       </div>
     );
   }
@@ -140,281 +161,210 @@ export default function Dashboard({
   const recentPurchases = dashboardData?.recent_purchases || [];
   const dashboardUser = dashboardData?.user || {};
 
-  const achievementsCount = achievements.length;
-  const purchasesCount = recentPurchases.length;
-
   const formatTimestamp = (value) => {
     if (!value) return "";
     const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString();
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
   };
 
   return (
-    <div className="container py-5">
-      <div className="border rounded bg-white p-4 p-md-5 mb-4">
-        <div className="d-flex align-items-center gap-3">
+    <div className="container py-5 space-y-6">
+      {/* Profile header */}
+      <Card>
+        <CardContent className="p-6 flex items-center gap-4">
           {dashboardUser.avatar_url ? (
             <img
               src={dashboardUser.avatar_url}
               alt={dashboardUser.username || userName || "User avatar"}
-              className="rounded-circle"
-              style={{ width: "64px", height: "64px", objectFit: "cover" }}
+              className="w-16 h-16 rounded-full object-cover shrink-0"
             />
           ) : (
-            <div
-              className="rounded-circle bg-light d-flex align-items-center justify-content-center"
-              style={{ width: "64px", height: "64px" }}
-            >
-              <span className="text-muted fw-bold">U</span>
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+              <User className="h-7 w-7 text-gray-400" />
             </div>
           )}
-          <div>
-            <h1 className="h3 fw-bold mb-1">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 truncate">
               Welcome back, {dashboardUser.username || userName || "Admin"}!
             </h1>
-            <p className="text-muted mb-0">Here&apos;s your economy overview.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Here&apos;s your economy overview.</p>
           </div>
-          <div className="ms-auto">
-            <Button label="Back to Store" color="gray" href={storeHref} />
-          </div>
-        </div>
+          <a href={storeHref}>
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Store
+            </Button>
+          </a>
+        </CardContent>
+      </Card>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Coins}        label="Current Balance"      value={dashboardUser.balance}       colorClass="bg-yellow-100 text-yellow-600" />
+        <StatCard icon={TrendingUp}   label="Total Points Earned"  value={dashboardUser.points}        colorClass="bg-green-100 text-green-600" />
+        <StatCard icon={MessageSquare}label="Messages Sent"        value={dashboardUser.message_count} colorClass="bg-blue-100 text-blue-600" />
+        <StatCard icon={Mic}          label="Voice Minutes"        value={dashboardUser.voice_minutes} colorClass="bg-purple-100 text-purple-600" />
       </div>
 
-      <div className="row g-3 g-lg-4 mb-4">
-        <div className="col-12 col-md-6 col-lg-3">
-          <div className="border rounded bg-white p-4 h-100">
-            <p className="text-muted small mb-1">Current Balance</p>
-            <p className="h3 fw-bold text-warning mb-0 d-flex align-items-center gap-2">
-              <img
-                src="/static/Coin_Gold.png"
-                alt="Balance"
-                style={{ width: "22px", height: "22px" }}
-              />
-              {dashboardUser.balance ?? 0}
-            </p>
-          </div>
-        </div>
-        <div className="col-12 col-md-6 col-lg-3">
-          <div className="border rounded bg-white p-4 h-100">
-            <p className="text-muted small mb-1">Total Points Earned</p>
-            <p className="h3 fw-bold text-success mb-0">
-              {dashboardUser.points ?? 0}
-            </p>
-          </div>
-        </div>
-        <div className="col-12 col-md-6 col-lg-3">
-          <div className="border rounded bg-white p-4 h-100">
-            <p className="text-muted small mb-1">Messages Sent</p>
-            <p className="h3 fw-bold text-primary mb-0">
-              {dashboardUser.message_count ?? 0}
-            </p>
-          </div>
-        </div>
-        <div className="col-12 col-md-6 col-lg-3">
-          <div className="border rounded bg-white p-4 h-100">
-            <p className="text-muted small mb-1">Voice Minutes</p>
-            <p className="h3 fw-bold text-info mb-0">
-              {dashboardUser.voice_minutes ?? 0}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="row g-3 g-lg-4">
-        <div className="col-12 col-lg-6">
-          <div className="border rounded bg-white p-4 h-100">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <h2 className="h4 fw-bold mb-0">Achievements</h2>
-              <span className="text-warning fw-semibold">
-                {achievementsCount} Unlocked
-              </span>
+      {/* Achievements + Recent Purchases */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Achievements</CardTitle>
+              <Badge variant="warning">{achievements.length} Unlocked</Badge>
             </div>
+          </CardHeader>
+          <CardContent className="pt-0">
             {achievements.length ? (
-              <div className="d-flex flex-column gap-3">
-                {achievements.map((achievement) => (
-                  <div
-                    className="border rounded p-3 bg-light"
-                    key={achievement.id}
-                  >
-                    <h3 className="h6 fw-bold mb-1">{achievement.name}</h3>
-                    <p className="text-muted mb-1">
-                      {achievement.description}
-                    </p>
-                    <p className="text-warning fw-semibold mb-0">
-                      +{achievement.points} points
-                    </p>
+              <div className="flex flex-col gap-3">
+                {achievements.map((a) => (
+                  <div key={a.id} className="rounded-lg bg-gray-50 p-3">
+                    <p className="font-semibold text-sm text-gray-900">{a.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{a.description}</p>
+                    <p className="text-xs font-semibold text-yellow-600 mt-1">+{a.points} points</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted py-4">
-                No achievements unlocked yet. Keep participating to earn
-                achievements!
-              </div>
+              <p className="text-sm text-gray-400 text-center py-8">
+                No achievements yet. Keep participating!
+              </p>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="col-12 col-lg-6">
-          <div className="border rounded bg-white p-4 h-100">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <h2 className="h4 fw-bold mb-0">Recent Purchases</h2>
-              <Button label="Shop" color="gold" href={storeHref} size="small" />
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Recent Purchases</CardTitle>
+              <a href={storeHref}>
+                <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                  <Store className="h-3.5 w-3.5" /> Shop
+                </Button>
+              </a>
             </div>
+          </CardHeader>
+          <CardContent className="pt-0">
             {recentPurchases.length ? (
-              <div className="d-flex flex-column gap-3">
+              <div className="flex flex-col gap-3">
                 {recentPurchases.map((purchase) => (
-                  <div
-                    className="border rounded p-3 d-flex align-items-center gap-3 bg-light"
-                    key={purchase.id}
-                  >
+                  <div key={purchase.id} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
                     {purchase.image_url ? (
                       <img
                         src={purchase.image_url}
                         alt={purchase.product_name}
-                        className="rounded"
-                        style={{ width: "48px", height: "48px", objectFit: "cover" }}
+                        className="w-12 h-12 rounded object-cover shrink-0"
                       />
                     ) : (
-                      <div
-                        className="rounded bg-secondary-subtle d-flex align-items-center justify-content-center text-muted"
-                        style={{ width: "48px", height: "48px" }}
-                      >
-                        📦
+                      <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center shrink-0">
+                        <Package className="h-5 w-5 text-gray-400" />
                       </div>
                     )}
-                    <div className="flex-grow-1">
-                      <h3 className="h6 fw-bold mb-1">{purchase.product_name}</h3>
-                      <p className="text-muted mb-1">
-                        {formatTimestamp(purchase.timestamp)}
-                      </p>
-                      <p className="text-danger fw-semibold mb-0">
-                        -{purchase.points_spent} points
-                      </p>
-                      {purchase.download_url ? (
-                        <a
-                          href={purchase.download_url}
-                          className="btn btn-sm btn-success mt-2"
-                        >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-900 truncate">{purchase.product_name}</p>
+                      <p className="text-xs text-gray-500">{formatTimestamp(purchase.timestamp)}</p>
+                      <p className="text-xs font-semibold text-red-600 mt-0.5">-{purchase.points_spent} points</p>
+                      {purchase.download_url && (
+                        <a href={purchase.download_url} className="btn btn-sm btn-success mt-1 py-0 px-2 text-xs">
                           Download
                         </a>
-                      ) : purchase.product_type === "minecraft_skin" ? (
-                        <p className="text-muted small mt-2 mb-0">
-                          Processing download...
-                        </p>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted py-4">
+              <p className="text-sm text-gray-400 text-center py-8">
                 No purchases yet. Visit the shop to buy your first item!
-              </div>
+              </p>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="border rounded bg-white p-4 mt-4">
-        <h2 className="h4 fw-bold mb-3">Quick Actions</h2>
-        <div className="row g-3">
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href={storeHref} className="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#128722;</span> Visit Shop
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/admin/products" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#128230;</span> Manage Products
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/admin/categories" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#127991;</span> Categories
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/admin/products/new" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#10133;</span> Add Product
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/digital-templates" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#127912;</span> Digital Templates
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/file-manager" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#128193;</span> File Manager
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/economy-config" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#9881;</span> Economy Config
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/admin-purchases" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#128176;</span> View Purchases
-            </a>
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <a href="/admin-leaderboard" className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-              <span>&#127942;</span> View Leaderboard
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="border rounded bg-white p-4 mt-4">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-          <h2 className="h4 fw-bold mb-0">Products</h2>
-          <Button label="Add Product" color="gold" href="/admin/products/new" />
-        </div>
-        {productsStatus.error ? (
-          <div className="alert alert-danger">{productsStatus.error}</div>
-        ) : null}
-        {productsStatus.loading ? (
-          <p className="text-muted mb-0">Loading products...</p>
-        ) : products.length ? (
-          <div className="list-group">
-            {products.map((product) => (
+      {/* Quick actions */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {QUICK_ACTIONS.map(({ href, icon: Icon, label, primary }) => (
               <a
-                key={product.id}
-                href={`/admin/products/${product.id}`}
-                className="list-group-item list-group-item-action d-flex align-items-center gap-3"
+                key={href}
+                href={href}
+                className={`flex flex-col items-center gap-2 rounded-lg p-4 text-center text-sm font-medium transition-colors no-underline ${
+                  primary
+                    ? "bg-yellow-500 text-white hover:bg-yellow-600"
+                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                }`}
               >
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="rounded"
-                    style={{ width: "44px", height: "44px", objectFit: "cover" }}
-                  />
-                ) : (
-                  <div
-                    className="rounded bg-light d-flex align-items-center justify-content-center"
-                    style={{ width: "44px", height: "44px" }}
-                  >
-                    📦
-                  </div>
-                )}
-                <div className="flex-grow-1">
-                  <div className="fw-semibold">{product.name}</div>
-                  <div className="small text-muted">
-                    {product.is_active ? "Active" : "Archived"} ·{" "}
-                    {product.price} pts
-                  </div>
-                </div>
+                <Icon className="h-5 w-5" />
+                {label}
               </a>
             ))}
           </div>
-        ) : (
-          <p className="text-muted mb-0">No products yet.</p>
-        )}
-      </div>
+        </CardContent>
+      </Card>
+
+      {/* Products list */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Products</CardTitle>
+            <a href="/admin/products/new">
+              <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                <Plus className="h-4 w-4" /> Add Product
+              </Button>
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {productsStatus.error && (
+            <div className="text-sm text-red-600 bg-red-50 rounded p-3 mb-3">{productsStatus.error}</div>
+          )}
+          {productsStatus.loading ? (
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14" />)}
+            </div>
+          ) : products.length ? (
+            <div className="flex flex-col divide-y rounded-lg border overflow-hidden">
+              {products.map((product) => (
+                <a
+                  key={product.id}
+                  href={`/admin/products/${product.id}`}
+                  className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors no-underline"
+                >
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-11 h-11 rounded object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded bg-gray-100 flex items-center justify-center shrink-0">
+                      <Package className="h-5 w-5 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{product.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {product.is_active ? (
+                        <span className="text-green-600">Active</span>
+                      ) : (
+                        <span className="text-gray-400">Archived</span>
+                      )} · {product.price} pts
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6">No products yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

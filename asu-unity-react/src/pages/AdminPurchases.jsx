@@ -1,11 +1,52 @@
 import React from "react";
-import { Button } from "@asu/unity-react-core";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Package,
+  ShoppingBag,
+  RefreshCw,
+  User,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useApiUrl } from "@/utils/api";
 
-const buildApiBase = () => {
-  const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
-  if (!value) return "";
-  return value.endsWith("/api") ? value.slice(0, -4) : value;
-};
+function LoadingSkeleton() {
+  return (
+    <div className="container py-5 space-y-6">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <Skeleton className="h-96" />
+    </div>
+  );
+}
+
+function Avatar({ src, alt, size = "sm" }) {
+  const cls = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+  return src ? (
+    <img src={src} alt={alt} className={`${cls} rounded-full object-cover border-2 border-yellow-400 shrink-0`} />
+  ) : (
+    <div className={`${cls} rounded-full bg-gray-100 border-2 border-yellow-400 flex items-center justify-center shrink-0`}>
+      <User className="h-4 w-4 text-gray-400" />
+    </div>
+  );
+}
+
+function ProductThumb({ src, alt }) {
+  return src ? (
+    <img src={src} alt={alt} className="w-10 h-10 rounded object-cover shrink-0" />
+  ) : (
+    <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0">
+      <Package className="h-4 w-4 text-gray-400" />
+    </div>
+  );
+}
 
 export default function AdminPurchases({
   isAuthenticated = false,
@@ -16,28 +57,21 @@ export default function AdminPurchases({
   const [status, setStatus] = React.useState({ loading: true, error: null });
   const [currentPage, setCurrentPage] = React.useState(1);
 
-  const apiBaseUrl = React.useMemo(buildApiBase, []);
+  const url = useApiUrl();
 
   const loadData = React.useCallback(async (page = 1) => {
     try {
       setStatus({ loading: true, error: null });
-      const url = apiBaseUrl
-        ? `${apiBaseUrl}/api/admin/purchases?page=${page}`
-        : `/api/admin/purchases?page=${page}`;
-      const response = await fetch(url, { credentials: "include" });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load purchases (${response.status})`);
-      }
-
+      const response = await fetch(url(`/api/admin/purchases?page=${page}`), { credentials: "include" });
+      if (!response.ok) throw new Error(`Failed to load purchases (${response.status})`);
       const result = await response.json();
       setData(result);
       setCurrentPage(page);
       setStatus({ loading: false, error: null });
-    } catch (error) {
-      setStatus({ loading: false, error: error.message });
+    } catch (err) {
+      setStatus({ loading: false, error: err.message });
     }
-  }, [apiBaseUrl]);
+  }, [url]);
 
   React.useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
@@ -47,28 +81,26 @@ export default function AdminPurchases({
     loadData(1);
   }, [isAuthenticated, isAdmin, loadData]);
 
-  const handlePageChange = (page) => {
-    loadData(page);
-  };
+  const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString() : "";
+  const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : "";
 
-  const formatDate = (isoString) => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    return date.toLocaleDateString();
-  };
-
-  const formatTime = (isoString) => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    return date.toLocaleTimeString();
-  };
+  const pageNums = (() => {
+    const pagination = data?.pagination;
+    if (!pagination || pagination.pages <= 1) return [];
+    const total = pagination.pages;
+    const cur = currentPage;
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (cur <= 3) return [1, 2, 3, 4, 5];
+    if (cur >= total - 2) return [total - 4, total - 3, total - 2, total - 1, total];
+    return [cur - 2, cur - 1, cur, cur + 1, cur + 2];
+  })();
 
   if (!isAuthenticated) {
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Purchase History</h1>
-        <p className="text-muted">Please sign in to access this page.</p>
-        <Button label="Sign in with Discord" color="gold" href={loginHref} />
+        <p className="text-gray-500 mb-4">Please sign in to access this page.</p>
+        <a href={loginHref} className="btn btn-warning">Sign in with Discord</a>
       </div>
     );
   }
@@ -77,158 +109,121 @@ export default function AdminPurchases({
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Purchase History</h1>
-        <p className="text-danger">You do not have permission to view this page.</p>
-        <Button label="Back to Dashboard" color="gray" href="/dashboard" />
+        <p className="text-red-600 mb-4">You do not have permission to view this page.</p>
+        <a href="/dashboard" className="btn btn-secondary">Back to Dashboard</a>
       </div>
     );
   }
 
-  if (status.loading) {
-    return (
-      <div className="container py-5">
-        <h1 className="display-6 fw-bold mb-3">Purchase History</h1>
-        <div className="text-center py-5">
-          <div className="spinner-border text-warning mb-3" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="text-muted">Loading purchase data...</p>
-        </div>
-      </div>
-    );
-  }
+  if (status.loading) return <LoadingSkeleton />;
 
   if (status.error) {
     return (
       <div className="container py-5">
         <h1 className="display-6 fw-bold mb-3">Purchase History</h1>
-        <div className="alert alert-danger">{status.error}</div>
-        <Button label="Retry" color="gold" onClick={() => loadData(currentPage)} />
+        <Card className="border-red-200 bg-red-50 mb-4">
+          <CardContent className="p-4 text-red-700 text-sm">{status.error}</CardContent>
+        </Card>
+        <Button onClick={() => loadData(currentPage)}>
+          <RefreshCw className="h-4 w-4" /> Retry
+        </Button>
       </div>
     );
   }
 
-  const { purchases, stats, pagination } = data || {};
+  const { purchases = [], stats, pagination } = data || {};
 
   return (
-    <div className="container py-5">
-      <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-4">
+    <div className="container py-5 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="display-6 fw-bold mb-1">Purchase History</h1>
-          <p className="text-muted mb-0">View all user purchases and transactions</p>
+          <h1 className="text-2xl font-bold text-gray-900">Purchase History</h1>
+          <p className="text-sm text-gray-500 mt-1">All user purchases and transactions</p>
         </div>
-        <Button label="Back to Admin Panel" color="gray" href="/dashboard" />
+        <a href="/dashboard">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </Button>
+        </a>
       </div>
 
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-md-3">
-          <div className="border rounded bg-white p-3 text-center">
-            <div className="h4 fw-bold text-warning mb-1">{pagination?.total || 0}</div>
-            <div className="small text-muted">Total Purchases</div>
-          </div>
-        </div>
-        <div className="col-6 col-md-3">
-          <div className="border rounded bg-white p-3 text-center">
-            <div className="h4 fw-bold text-success mb-1">{stats?.total_points_on_page || 0}</div>
-            <div className="small text-muted">Points on Page</div>
-          </div>
-        </div>
-        <div className="col-6 col-md-3">
-          <div className="border rounded bg-white p-3 text-center">
-            <div className="h4 fw-bold text-primary mb-1">{pagination?.page || 1}</div>
-            <div className="small text-muted">Current Page</div>
-          </div>
-        </div>
-        <div className="col-6 col-md-3">
-          <div className="border rounded bg-white p-3 text-center">
-            <div className="h4 fw-bold text-purple mb-1">{pagination?.pages || 1}</div>
-            <div className="small text-muted">Total Pages</div>
-          </div>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Total Purchases", value: pagination?.total ?? 0,              color: "text-yellow-600" },
+          { label: "Points on Page",  value: stats?.total_points_on_page ?? 0,    color: "text-green-600" },
+          { label: "Current Page",    value: pagination?.page ?? 1,               color: "text-blue-600" },
+          { label: "Total Pages",     value: pagination?.pages ?? 1,              color: "text-purple-600" },
+        ].map(({ label, value, color }) => (
+          <Card key={label}>
+            <CardContent className="p-5 text-center">
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-xs text-gray-500 mt-1">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {purchases && purchases.length > 0 ? (
-        <>
-          <div className="d-none d-md-block border rounded bg-white overflow-hidden mb-4">
-            <div className="bg-light px-4 py-3 border-bottom">
-              <h3 className="h6 fw-semibold mb-0">Purchase Records</h3>
-            </div>
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th className="text-muted small text-uppercase">User</th>
-                    <th className="text-muted small text-uppercase">Product</th>
-                    <th className="text-muted small text-uppercase">Points</th>
-                    <th className="text-muted small text-uppercase">Date</th>
-                    <th className="text-muted small text-uppercase">UUID</th>
+      {purchases.length === 0 ? (
+        <Card>
+          <CardContent className="p-16 text-center">
+            <ShoppingBag className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-semibold text-gray-600 mb-1">No Purchases Found</h3>
+            <p className="text-sm text-gray-400">No purchase history available yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle className="text-base">Purchase Records</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left">
+                    {["User", "Product", "Points", "Date", "UUID"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y">
                   {purchases.map((purchase) => (
-                    <tr key={purchase.id}>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          {purchase.user.avatar_url ? (
-                            <img
-                              src={purchase.user.avatar_url}
-                              alt={purchase.user.username}
-                              className="rounded-circle border border-warning"
-                              style={{ width: "32px", height: "32px", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <div
-                              className="rounded-circle bg-light border border-warning d-flex align-items-center justify-content-center"
-                              style={{ width: "32px", height: "32px" }}
-                            >
-                              <span className="text-warning small">U</span>
-                            </div>
-                          )}
+                    <tr key={purchase.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar src={purchase.user.avatar_url} alt={purchase.user.username} />
                           <div>
-                            <div className="fw-medium small">{purchase.user.username}</div>
-                            <div className="text-muted small">ID: {purchase.user.discord_id}</div>
+                            <p className="font-medium text-gray-900">{purchase.user.username}</p>
+                            <p className="text-xs text-gray-400">ID: {purchase.user.discord_id}</p>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          {purchase.product.image_url ? (
-                            <img
-                              src={purchase.product.image_url}
-                              alt={purchase.product.name}
-                              className="rounded"
-                              style={{ width: "40px", height: "40px", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <div
-                              className="rounded bg-light d-flex align-items-center justify-content-center text-muted"
-                              style={{ width: "40px", height: "40px" }}
-                            >
-                              &#128230;
-                            </div>
-                          )}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <ProductThumb src={purchase.product.image_url} alt={purchase.product.name} />
                           <div>
-                            <div className="fw-medium small">{purchase.product.name}</div>
-                            <div className="text-muted small">{purchase.product.description}</div>
+                            <p className="font-medium text-gray-900">{purchase.product.name}</p>
+                            <p className="text-xs text-gray-400 truncate max-w-[160px]">{purchase.product.description}</p>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span className="fw-medium text-warning d-flex align-items-center gap-1">
-                          <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
-                          {purchase.points_spent}
-                        </span>
+                      <td className="px-4 py-3 font-bold text-yellow-600">{purchase.points_spent}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-900">{formatDate(purchase.timestamp)}</p>
+                        <p className="text-xs text-gray-400">{formatTime(purchase.timestamp)}</p>
                       </td>
-                      <td>
-                        <div className="small">{formatDate(purchase.timestamp)}</div>
-                        <div className="text-muted small">{formatTime(purchase.timestamp)}</div>
-                      </td>
-                      <td>
+                      <td className="px-4 py-3">
                         {purchase.user.user_uuid ? (
-                          <code className="small bg-dark text-success px-2 py-1 rounded">
-                            {purchase.user.user_uuid.substring(0, 8)}...
+                          <code className="text-xs bg-gray-900 text-green-400 px-2 py-1 rounded">
+                            {purchase.user.user_uuid.substring(0, 8)}…
                           </code>
                         ) : (
-                          <span className="text-muted small">No UUID</span>
+                          <span className="text-xs text-gray-400">No UUID</span>
                         )}
                       </td>
                     </tr>
@@ -236,153 +231,72 @@ export default function AdminPurchases({
                 </tbody>
               </table>
             </div>
-          </div>
 
-          <div className="d-md-none d-flex flex-column gap-3 mb-4">
-            {purchases.map((purchase) => (
-              <div key={purchase.id} className="border rounded bg-white p-3">
-                <div className="d-flex align-items-start justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    {purchase.user.avatar_url ? (
-                      <img
-                        src={purchase.user.avatar_url}
-                        alt={purchase.user.username}
-                        className="rounded-circle border border-warning"
-                        style={{ width: "40px", height: "40px", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <div
-                        className="rounded-circle bg-light border border-warning d-flex align-items-center justify-content-center"
-                        style={{ width: "40px", height: "40px" }}
-                      >
-                        <span className="text-warning">U</span>
+            {/* Mobile cards */}
+            <div className="md:hidden flex flex-col divide-y">
+              {purchases.map((purchase) => (
+                <div key={purchase.id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar src={purchase.user.avatar_url} alt={purchase.user.username} size="md" />
+                      <div>
+                        <p className="font-semibold text-gray-900">{purchase.user.username}</p>
+                        <p className="text-xs text-gray-400">{formatDate(purchase.timestamp)} {formatTime(purchase.timestamp)}</p>
                       </div>
-                    )}
-                    <div>
-                      <div className="fw-semibold">{purchase.user.username}</div>
-                      <div className="text-muted small">{formatDate(purchase.timestamp)} {formatTime(purchase.timestamp)}</div>
+                    </div>
+                    <p className="text-lg font-bold text-yellow-600">{purchase.points_spent}</p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <ProductThumb src={purchase.product.image_url} alt={purchase.product.name} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900">{purchase.product.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{purchase.product.description}</p>
                     </div>
                   </div>
-                  <div className="text-end">
-                    <div className="h5 fw-bold text-warning mb-0 d-flex align-items-center gap-1">
-                      <img src="/static/Coin_Gold.png" alt="" style={{ width: "18px", height: "18px" }} />
-                      {purchase.points_spent}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  {purchase.product.image_url ? (
-                    <img
-                      src={purchase.product.image_url}
-                      alt={purchase.product.name}
-                      className="rounded"
-                      style={{ width: "48px", height: "48px", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded bg-light d-flex align-items-center justify-content-center text-muted"
-                      style={{ width: "48px", height: "48px" }}
-                    >
-                      &#128230;
+                  {purchase.user.user_uuid && (
+                    <div className="bg-gray-50 rounded p-2">
+                      <p className="text-xs text-gray-400 mb-0.5">UUID</p>
+                      <code className="text-xs text-green-700 break-all">{purchase.user.user_uuid}</code>
                     </div>
                   )}
-                  <div className="flex-grow-1">
-                    <div className="fw-medium">{purchase.product.name}</div>
-                    <div className="text-muted small">{purchase.product.description}</div>
-                  </div>
                 </div>
-
-                {purchase.user.user_uuid && (
-                  <div className="mt-2 p-2 bg-light rounded">
-                    <div className="text-muted small mb-1">UUID:</div>
-                    <code className="small text-success">{purchase.user.user_uuid}</code>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {pagination && pagination.pages > 1 && (
-            <div className="border rounded bg-white p-3">
-              <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
-                <div className="text-muted small">
-                  Showing {((pagination.page - 1) * pagination.per_page) + 1} to{" "}
-                  {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total} purchases
-                </div>
-
-                <div className="d-flex align-items-center gap-2">
-                  {pagination.has_prev && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => handlePageChange(1)}
-                    >
-                      &#x00AB;
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    disabled={!pagination.has_prev}
-                    onClick={() => handlePageChange(pagination.prev_num)}
-                  >
-                    &#x2039;
-                  </button>
-
-                  {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.pages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= pagination.pages - 2) {
-                      pageNum = pagination.pages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-                    return (
-                      <button
-                        key={pageNum}
-                        type="button"
-                        className={`btn btn-sm ${pageNum === currentPage ? "btn-warning" : "btn-outline-secondary"}`}
-                        onClick={() => handlePageChange(pageNum)}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    disabled={!pagination.has_next}
-                    onClick={() => handlePageChange(pagination.next_num)}
-                  >
-                    &#x203A;
-                  </button>
-
-                  {pagination.has_next && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => handlePageChange(pagination.pages)}
-                    >
-                      &#x00BB;
-                    </button>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
-          )}
-        </>
-      ) : (
-        <div className="border rounded bg-white p-5 text-center">
-          <div className="display-1 text-muted mb-3">&#128717;</div>
-          <h3 className="h5 fw-semibold mb-2">No Purchases Found</h3>
-          <p className="text-muted">No purchase history available yet.</p>
-        </div>
+
+            {/* Pagination */}
+            {pagination && pagination.pages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t">
+                <p className="text-sm text-gray-500">
+                  Showing {(pagination.page - 1) * pagination.per_page + 1}–
+                  {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total}
+                </p>
+                <div className="flex items-center gap-1">
+                  {pagination.has_prev && (
+                    <Button variant="outline" size="icon" onClick={() => loadData(1)}>
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button variant="outline" size="icon" disabled={!pagination.has_prev} onClick={() => loadData(pagination.prev_num)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  {pageNums.map((n) => (
+                    <Button key={n} size="sm" variant={n === currentPage ? "default" : "outline"} onClick={() => loadData(n)}>
+                      {n}
+                    </Button>
+                  ))}
+                  <Button variant="outline" size="icon" disabled={!pagination.has_next} onClick={() => loadData(pagination.next_num)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  {pagination.has_next && (
+                    <Button variant="outline" size="icon" onClick={() => loadData(pagination.pages)}>
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
