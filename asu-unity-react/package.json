@@ -16,6 +16,7 @@
     "@asu/unity-react-core": "^1.4.1",
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/react-virtual": "^3.13.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",

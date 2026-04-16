@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@asu/unity-react-core";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 const PRODUCT_TYPES = [
   { value: "physical", label: "Physical Product" },
@@ -8,6 +9,46 @@ const PRODUCT_TYPES = [
   { value: "game_code", label: "Game Code" },
   { value: "custom", label: "Custom Digital" },
 ];
+
+// Memoised row — only re-renders when this product's data or selection state changes,
+// not when an unrelated product is selected elsewhere in the list.
+const ProductRow = React.memo(function ProductRow({ product, isSelected, onSelect }) {
+  return (
+    <button
+      type="button"
+      className={`list-group-item list-group-item-action d-flex align-items-center gap-3 ${
+        isSelected ? "active" : ""
+      }`}
+      style={{ borderRadius: 0 }}
+      onClick={() => onSelect(product.id)}
+    >
+      {product.image_url ? (
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="rounded"
+          width={44}
+          height={44}
+          style={{ objectFit: "cover", flexShrink: 0 }}
+          loading="lazy"
+        />
+      ) : (
+        <div
+          className="rounded bg-light d-flex align-items-center justify-content-center"
+          style={{ width: 44, height: 44, flexShrink: 0 }}
+        >
+          📦
+        </div>
+      )}
+      <div className="flex-grow-1 text-start overflow-hidden">
+        <div className="fw-semibold text-truncate">{product.name}</div>
+        <div className="small text-muted">
+          {product.is_active ? "Active" : "Archived"} · {product.price} pts
+        </div>
+      </div>
+    </button>
+  );
+});
 
 const buildApiBase = () => {
   const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -51,6 +92,8 @@ export default function AdminProducts({
   const [categories, setCategories] = React.useState([]);
   const [categoryError, setCategoryError] = React.useState(null);
   const [mediaError, setMediaError] = React.useState(null);
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all"); // "all" | "active" | "archived"
 
   // Category management state
   const [catNewName, setCatNewName] = React.useState("");
@@ -421,6 +464,28 @@ export default function AdminProducts({
     }
   };
 
+  // Derived filtered list — recomputed only when products/search/filter change
+  const filteredProducts = React.useMemo(() => {
+    let list = products;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    if (statusFilter === "active")   list = list.filter((p) =>  p.is_active);
+    if (statusFilter === "archived") list = list.filter((p) => !p.is_active);
+    return list;
+  }, [products, search, statusFilter]);
+
+  // Virtual scroll container ref
+  const listContainerRef = React.useRef(null);
+
+  const virtualizer = useVirtualizer({
+    count: filteredProducts.length,
+    getScrollElement: () => listContainerRef.current,
+    estimateSize: () => 68,  // px — approximate row height, measured on first paint
+    overscan: 5,             // render 5 extra rows outside the viewport for smooth scroll
+  });
+
   if (!isAuthenticated) {
     return (
       <div className="container py-5">
@@ -459,46 +524,79 @@ export default function AdminProducts({
       <div className="row g-4">
         <div className="col-12 col-lg-5">
           <div className="border rounded bg-white p-3">
-            {status.loading ? (
-              <p className="text-muted mb-0">Loading products...</p>
-            ) : products.length ? (
-              <div className="list-group">
-                {products.map((product) => (
+            {/* Search + filter toolbar */}
+            <div className="mb-3">
+              <input
+                className="form-control form-control-sm mb-2"
+                type="search"
+                placeholder="Search products…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <div className="d-flex gap-1">
+                {[
+                  { key: "all",      label: "All" },
+                  { key: "active",   label: "Active" },
+                  { key: "archived", label: "Archived" },
+                ].map(({ key, label }) => (
                   <button
-                    key={product.id}
+                    key={key}
                     type="button"
-                    className={`list-group-item list-group-item-action d-flex align-items-center gap-3 ${
-                      selectedId === product.id ? "active" : ""
-                    }`}
-                    onClick={() => handleSelectProduct(product.id)}
+                    className={`btn btn-sm ${statusFilter === key ? "btn-dark" : "btn-outline-secondary"}`}
+                    onClick={() => setStatusFilter(key)}
                   >
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="rounded"
-                        style={{ width: "44px", height: "44px", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <div
-                        className="rounded bg-light d-flex align-items-center justify-content-center"
-                        style={{ width: "44px", height: "44px" }}
-                      >
-                        📦
-                      </div>
-                    )}
-                    <div className="flex-grow-1 text-start">
-                      <div className="fw-semibold">{product.name}</div>
-                      <div className="small text-muted">
-                        {product.is_active ? "Active" : "Archived"} ·{" "}
-                        {product.price} pts
-                      </div>
-                    </div>
+                    {label}
                   </button>
                 ))}
+                <span className="ms-auto small text-muted align-self-center">
+                  {filteredProducts.length} / {products.length}
+                </span>
               </div>
+            </div>
+
+            {status.loading ? (
+              <p className="text-muted mb-0">Loading products…</p>
+            ) : filteredProducts.length === 0 ? (
+              <p className="text-muted mb-0">
+                {products.length === 0 ? "No products yet." : "No products match your search."}
+              </p>
             ) : (
-              <p className="text-muted mb-0">No products yet.</p>
+              /* Fixed-height scroll container — virtualizer renders only visible rows */
+              <div
+                ref={listContainerRef}
+                style={{ height: "min(70vh, 640px)", overflowY: "auto" }}
+              >
+                <div
+                  style={{
+                    height: virtualizer.getTotalSize(),
+                    position: "relative",
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const product = filteredProducts[virtualRow.index];
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <ProductRow
+                          product={product}
+                          isSelected={selectedId === product.id}
+                          onSelect={handleSelectProduct}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         </div>
