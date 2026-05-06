@@ -65,26 +65,31 @@ export default function App() {
     return () => clearInterval(id);
   }, [apiBaseUrl]);
 
-  // ✅ Measure ASU header height and offset main content by that amount
   const [headerOffset, setHeaderOffset] = useState(0);
 
   useLayoutEffect(() => {
     const el = document.getElementById("asuHeader");
     if (!el) return;
 
+    // Set initial value synchronously to avoid a flash
+    setHeaderOffset(el.offsetHeight || 0);
+
+    // Defer ResizeObserver callbacks via rAF to break the feedback loop where
+    // updating paddingTop causes the header to report a new size again.
+    let rafId;
     const update = () => {
-      // Use offsetHeight so it matches layout flow
-      setHeaderOffset(el.offsetHeight || 0);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setHeaderOffset(el.offsetHeight || 0);
+      });
     };
 
-    update();
-
-    // Keep it updated when header changes size (mobile menu, title expand, etc.)
     const ro = new ResizeObserver(update);
     ro.observe(el);
 
     window.addEventListener("resize", update);
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
