@@ -66,7 +66,14 @@
 
 /* Prevent the hero CTA from stretching into a full-hero clickable overlay */
 .uds-hero .btn {
-  position: relative;
+  position: relative !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.uds-hero .btn::after {
+  display: none !important;
 }
 
 .store-card .card-tags .btn-tag:first-child {
