@@ -1,4 +1,4 @@
-FROM node:18-alpine AS react-build
+FROM node:22-alpine AS react-build
 
 WORKDIR /react
 

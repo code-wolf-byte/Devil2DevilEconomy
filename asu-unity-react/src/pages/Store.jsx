@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Pagination } from "@asu/unity-react-core";
 import ProductCard from "../components/ProductCard";
 
@@ -24,6 +24,15 @@ export default function Store({
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+  const isMountedPage = useRef(false);
+
+  useEffect(() => {
+    if (!isMountedPage.current) {
+      isMountedPage.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   useEffect(() => {
     let isMounted = true;
