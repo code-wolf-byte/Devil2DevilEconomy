@@ -64,6 +64,11 @@
   background: #ffffff;
 }
 
+/* Prevent the hero CTA from stretching into a full-hero clickable overlay */
+.uds-hero .btn {
+  position: relative;
+}
+
 .store-card .card-tags .btn-tag:first-child {
   display: inline-flex;
   align-items: center;
