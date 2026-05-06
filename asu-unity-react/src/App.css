@@ -68,7 +68,7 @@
 .uds-hero .btn {
   position: relative !important;
   inset: auto !important;
-  width: auto !important;
+  width: fit-content !important;
   height: auto !important;
 }
 
