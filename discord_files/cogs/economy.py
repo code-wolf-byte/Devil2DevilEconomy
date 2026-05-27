@@ -612,7 +612,7 @@ class EconomyCog(commands.Cog):
             
             # Check if user already got daily engagement today
             current_time = datetime.now()
-            if user.last_daily_engagement and (current_time - user.last_daily_engagement) < timedelta(days=1):
+            if user.last_daily_engagement and user.last_daily_engagement.date() == current_time.date():
                 return False, "Daily engagement already claimed today"
             
             # Award points
