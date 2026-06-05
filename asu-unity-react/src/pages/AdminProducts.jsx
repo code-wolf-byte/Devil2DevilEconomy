@@ -97,11 +97,9 @@ export default function AdminProducts({
 
   // Category management state
   const [variants, setVariants] = React.useState([]);
+  // each item: { id: number|null, name: string, stock: string, unlimited: boolean }
+  const [deletedVariantIds, setDeletedVariantIds] = React.useState([]);
   const [variantError, setVariantError] = React.useState(null);
-  const [newVariantName, setNewVariantName] = React.useState("");
-  const [newVariantStock, setNewVariantStock] = React.useState("");
-  const [newVariantUnlimited, setNewVariantUnlimited] = React.useState(false);
-  const [variantSaving, setVariantSaving] = React.useState(false);
 
   const [catNewName, setCatNewName] = React.useState("");
   const [catCreating, setCatCreating] = React.useState(false);
@@ -130,57 +128,68 @@ export default function AdminProducts({
   }, [withBase]);
 
   const loadVariants = React.useCallback(async (productId) => {
-    if (!productId) { setVariants([]); return; }
+    if (!productId) { setVariants([]); setDeletedVariantIds([]); return; }
     try {
       setVariantError(null);
       const res = await fetch(withBase(`/api/admin/products/${productId}/variants`), { credentials: "include" });
       if (!res.ok) throw new Error(`Failed to load variants (${res.status})`);
       const data = await res.json();
-      setVariants(Array.isArray(data.variants) ? data.variants : []);
+      setVariants(
+        (data.variants || []).map((v) => ({
+          id: v.id,
+          name: v.name,
+          stock: v.stock === null ? "" : String(v.stock),
+          unlimited: v.stock === null,
+        }))
+      );
+      setDeletedVariantIds([]);
     } catch (err) {
       setVariantError(err.message);
     }
   }, [withBase]);
 
-  const handleVariantAdd = async (e) => {
-    e.preventDefault();
-    if (!selectedId) return;
-    setVariantSaving(true);
-    setVariantError(null);
-    try {
-      const res = await fetch(withBase(`/api/admin/products/${selectedId}/variants`), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newVariantName.trim(), stock: newVariantUnlimited ? null : (newVariantStock === "" ? null : parseInt(newVariantStock, 10)) }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add variant.");
-      setNewVariantName("");
-      setNewVariantStock("");
-      setNewVariantUnlimited(false);
-      await loadVariants(selectedId);
-    } catch (err) {
-      setVariantError(err.message);
-    } finally {
-      setVariantSaving(false);
-    }
+  const handleVariantAddRow = () => {
+    setVariants((prev) => [...prev, { id: null, name: "", stock: "", unlimited: false }]);
   };
 
-  const handleVariantDelete = async (variantId) => {
-    if (!selectedId) return;
-    setVariantError(null);
-    try {
-      const res = await fetch(withBase(`/api/admin/products/${selectedId}/variants/${variantId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to delete variant."); }
-      await loadVariants(selectedId);
-    } catch (err) {
-      setVariantError(err.message);
-    }
+  const handleVariantChange = (index, field, value) => {
+    setVariants((prev) => prev.map((v, i) => i === index ? { ...v, [field]: value } : v));
   };
+
+  const handleVariantRemove = (index) => {
+    const v = variants[index];
+    if (v.id !== null) setDeletedVariantIds((prev) => [...prev, v.id]);
+    setVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const syncVariants = React.useCallback(async (productId) => {
+    for (const id of deletedVariantIds) {
+      await fetch(withBase(`/api/admin/products/${productId}/variants/${id}`), {
+        method: "DELETE", credentials: "include",
+      });
+    }
+    for (const v of variants) {
+      const payload = {
+        name: v.name.trim(),
+        stock: v.unlimited ? null : (v.stock === "" ? null : parseInt(v.stock, 10)),
+      };
+      if (!payload.name) continue;
+      if (v.id !== null) {
+        await fetch(withBase(`/api/admin/products/${productId}/variants/${v.id}`), {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetch(withBase(`/api/admin/products/${productId}/variants`), {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+    }
+    setDeletedVariantIds([]);
+  }, [withBase, variants, deletedVariantIds]);
 
   const loadProducts = React.useCallback(async () => {
     try {
@@ -221,9 +230,6 @@ export default function AdminProducts({
 
   React.useEffect(() => {
     loadVariants(selectedId);
-    setNewVariantName("");
-    setNewVariantStock("");
-    setNewVariantUnlimited(false);
     setVariantError(null);
   }, [selectedId, loadVariants]);
 
@@ -395,6 +401,10 @@ export default function AdminProducts({
 
       const data = await response.json();
       const newId = data.product_id || selectedId;
+
+      await syncVariants(newId);
+      await loadVariants(newId);
+
       setFormStatus({ saving: false, error: null, success: "Saved!" });
       await loadProducts();
       if (!selectedId && newId) {
@@ -969,88 +979,81 @@ export default function AdminProducts({
               ) : null}
 
               {/* ── Variants ── */}
-              {selectedId ? (
-                <div className="mt-4 border rounded p-3 bg-light">
-                  <h3 className="h6 fw-semibold mb-1">Variants</h3>
-                  <p className="text-muted small mb-3">
-                    Optional — add sizes, colors, or other options. Each variant has its own stock.
-                  </p>
+              <div className="mt-4 border rounded p-3 bg-light">
+                <h3 className="h6 fw-semibold mb-1">Variants</h3>
+                <p className="text-muted small mb-3">
+                  Optional — add sizes, colors, or other options. Each variant tracks its own stock.
+                  {!selectedId && <strong> Save the product first to persist variants.</strong>}
+                </p>
 
-                  {variantError && (
-                    <div className="alert alert-danger py-2 small mb-2">{variantError}</div>
-                  )}
+                {variantError && (
+                  <div className="alert alert-danger py-2 small mb-2">{variantError}</div>
+                )}
 
-                  {variants.length > 0 && (
-                    <div className="d-flex flex-wrap gap-2 mb-3">
-                      {variants.map((v) => (
-                        <div key={v.id} className="d-flex align-items-center border rounded bg-white px-2 py-1 gap-2">
-                          <span className="fw-semibold small">{v.name}</span>
-                          <span className="text-muted small">
-                            {v.stock === null ? "Unlimited" : `${v.stock} in stock`}
-                          </span>
+                {variants.length > 0 && (
+                  <div className="mb-2">
+                    <div className="row g-0 mb-1 px-1">
+                      <div className="col-5"><span className="text-muted small text-uppercase">Name</span></div>
+                      <div className="col-3"><span className="text-muted small text-uppercase">Stock</span></div>
+                      <div className="col-3"><span className="text-muted small text-uppercase">Unlimited</span></div>
+                      <div className="col-1" />
+                    </div>
+                    {variants.map((v, index) => (
+                      <div key={index} className="row g-1 mb-1 align-items-center">
+                        <div className="col-5">
+                          <input
+                            className="form-control form-control-sm"
+                            placeholder="e.g. Small, Red, XL…"
+                            value={v.name}
+                            onChange={(e) => handleVariantChange(index, "name", e.target.value)}
+                          />
+                        </div>
+                        <div className="col-3">
+                          <input
+                            className="form-control form-control-sm"
+                            type="number"
+                            min="0"
+                            placeholder="qty"
+                            value={v.unlimited ? "" : v.stock}
+                            onChange={(e) => handleVariantChange(index, "stock", e.target.value)}
+                            disabled={v.unlimited}
+                          />
+                        </div>
+                        <div className="col-3 d-flex align-items-center ps-2">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={v.unlimited}
+                            onChange={(e) => handleVariantChange(index, "unlimited", e.target.checked)}
+                            id={`variant-unlimited-${index}`}
+                          />
+                          <label className="form-check-label small ms-2" htmlFor={`variant-unlimited-${index}`}>
+                            Unlimited
+                          </label>
+                        </div>
+                        <div className="col-1 text-end">
                           <button
                             type="button"
-                            className="btn btn-link btn-sm text-danger p-0 ms-1"
-                            style={{ fontSize: "0.75rem", lineHeight: 1 }}
-                            onClick={() => handleVariantDelete(v.id)}
-                            title="Remove variant"
+                            className="btn btn-link btn-sm text-danger p-0"
+                            onClick={() => handleVariantRemove(index)}
+                            title="Remove"
                           >
                             &times;
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                  <form onSubmit={handleVariantAdd} className="d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                      <label className="form-label form-label-sm mb-1">Name</label>
-                      <input
-                        className="form-control form-control-sm"
-                        placeholder="e.g. Small, Red, XL…"
-                        value={newVariantName}
-                        onChange={(e) => setNewVariantName(e.target.value)}
-                        required
-                        style={{ width: "150px" }}
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label form-label-sm mb-1">Stock</label>
-                      <input
-                        className="form-control form-control-sm"
-                        type="number"
-                        min="0"
-                        placeholder="qty"
-                        value={newVariantUnlimited ? "" : newVariantStock}
-                        onChange={(e) => setNewVariantStock(e.target.value)}
-                        disabled={newVariantUnlimited}
-                        style={{ width: "80px" }}
-                      />
-                    </div>
-                    <div className="form-check mb-1">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="newVariantUnlimited"
-                        checked={newVariantUnlimited}
-                        onChange={(e) => setNewVariantUnlimited(e.target.checked)}
-                      />
-                      <label className="form-check-label small" htmlFor="newVariantUnlimited">
-                        Unlimited
-                      </label>
-                    </div>
-                    <button
-                      type="submit"
-                      className="btn btn-dark btn-sm"
-                      disabled={variantSaving || !newVariantName.trim()}
-                    >
-                      {variantSaving ? "Adding…" : "Add Variant"}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <p className="text-muted small mt-3">Save the product first to add variants.</p>
-              )}
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={handleVariantAddRow}
+                >
+                  + Add Variant
+                </button>
+              </div>
 
               {formStatus.error ? (
                 <div className="alert alert-danger mt-3">
