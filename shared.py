@@ -89,6 +89,12 @@ class Product(db.Model):
         lazy=True,
         order_by='ProductMedia.sort_order'
     )
+    variants = db.relationship(
+        'ProductVariant',
+        backref=db.backref('product', lazy=True),
+        lazy=True,
+        order_by='ProductVariant.sort_order'
+    )
     
     def __repr__(self):
         return f'<Product {self.name} ({self.product_type})>'
@@ -139,10 +145,21 @@ class ProductMedia(db.Model):
     def __repr__(self):
         return f'<ProductMedia {self.product_id} {self.media_type}>'
 
+class ProductVariant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    stock = db.Column(db.Integer, nullable=True)  # None = unlimited, 0 = out of stock
+    sort_order = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return f'<ProductVariant {self.product_id} {self.name}>'
+
 class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(20), db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    variant_id = db.Column(db.Integer, db.ForeignKey('product_variant.id'), nullable=True)
     points_spent = db.Column(db.Integer, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     delivery_info = db.Column(db.Text)  # Store delivery details (codes, download links, etc.)
@@ -150,6 +167,7 @@ class Purchase(db.Model):
 
     user = db.relationship('User', backref=db.backref('purchases', lazy=True))
     product = db.relationship('Product', backref=db.backref('purchases', lazy=True))
+    variant = db.relationship('ProductVariant')
 
     def __repr__(self):
         return f'<Purchase {self.id}>'

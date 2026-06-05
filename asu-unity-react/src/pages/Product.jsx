@@ -19,6 +19,7 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
     success: null,
   });
   const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const apiBaseUrl = useMemo(() => {
     const value = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -113,6 +114,10 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
       window.location.href = loginHref;
       return;
     }
+    if (product.has_variants && !selectedVariant) {
+      setPurchaseStatus({ loading: false, error: "Please select a variant before purchasing.", success: null });
+      return;
+    }
     setPurchaseStatus({ loading: false, error: null, success: null });
     setShowConfirm(true);
   };
@@ -127,6 +132,8 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
       const response = await fetch(url, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variant_id: selectedVariant?.id ?? null }),
       });
       const data = await response.json();
       if (!response.ok || !data.ok) {
@@ -285,16 +292,50 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
             </div>
             <p className="text-muted">{product.description || "No description."}</p>
             <Divider />
-            <div className="d-flex justify-content-between align-items-center">
-              <span className="text-uppercase text-muted small">Stock</span>
-              <span className="fw-semibold">
-                {product.is_unlimited
-                  ? "Unlimited"
-                  : product.in_stock
-                  ? `${product.stock} available`
-                  : "Out of stock"}
-              </span>
-            </div>
+            {product.has_variants ? (
+              <div className="mb-3">
+                <label className="text-uppercase text-muted small d-block mb-2">Select Variant</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {product.variants.map((v) => {
+                    const outOfStock = v.stock !== null && v.stock <= 0;
+                    const isSelected = selectedVariant?.id === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        disabled={outOfStock}
+                        onClick={() => setSelectedVariant(outOfStock ? selectedVariant : v)}
+                        className={`btn btn-sm ${isSelected ? "btn-dark" : "btn-outline-secondary"}`}
+                        style={{ opacity: outOfStock ? 0.45 : 1 }}
+                        title={outOfStock ? "Out of stock" : undefined}
+                      >
+                        {v.name}
+                        {outOfStock && <span className="ms-1 text-muted" style={{ fontSize: "0.7em" }}>(sold out)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedVariant && (
+                  <div className="mt-2 d-flex justify-content-between align-items-center">
+                    <span className="text-uppercase text-muted small">Stock</span>
+                    <span className="fw-semibold">
+                      {selectedVariant.stock === null ? "Unlimited" : `${selectedVariant.stock} available`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-uppercase text-muted small">Stock</span>
+                <span className="fw-semibold">
+                  {product.is_unlimited
+                    ? "Unlimited"
+                    : product.in_stock
+                    ? `${product.stock} available`
+                    : "Out of stock"}
+                </span>
+              </div>
+            )}
 
             {purchaseStatus.error ? (
               <div className="alert alert-danger mt-3">
@@ -317,7 +358,11 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
                     : "Sign in to Purchase"
                 }
                 color="gold"
-                disabled={purchaseStatus.loading || !product.in_stock}
+                disabled={
+                  purchaseStatus.loading ||
+                  !product.in_stock ||
+                  (product.has_variants && !selectedVariant)
+                }
                 onClick={handlePurchase}
               />
             </div>
@@ -361,6 +406,11 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
                   )}
                   <div>
                     <div className="fw-semibold fs-5">{product.name}</div>
+                    {selectedVariant && (
+                      <div className="text-muted small mt-1">
+                        Variant: <strong>{selectedVariant.name}</strong>
+                      </div>
+                    )}
                     {product.description && (
                       <div className="text-muted small mt-1" style={{ maxWidth: "260px" }}>
                         {product.description.length > 100

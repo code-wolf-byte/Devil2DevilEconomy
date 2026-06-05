@@ -5,6 +5,7 @@ from shared import (
     bot,
     User,
     Product,
+    ProductVariant,
     Purchase,
     UserAchievement,
     DownloadToken,
@@ -53,6 +54,11 @@ def store():
             else:
                 image_url = url_for('static', filename=f"uploads/{display_image}", _external=True)
 
+        has_variants = len(product.variants) > 0
+        if has_variants:
+            in_stock = any(v.stock is None or v.stock > 0 for v in product.variants)
+        else:
+            in_stock = product.stock is None or product.stock > 0
         store_products.append({
             'id': product.id,
             'name': product.name,
@@ -60,7 +66,8 @@ def store():
             'price': product.price,
             'stock': product.stock,
             'is_unlimited': product.stock is None,
-            'in_stock': product.stock is None or product.stock > 0,
+            'in_stock': in_stock,
+            'has_variants': has_variants,
             'product_type': product.product_type,
             'image_url': image_url,
             'category': product.category or 'general'
@@ -105,6 +112,16 @@ def product_details_api(product_id):
             'is_primary': True
         })
 
+    variant_items = [
+        {'id': v.id, 'name': v.name, 'stock': v.stock, 'sort_order': v.sort_order}
+        for v in product.variants
+    ]
+    has_variants = len(variant_items) > 0
+    if has_variants:
+        in_stock = any(v['stock'] is None or v['stock'] > 0 for v in variant_items)
+    else:
+        in_stock = product.stock is None or product.stock > 0
+
     product_data = {
         'id': product.id,
         'name': product.name,
@@ -112,7 +129,9 @@ def product_details_api(product_id):
         'price': product.price,
         'stock': product.stock,
         'is_unlimited': product.stock is None,
-        'in_stock': product.stock is None or product.stock > 0,
+        'in_stock': in_stock,
+        'has_variants': has_variants,
+        'variants': variant_items,
         'product_type': product.product_type,
         'image_url': image_url,
         'media': media_items
@@ -341,6 +360,11 @@ def admin_product_detail_api(product_id):
             'is_primary': media.is_primary
         })
 
+    variant_payload = [
+        {'id': v.id, 'name': v.name, 'stock': v.stock, 'sort_order': v.sort_order}
+        for v in product.variants
+    ]
+
     return _json_response({
         'product': {
             'id': product.id,
@@ -354,7 +378,8 @@ def admin_product_detail_api(product_id):
             'image_url': image_url,
             'preview_image_url': preview_image_url,
             'download_file_url': product.download_file_url,
-            'media': media_payload
+            'media': media_payload,
+            'variants': variant_payload
         }
     })
 
@@ -702,7 +727,78 @@ def admin_product_clone_api(product_id):
 
     db.session.commit()
 
+    for variant in source.variants:
+        db.session.add(ProductVariant(
+            product_id=clone.id,
+            name=variant.name,
+            stock=variant.stock,
+            sort_order=variant.sort_order,
+        ))
+
+    db.session.commit()
+
     return _json_response({'ok': True, 'product_id': clone.id})
+
+
+@api.route('/admin/products/<int:product_id>/variants', methods=['GET'])
+@login_required
+def admin_product_variants_list(product_id):
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+    product = Product.query.get_or_404(product_id)
+    variants = [{'id': v.id, 'name': v.name, 'stock': v.stock, 'sort_order': v.sort_order} for v in product.variants]
+    return _json_response({'variants': variants})
+
+
+@api.route('/admin/products/<int:product_id>/variants', methods=['POST'])
+@login_required
+def admin_product_variant_create(product_id):
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+    Product.query.get_or_404(product_id)
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return _json_response({'error': 'Name is required'}, status=400)
+    stock_raw = data.get('stock')
+    stock = None if stock_raw in (None, '', 'unlimited') else int(stock_raw)
+    sort_order = int(data.get('sort_order', 0))
+    variant = ProductVariant(product_id=product_id, name=name, stock=stock, sort_order=sort_order)
+    db.session.add(variant)
+    db.session.commit()
+    return _json_response({'ok': True, 'variant': {'id': variant.id, 'name': variant.name, 'stock': variant.stock, 'sort_order': variant.sort_order}})
+
+
+@api.route('/admin/products/<int:product_id>/variants/<int:variant_id>', methods=['POST'])
+@login_required
+def admin_product_variant_update(product_id, variant_id):
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+    variant = ProductVariant.query.filter_by(id=variant_id, product_id=product_id).first_or_404()
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = data['name'].strip()
+        if not name:
+            return _json_response({'error': 'Name is required'}, status=400)
+        variant.name = name
+    if 'stock' in data:
+        stock_raw = data['stock']
+        variant.stock = None if stock_raw in (None, '', 'unlimited') else int(stock_raw)
+    if 'sort_order' in data:
+        variant.sort_order = int(data['sort_order'])
+    db.session.commit()
+    return _json_response({'ok': True, 'variant': {'id': variant.id, 'name': variant.name, 'stock': variant.stock, 'sort_order': variant.sort_order}})
+
+
+@api.route('/admin/products/<int:product_id>/variants/<int:variant_id>', methods=['DELETE'])
+@login_required
+def admin_product_variant_delete(product_id, variant_id):
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+    variant = ProductVariant.query.filter_by(id=variant_id, product_id=product_id).first_or_404()
+    db.session.delete(variant)
+    db.session.commit()
+    return _json_response({'ok': True})
 
 
 @api.route('/purchase/<int:product_id>', methods=['POST'])
@@ -723,11 +819,33 @@ def purchase_api(product_id):
             status=400
         )
 
-    if product.stock is not None and product.stock <= 0:
-        return _json_response(
-            {'error': 'out_of_stock', 'message': 'This product is out of stock.'},
-            status=400
-        )
+    body = request.get_json(silent=True) or {}
+    variant_id = body.get('variant_id')
+    variant = None
+
+    if product.variants:
+        if not variant_id:
+            return _json_response(
+                {'error': 'variant_required', 'message': 'Please select a variant before purchasing.'},
+                status=400
+            )
+        variant = ProductVariant.query.filter_by(id=variant_id, product_id=product.id).first()
+        if not variant:
+            return _json_response(
+                {'error': 'invalid_variant', 'message': 'Invalid variant selected.'},
+                status=400
+            )
+        if variant.stock is not None and variant.stock <= 0:
+            return _json_response(
+                {'error': 'out_of_stock', 'message': f'"{variant.name}" is out of stock.'},
+                status=400
+            )
+    else:
+        if product.stock is not None and product.stock <= 0:
+            return _json_response(
+                {'error': 'out_of_stock', 'message': 'This product is out of stock.'},
+                status=400
+            )
 
     discounted_price = int(product.price * 0.8)
 
@@ -740,13 +858,17 @@ def purchase_api(product_id):
     purchase = Purchase(
         user_id=current_user.id,
         product_id=product.id,
+        variant_id=variant.id if variant else None,
         points_spent=discounted_price,
         timestamp=datetime.utcnow()
     )
 
     current_user.balance -= discounted_price
 
-    if product.stock is not None:
+    if variant:
+        if variant.stock is not None:
+            variant.stock -= 1
+    elif product.stock is not None:
         product.stock -= 1
 
     db.session.add(purchase)
@@ -931,6 +1053,7 @@ def my_purchases_api():
             'product_name': purchase.product.name,
             'product_description': purchase.product.description,
             'product_type': purchase.product.product_type,
+            'variant_name': purchase.variant.name if purchase.variant else None,
             'points_spent': purchase.points_spent,
             'timestamp': purchase.timestamp.isoformat(),
             'image_url': image_url,
