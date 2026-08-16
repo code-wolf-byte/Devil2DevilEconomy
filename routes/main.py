@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, abort
 from flask_login import login_required, current_user
-from shared import db, bot, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken
+from shared import db, bot, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken, store_discount_percent, sale_price
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -39,7 +39,7 @@ def index(path):
         Product.is_active == True,
         (Product.stock.is_(None)) | (Product.stock > 0)
     ).all()
-    return render_template('index.html', products=products)
+    return render_template('index.html', products=products, discount_percent=store_discount_percent())
 
 
 @main.route('/shop')
@@ -67,8 +67,8 @@ def purchase_product(product_id):
         flash('This product is out of stock.', 'error')
         return redirect(url_for('main.shop'))
     
-    # Calculate 20% discount
-    discounted_price = int(product.price * 0.8)
+    # Apply the store-wide sale (0% when no sale is configured)
+    discounted_price = sale_price(product.price)
     
     if current_user.balance < discounted_price:
         flash('Insufficient balance to purchase this item.', 'error')

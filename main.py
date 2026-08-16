@@ -177,6 +177,8 @@ def run_startup_tasks():
         # Column migrations — safe to re-run on every deploy (skips if column already exists)
         _column_migrations = [
             "ALTER TABLE user ADD COLUMN csd_bonus_received BOOLEAN DEFAULT 0",
+            # Existing deploys were running a hardcoded 20% sale — keep it on until an admin turns it off.
+            "ALTER TABLE economy_settings ADD COLUMN discount_percent INTEGER DEFAULT 20",
         ]
         for _migration in _column_migrations:
             try:

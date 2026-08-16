@@ -18,6 +18,30 @@ function getPrimaryMedia(product) {
   return { url: null, isVideo: false };
 }
 
+/** Price badge — shows the struck-through original alongside the sale price while a sale is running. */
+function PriceBadge({ product }) {
+  const onSale = product.sale_price != null && product.sale_price !== product.price;
+  return (
+    <>
+      {onSale && (
+        <span
+          className="badge bg-light text-muted border text-decoration-line-through"
+          aria-label={`Original price ${product.price}`}
+        >
+          {product.price}
+        </span>
+      )}
+      <span
+        className="badge bg-dark d-inline-flex align-items-center gap-1"
+        aria-label={`Price ${onSale ? product.sale_price : product.price}`}
+      >
+        <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
+        {onSale ? product.sale_price : product.price}
+      </span>
+    </>
+  );
+}
+
 export default function ProductCard({
   product,
   linkTo,
@@ -73,10 +97,7 @@ export default function ProductCard({
               {product.description || "No description available."}
             </p>
             <div className="d-flex flex-wrap gap-1 align-items-center">
-              <span className="badge bg-dark d-inline-flex align-items-center gap-1" aria-label={`Price ${product.price}`}>
-                <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
-                {product.price}
-              </span>
+              <PriceBadge product={product} />
               {formatTags().map((tag, index) => (
                 <span
                   key={index}
@@ -118,10 +139,7 @@ export default function ProductCard({
 
         <div className="card-body pt-0">
           <div className="d-flex flex-wrap gap-1 align-items-center">
-            <span className="badge bg-dark d-inline-flex align-items-center gap-1" aria-label={`Price ${product.price}`}>
-              <img src="/static/Coin_Gold.png" alt="" style={{ width: "14px", height: "14px" }} />
-              {product.price}
-            </span>
+            <PriceBadge product={product} />
             {formatTags().map((tag, index) => (
               <span
                 key={index}

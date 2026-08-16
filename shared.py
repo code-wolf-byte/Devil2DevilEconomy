@@ -207,7 +207,10 @@ class EconomySettings(db.Model):
     
     # Configuration completion flag
     roles_configured = db.Column(db.Boolean, default=False)  # Whether roles have been configured
-    
+
+    # Store-wide sale: percent off every product. 0 = no sale.
+    discount_percent = db.Column(db.Integer, default=0)
+
     def __repr__(self):
         return f'<EconomySettings enabled={self.economy_enabled}>'
     
@@ -224,6 +227,20 @@ class EconomySettings(db.Model):
         """Set onboarding role IDs from a list"""
         import json
         self.onboarding_role_ids = json.dumps(role_ids) if role_ids else None
+
+
+def store_discount_percent():
+    """Percent off every product, from EconomySettings. 0 when no sale is running."""
+    settings = EconomySettings.query.first()
+    percent = settings.discount_percent if settings else 0
+    return min(max(percent or 0, 0), 100)
+
+
+def sale_price(price, percent=None):
+    """Price after the store-wide sale. Equals `price` when no sale is running."""
+    if percent is None:
+        percent = store_discount_percent()
+    return price * (100 - percent) // 100  # integer math: no float rounding surprises
 
 # Digital Product Support Models
 class RoleAssignment(db.Model):

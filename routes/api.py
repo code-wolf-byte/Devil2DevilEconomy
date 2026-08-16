@@ -11,6 +11,8 @@ from shared import (
     DownloadToken,
     ProductMedia,
     Category,
+    store_discount_percent,
+    sale_price,
 )
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -44,6 +46,8 @@ def store():
         (Product.stock.is_(None)) | (Product.stock > 0)
     ).all()
 
+    discount = store_discount_percent()
+
     store_products = []
     for product in products:
         image_url = None
@@ -64,6 +68,7 @@ def store():
             'name': product.name,
             'description': product.description,
             'price': product.price,
+            'sale_price': sale_price(product.price, discount) if discount else None,
             'stock': product.stock,
             'is_unlimited': product.stock is None,
             'in_stock': in_stock,
@@ -73,7 +78,7 @@ def store():
             'category': product.category or 'general'
         })
 
-    return _json_response({'products': store_products})
+    return _json_response({'products': store_products, 'discount_percent': discount})
 
 
 @api.route('/product/<int:product_id>')
@@ -122,11 +127,14 @@ def product_details_api(product_id):
     else:
         in_stock = product.stock is None or product.stock > 0
 
+    discount = store_discount_percent()
+
     product_data = {
         'id': product.id,
         'name': product.name,
         'description': product.description,
         'price': product.price,
+        'sale_price': sale_price(product.price, discount) if discount else None,
         'stock': product.stock,
         'is_unlimited': product.stock is None,
         'in_stock': in_stock,
@@ -137,7 +145,7 @@ def product_details_api(product_id):
         'media': media_items
     }
 
-    return _json_response({'product': product_data})
+    return _json_response({'product': product_data, 'discount_percent': discount})
 
 
 @api.route('/me')
@@ -847,7 +855,7 @@ def purchase_api(product_id):
                 status=400
             )
 
-    discounted_price = int(product.price * 0.8)
+    discounted_price = sale_price(product.price)
 
     if current_user.balance < discounted_price:
         return _json_response(
@@ -1085,7 +1093,8 @@ def admin_economy_config_api():
                 'verified_bonus_points': 200,
                 'onboarding_role_ids': [],
                 'onboarding_bonus_points': 500,
-                'roles_configured': False
+                'roles_configured': False,
+                'discount_percent': 0
             }
         })
 
@@ -1104,7 +1113,8 @@ def admin_economy_config_api():
             'verified_bonus_points': settings.verified_bonus_points or 200,
             'onboarding_role_ids': onboarding_roles,
             'onboarding_bonus_points': settings.onboarding_bonus_points or 500,
-            'roles_configured': settings.roles_configured
+            'roles_configured': settings.roles_configured,
+            'discount_percent': settings.discount_percent or 0
         }
     })
 
@@ -1129,6 +1139,7 @@ def admin_economy_config_save_api():
 
     settings.verified_role_id = data.get('verified_role_id')
     settings.verified_bonus_points = int(data.get('verified_bonus_points', 200))
+    settings.discount_percent = min(max(int(data.get('discount_percent', 0) or 0), 0), 100)
     settings.onboarding_bonus_points = int(data.get('onboarding_bonus_points', 500))
 
     onboarding_roles = data.get('onboarding_role_ids', [])

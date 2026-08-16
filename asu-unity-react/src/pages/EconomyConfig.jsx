@@ -20,6 +20,7 @@ export default function EconomyConfig({
     onboarding_role_ids: [],
     onboarding_bonus_points: 500,
     roles_configured: false,
+    discount_percent: 0,
   });
   const [selectedOnboardingRoles, setSelectedOnboardingRoles] = React.useState([]);
   const [status, setStatus] = React.useState({ loading: true, error: null });
@@ -81,6 +82,15 @@ export default function EconomyConfig({
     setSettings((prev) => ({ ...prev, onboarding_bonus_points: parseInt(event.target.value, 10) || 0 }));
   };
 
+  const toggleDiscount = (event) => {
+    setSettings((prev) => ({ ...prev, discount_percent: event.target.checked ? 20 : 0 }));
+  };
+
+  const handleDiscountPercentChange = (event) => {
+    const percent = parseInt(event.target.value, 10) || 0;
+    setSettings((prev) => ({ ...prev, discount_percent: Math.min(Math.max(percent, 0), 100) }));
+  };
+
   const toggleOnboardingRole = (roleId) => {
     setSelectedOnboardingRoles((prev) => {
       if (prev.includes(roleId)) {
@@ -105,6 +115,7 @@ export default function EconomyConfig({
           verified_bonus_points: settings.verified_bonus_points,
           onboarding_role_ids: selectedOnboardingRoles,
           onboarding_bonus_points: settings.onboarding_bonus_points,
+          discount_percent: settings.discount_percent,
         }),
       });
 
@@ -297,6 +308,49 @@ export default function EconomyConfig({
               onChange={handleOnboardingPointsChange}
               min="0"
               max="10000"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="border rounded bg-white p-4 mb-4">
+        <h2 className="h5 fw-bold mb-3">
+          <span className="text-warning">Store-Wide Sale</span>
+        </h2>
+        <p className="text-muted small mb-3">
+          When on, every product is sold at the discount below. Prices shown in the store and the
+          amount actually charged both follow this setting.
+        </p>
+
+        <div className="row g-3 align-items-end">
+          <div className="col-12 col-lg-8">
+            <div className="form-check form-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                id="discountToggle"
+                className="form-check-input"
+                checked={settings.discount_percent > 0}
+                onChange={toggleDiscount}
+              />
+              <label className="form-check-label fw-medium" htmlFor="discountToggle">
+                {settings.discount_percent > 0
+                  ? `Sale running — ${settings.discount_percent}% off all items`
+                  : "No sale — items sell at full price"}
+              </label>
+            </div>
+          </div>
+          <div className="col-12 col-lg-4">
+            <label className="form-label" htmlFor="discountPercent">Discount (%)</label>
+            <input
+              id="discountPercent"
+              type="number"
+              className="form-control"
+              value={settings.discount_percent}
+              onChange={handleDiscountPercentChange}
+              disabled={settings.discount_percent === 0}
+              min="0"
+              max="100"
             />
           </div>
         </div>

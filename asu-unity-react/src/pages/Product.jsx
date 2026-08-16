@@ -154,6 +154,9 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
   };
 
   const activeMedia = media[activeMediaIndex];
+  // The server decides the sale price; sale_price is null when no sale is running.
+  const onSale = product.sale_price != null && product.sale_price !== product.price;
+  const chargedPrice = onSale ? product.sale_price : product.price;
 
   return (
     <div className="container py-5 product-page">
@@ -288,7 +291,15 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
                 alt="Price"
                 style={{ width: "20px", height: "20px" }}
               />
-              <span className="h4 fw-bold mb-0">{product.price}</span>
+              <span className="h4 fw-bold mb-0">{chargedPrice}</span>
+              {onSale && (
+                <>
+                  <span className="text-muted text-decoration-line-through">{product.price}</span>
+                  <span className="badge bg-warning text-dark">
+                    {Math.round((1 - product.sale_price / product.price) * 100)}% OFF
+                  </span>
+                </>
+              )}
             </div>
             <p className="text-muted">{product.description || "No description."}</p>
             <Divider />
@@ -425,14 +436,19 @@ export default function Product({ productId, isAuthenticated = false, loginHref 
                   <div className="d-flex justify-content-between align-items-center">
                     <span className="text-muted">Price</span>
                     <span className="d-flex align-items-center gap-1 fw-bold fs-5">
+                      {onSale && (
+                        <span className="text-muted fw-normal fs-6 text-decoration-line-through me-1">
+                          {product.price}
+                        </span>
+                      )}
                       <img src="/static/Coin_Gold.png" alt="" style={{ width: "18px", height: "18px" }} />
-                      {product.price}
+                      {chargedPrice}
                     </span>
                   </div>
                 </div>
 
                 <p className="text-muted small mt-3 mb-0">
-                  This will deduct <strong>{product.price} pitchforks</strong> from your balance. This action cannot be undone.
+                  This will deduct <strong>{chargedPrice} pitchforks</strong> from your balance. This action cannot be undone.
                 </p>
               </div>
               <div className="modal-footer border-0 pt-0 gap-2">
