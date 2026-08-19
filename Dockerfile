@@ -37,6 +37,9 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Pin pip itself so a rebuild months from now resolves packages the same way
+RUN pip install --no-cache-dir pip==26.2.1
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 
