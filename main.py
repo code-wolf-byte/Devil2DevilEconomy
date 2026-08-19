@@ -9,7 +9,7 @@ import time
 import asyncio
 import threading
 from flask import redirect, url_for, jsonify
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -167,6 +167,38 @@ def run_bot():
         import traceback
         traceback.print_exc()
 
+def _sync_missing_columns():
+    """Add columns the models grew since the DB was created.
+
+    db.create_all() adds new tables but never new columns, so a model gaining a field
+    (Purchase.variant_id, say) leaves every query against that table failing until the
+    column is added by hand. This closes that gap for every model at once.
+    """
+    inspector = inspect(db.engine)
+    tables = set(inspector.get_table_names())
+    for table in db.metadata.sorted_tables:
+        if table.name not in tables:
+            continue  # create_all() already made it, columns and all
+        existing = {column['name'] for column in inspector.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in existing:
+                continue
+            # Type only, no constraints: SQLite cannot add a NOT NULL column to a populated
+            # table, so existing rows get NULL here and the ORM keeps enforcing the model's
+            # constraints on new writes. A column needing a real backfill value goes in
+            # _column_migrations above instead.
+            column_type = column.type.compile(db.engine.dialect)
+            try:
+                db.session.execute(
+                    text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}')
+                )
+                db.session.commit()
+                print(f"Added missing column {table.name}.{column.name}")
+            except Exception as e:
+                db.session.rollback()
+                print(f"Could not add {table.name}.{column.name}: {e}")
+
+
 def run_startup_tasks():
     """Run startup tasks needed before serving requests."""
     # Create database tables and seed required data
@@ -174,7 +206,8 @@ def run_startup_tasks():
         db.create_all()
         print("Database tables created successfully!")
 
-        # Column migrations — safe to re-run on every deploy (skips if column already exists)
+        # Columns that need a specific backfill value on existing rows. Everything else is
+        # handled by _sync_missing_columns() below. Safe to re-run: skips existing columns.
         _column_migrations = [
             "ALTER TABLE user ADD COLUMN csd_bonus_received BOOLEAN DEFAULT 0",
             # Existing deploys were running a hardcoded 20% sale — keep it on until an admin turns it off.
@@ -186,6 +219,8 @@ def run_startup_tasks():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        _sync_missing_columns()
 
         # Seed achievements that must exist for the economy to function correctly.
         # Safe to run on every deploy — skips any that already exist.

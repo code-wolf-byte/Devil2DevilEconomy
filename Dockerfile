@@ -53,6 +53,7 @@ RUN pip install --no-cache-dir \
     alembic==1.12.0 \
     requests==2.31.0 \
     Pillow==10.0.1 \
+    openpyxl==3.1.5 \
     cryptography==41.0.7 \
     gunicorn==21.2.0
 
