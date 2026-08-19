@@ -13,6 +13,7 @@ export default function Store({
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [shopOpen, setShopOpen] = useState(true);
   const [status, setStatus] = useState({ loading: true, error: null });
 
   const apiBaseUrl = useMemo(() => {
@@ -51,6 +52,7 @@ export default function Store({
         if (isMounted) {
           setProducts(Array.isArray(storeData.products) ? storeData.products : []);
           setDiscountPercent(storeData.discount_percent || 0);
+          setShopOpen(storeData.shop_open !== false);
           setStatus({ loading: false, error: null });
         }
         if (catRes.ok) {
@@ -165,7 +167,13 @@ export default function Store({
           </>
         )}
       </div>
-      {discountPercent > 0 && (
+      {!shopOpen && (
+        <div className="alert alert-secondary mb-4" role="status">
+          <span className="fw-bold">The shop is closed.</span>{" "}
+          <span>Browsing stays open, but purchases are paused until an admin reopens it.</span>
+        </div>
+      )}
+      {shopOpen && discountPercent > 0 && (
         <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" role="status">
           <span className="fw-bold">{discountPercent}% OFF</span>
           <span>every item in the store — discount applied at checkout.</span>

@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, url_for
+from flask import Blueprint, Response, current_app, jsonify, request, url_for
 from flask_login import login_required, current_user
 from shared import (
     db,
@@ -13,8 +13,10 @@ from shared import (
     Category,
     store_discount_percent,
     sale_price,
+    economy_enabled,
 )
 from werkzeug.utils import secure_filename
+import requests
 from datetime import datetime, timedelta
 import os
 import uuid
@@ -26,9 +28,7 @@ api = Blueprint('api', __name__, url_prefix='/api')
 PURCHASES_DISABLED = os.getenv('PURCHASES_DISABLED', 'false').lower() in {'1', 'true', 'yes'}
 
 
-def _json_response(payload, status=200):
-    response = jsonify(payload)
-    response.status_code = status
+def _cors(response):
     origin = request.headers.get('Origin')
     if origin:
         response.headers['Access-Control-Allow-Origin'] = origin
@@ -36,6 +36,44 @@ def _json_response(payload, status=200):
     else:
         response.headers['Access-Control-Allow-Origin'] = '*'
     return response
+
+
+def _day_window(start, end):
+    """(from, until) for YYYY-MM-DD filters; `until` is exclusive so `end` day is included."""
+    lower = datetime.strptime(start, '%Y-%m-%d') if start else None
+    upper = datetime.strptime(end, '%Y-%m-%d') + timedelta(days=1) if end else None
+    return lower, upper
+
+
+def _product_image_bytes(product, cache):
+    """Raw bytes of a product image — uploaded or remote. None when there is nothing to show."""
+    name = str((product.display_image or product.image_url) or '') if product else ''
+    if not name:
+        return None
+    if name not in cache:
+        cache[name] = _read_image(name)
+    return cache[name]
+
+
+def _read_image(name):
+    if name.startswith('http'):
+        try:
+            response = requests.get(name, timeout=10)
+            return response.content if response.ok else None
+        except requests.RequestException:
+            return None
+    static_dir = current_app.static_folder
+    for candidate in (os.path.join(static_dir, 'uploads', name), os.path.join(static_dir, name)):
+        if os.path.isfile(candidate):
+            with open(candidate, 'rb') as handle:
+                return handle.read()
+    return None
+
+
+def _json_response(payload, status=200):
+    response = jsonify(payload)
+    response.status_code = status
+    return _cors(response)
 
 
 @api.route('/store')
@@ -78,7 +116,7 @@ def store():
             'category': product.category or 'general'
         })
 
-    return _json_response({'products': store_products, 'discount_percent': discount})
+    return _json_response({'products': store_products, 'discount_percent': discount, 'shop_open': economy_enabled()})
 
 
 @api.route('/product/<int:product_id>')
@@ -819,6 +857,12 @@ def purchase_api(product_id):
             status=403
         )
 
+    if not economy_enabled():
+        return _json_response(
+            {'error': 'shop_closed', 'message': 'The shop is closed right now.'},
+            status=403
+        )
+
     product = Product.query.get_or_404(product_id)
 
     if not product.is_active:
@@ -1151,6 +1195,8 @@ def admin_economy_config_save_api():
             return _json_response({'error': 'Please configure roles before enabling the economy.'}, status=400)
         settings.economy_enabled = True
         settings.enabled_at = datetime.utcnow()
+    elif action == 'disable_economy':
+        settings.economy_enabled = False
 
     db.session.commit()
 
@@ -1720,6 +1766,70 @@ def admin_purchases_api():
             'next_num': pagination.next_num
         }
     })
+
+
+@api.route('/admin/purchases/export')
+@login_required
+def admin_purchases_export_api():
+    """Purchases in a date range as an .xlsx download."""
+    if not current_user.is_admin:
+        return _json_response({'error': 'forbidden'}, status=403)
+
+    from openpyxl import Workbook
+    from openpyxl.drawing.image import Image as XLImage
+    from io import BytesIO
+
+    start, end = request.args.get('start'), request.args.get('end')
+    try:
+        lower, upper = _day_window(start, end)
+    except ValueError:
+        return _json_response({'error': 'bad_date', 'message': 'Dates must be YYYY-MM-DD.'}, status=400)
+
+    query = Purchase.query.order_by(Purchase.timestamp.desc())
+    if lower:
+        query = query.filter(Purchase.timestamp >= lower)
+    if upper:
+        query = query.filter(Purchase.timestamp < upper)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Purchases'
+    ws.append(['User', 'Image', 'Product', 'Size', 'Purchased', 'Points'])
+    for width, letter in zip((28, 12, 36, 14, 20, 10), 'ABCDEF'):
+        ws.column_dimensions[letter].width = width
+
+    image_cache = {}
+    for row, purchase in enumerate(query.all(), start=2):
+        product = purchase.product
+        ws.append([
+            purchase.user.username if purchase.user else 'Unknown',
+            '',
+            product.name if product else 'Unknown Product',
+            purchase.variant.name if purchase.variant else '',
+            purchase.timestamp.strftime('%Y-%m-%d %H:%M') if purchase.timestamp else '',
+            purchase.points_spent,
+        ])
+        image_data = _product_image_bytes(product, image_cache)
+        if image_data:
+            try:
+                image = XLImage(BytesIO(image_data))
+                image.width = image.height = 56
+                ws.row_dimensions[row].height = 45
+                ws.add_image(image, f'B{row}')
+            except Exception:
+                pass  # a broken image never costs the admin their export
+
+    buffer = BytesIO()
+    wb.save(buffer)
+
+    span = '_to_'.join(filter(None, (start, end)))
+    name = 'purchases_%s.xlsx' % span if span else 'purchases.xlsx'
+    response = Response(
+        buffer.getvalue(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response.headers['Content-Disposition'] = 'attachment; filename="%s"' % name
+    return _cors(response)
 
 
 @api.route('/admin/users/<user_id>')

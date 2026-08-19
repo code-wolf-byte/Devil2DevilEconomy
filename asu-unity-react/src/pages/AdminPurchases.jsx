@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
   Package,
   ShoppingBag,
   RefreshCw,
@@ -56,6 +57,8 @@ export default function AdminPurchases({
   const [data, setData] = React.useState(null);
   const [status, setStatus] = React.useState({ loading: true, error: null });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [range, setRange] = React.useState({ start: "", end: "" });
+  const [exportState, setExportState] = React.useState({ busy: false, error: null });
 
   const url = useApiUrl();
 
@@ -80,6 +83,28 @@ export default function AdminPurchases({
     }
     loadData(1);
   }, [isAuthenticated, isAdmin, loadData]);
+
+  const exportXlsx = async () => {
+    setExportState({ busy: true, error: null });
+    try {
+      const params = new URLSearchParams(Object.entries(range).filter(([, v]) => v));
+      const query = params.toString();
+      const response = await fetch(url(`/api/admin/purchases/export${query ? `?${query}` : ""}`), {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error(`Export failed (${response.status})`);
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = query ? `purchases_${range.start || "start"}_to_${range.end || "today"}.xlsx` : "purchases.xlsx";
+      link.click();
+      URL.revokeObjectURL(href);
+      setExportState({ busy: false, error: null });
+    } catch (err) {
+      setExportState({ busy: false, error: err.message });
+    }
+  };
 
   const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString() : "";
   const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : "";
@@ -147,6 +172,42 @@ export default function AdminPurchases({
           </Button>
         </a>
       </div>
+
+      {/* Export */}
+      <Card>
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-end gap-3">
+          <div>
+            <label htmlFor="exportStart" className="block text-xs font-semibold text-gray-500 uppercase mb-1">From</label>
+            <input
+              id="exportStart"
+              type="date"
+              value={range.start}
+              max={range.end || undefined}
+              onChange={(e) => setRange((prev) => ({ ...prev, start: e.target.value }))}
+              className="border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="exportEnd" className="block text-xs font-semibold text-gray-500 uppercase mb-1">To</label>
+            <input
+              id="exportEnd"
+              type="date"
+              value={range.end}
+              min={range.start || undefined}
+              onChange={(e) => setRange((prev) => ({ ...prev, end: e.target.value }))}
+              className="border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <Button onClick={exportXlsx} disabled={exportState.busy}>
+            <Download className="h-4 w-4" /> {exportState.busy ? "Exporting…" : "Export XLSX"}
+          </Button>
+          <p className="text-xs text-gray-500 sm:ml-auto">
+            {exportState.error
+              ? <span className="text-red-600">{exportState.error}</span>
+              : "Leave the dates empty to export every purchase."}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

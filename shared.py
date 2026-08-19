@@ -229,6 +229,12 @@ class EconomySettings(db.Model):
         self.onboarding_role_ids = json.dumps(role_ids) if role_ids else None
 
 
+def economy_enabled():
+    """False when admins have closed the shop: nobody earns points, nobody buys."""
+    settings = EconomySettings.query.first()
+    return bool(settings and settings.economy_enabled)
+
+
 def store_discount_percent():
     """Percent off every product, from EconomySettings. 0 when no sale is running."""
     settings = EconomySettings.query.first()

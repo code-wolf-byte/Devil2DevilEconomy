@@ -156,6 +156,11 @@ class EconomyCog(commands.Cog):
         # In-memory map of member_id -> datetime they joined their current voice channel
         self.voice_join_times = {}
 
+    def economy_on(self):
+        """False when admins closed the shop: no pitchforks are earned. Needs an app context."""
+        settings = self.EconomySettings.query.first()
+        return bool(settings and settings.economy_enabled)
+
     def is_staff_or_admin(self, member):
         """Return True if member has administrator permissions or the staff role."""
         if member.guild_permissions.administrator:
@@ -463,6 +468,8 @@ class EconomyCog(commands.Cog):
     async def handle_verification_bonus(self, member):
         """Handle verification role bonus"""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 user = self.User.query.filter_by(id=str(member.id)).first()
                 if not user:
@@ -505,6 +512,8 @@ class EconomyCog(commands.Cog):
     async def handle_boost_bonus(self, member):
         """Award 500 pitchforks for boosting the server (once per user)."""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 user = self.User.query.filter_by(id=str(member.id)).first()
                 if not user:
@@ -552,6 +561,8 @@ class EconomyCog(commands.Cog):
     async def handle_enrollment_deposit_bonus(self, member):
         """Award enrollment deposit bonus when a member receives the enrollment deposit role."""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 user = self.User.query.filter_by(id=str(member.id)).first()
                 if not user:
@@ -641,6 +652,8 @@ class EconomyCog(commands.Cog):
     async def check_admin_reactions(self, reaction, admin_user):
         """Check if admin reaction is for point awarding"""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 # Extract emoji name from the full emoji string
                 emoji_str = str(reaction.emoji)
@@ -894,6 +907,8 @@ class EconomyCog(commands.Cog):
     async def check_birthdays(self):
         """Check for birthdays and send announcements"""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 current_date = datetime.now().date()
                 users_with_birthdays = self.User.query.filter(
@@ -1324,6 +1339,8 @@ class EconomyCog(commands.Cog):
     async def award_achievement(self, user, achievement):
         """Award an achievement to a user"""
         with self.app.app_context():
+            if not self.economy_on():
+                return
             try:
                 # Create user achievement record
                 user_achievement = self.UserAchievement(
@@ -1419,7 +1436,7 @@ class EconomyCog(commands.Cog):
                 user.birthday = date(2000, month, day)  # Use 2000 as placeholder year
                 
                 # Award points for setting birthday (only if not already set)
-                if not birthday_already_set and not user.birthday_points_received:
+                if not birthday_already_set and not user.birthday_points_received and self.economy_on():
                     user.balance += BIRTHDAY_SETUP_POINTS
                     user.points += BIRTHDAY_SETUP_POINTS
                     user.birthday_points_received = True

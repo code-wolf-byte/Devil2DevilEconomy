@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, abort
 from flask_login import login_required, current_user
-from shared import db, bot, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken, store_discount_percent, sale_price
+from shared import db, bot, User, Product, Purchase, Achievement, UserAchievement, EconomySettings, DownloadToken, store_discount_percent, sale_price, economy_enabled
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -55,6 +55,10 @@ def purchase_product(product_id):
     # Block all purchases while the server is closed
     if PURCHASES_DISABLED:
         flash('Purchases are currently closed for the year. Please check back next year.', 'info')
+        return redirect(url_for('main.index'))
+
+    if not economy_enabled():
+        flash('The shop is closed right now. Check back once an admin reopens it.', 'info')
         return redirect(url_for('main.index'))
 
     product = Product.query.get_or_404(product_id)

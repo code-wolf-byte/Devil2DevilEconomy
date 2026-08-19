@@ -81,6 +81,7 @@ nftables==0.1
 nwg-panel==0.10.5
 oauthlib==2.1.0
 olefile==0.47
+openpyxl==3.1.5
 packaging==24.2
 Paste==3.10.1
 perf==0.1

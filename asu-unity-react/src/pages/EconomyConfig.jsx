@@ -124,9 +124,10 @@ export default function EconomyConfig({
         throw new Error(errorData.error || `Save failed (${response.status})`);
       }
 
-      const successMessage = action === "enable_economy"
-        ? "Economy system enabled successfully!"
-        : "Configuration saved successfully!";
+      const successMessage = {
+        enable_economy: "Shop opened — earning and purchases are live.",
+        disable_economy: "Shop closed — no one earns points or buys anything.",
+      }[action] || "Configuration saved successfully!";
       setSaveStatus({ saving: false, error: null, success: successMessage });
 
       await loadData();
@@ -315,6 +316,38 @@ export default function EconomyConfig({
 
       <div className="border rounded bg-white p-4 mb-4">
         <h2 className="h5 fw-bold mb-3">
+          <span className="text-danger">Shop Status</span>
+        </h2>
+        <p className="text-muted small mb-3">
+          Turn this off to close the shop: nobody earns pitchforks and nobody can buy anything
+          until it is turned back on. Admin commands like <code>/give</code> keep working.
+        </p>
+
+        <div className="form-check form-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            id="shopToggle"
+            className="form-check-input"
+            checked={settings.economy_enabled}
+            disabled={saveStatus.saving || (!settings.economy_enabled && !canEnableEconomy)}
+            onChange={(event) => handleSave(event.target.checked ? "enable_economy" : "disable_economy")}
+          />
+          <label className="form-check-label fw-medium" htmlFor="shopToggle">
+            {settings.economy_enabled
+              ? "Shop open — members earn points and can buy"
+              : "Shop closed — no earning, no purchases"}
+          </label>
+        </div>
+        {!settings.economy_enabled && !canEnableEconomy && (
+          <p className="text-muted small mb-0 mt-2">
+            Select a verified or onboarding role below before the shop can be opened.
+          </p>
+        )}
+      </div>
+
+      <div className="border rounded bg-white p-4 mb-4">
+        <h2 className="h5 fw-bold mb-3">
           <span className="text-warning">Store-Wide Sale</span>
         </h2>
         <p className="text-muted small mb-3">
@@ -411,15 +444,10 @@ export default function EconomyConfig({
             onClick={() => handleSave("save_config")}
             disabled={saveStatus.saving}
           />
-          <Button
-            label={saveStatus.saving ? "Enabling..." : "Enable Economy Now"}
-            color="gold"
-            onClick={() => handleSave("enable_economy")}
-            disabled={saveStatus.saving || !canEnableEconomy}
-          />
         </div>
         <p className="text-muted small mb-0">
-          You can save configuration without enabling the economy, or enable it immediately after configuration.
+          Saving keeps roles, bonuses and the sale up to date. Opening or closing the shop is the
+          switch above.
         </p>
       </div>
 
